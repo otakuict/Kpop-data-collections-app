@@ -1,0 +1,42 @@
+name: bias-archive
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      ADMIN_TOKEN: ${ADMIN_TOKEN:?Run scripts/init-local.sh first}
+      DATABASE_PATH: /data/gallery.sqlite
+      SEED_DATABASE: /seed/seed.sqlite
+    ports:
+      - "127.0.0.1:${API_PORT:-8080}:8080"
+    volumes:
+      - gallery-data:/data
+    restart: unless-stopped
+    stop_grace_period: 15s
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_BACKOFFICE_URL: http://localhost:${BACKOFFICE_PORT:-5174}
+    ports:
+      - "127.0.0.1:${GALLERY_PORT:-5173}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+  backoffice:
+    build:
+      context: .
+      dockerfile: backoffice/Dockerfile
+      args:
+        VITE_GALLERY_URL: http://localhost:${GALLERY_PORT:-5173}
+    ports:
+      - "127.0.0.1:${BACKOFFICE_PORT:-5174}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+volumes:
+  gallery-data:

@@ -1,0 +1,7 @@
+{
+ "name":"bias-archive",
+ "private":true,
+ "workspaces":["frontend","backoffice"],
+ "scripts":{"check":"npm run check --workspaces","build":"npm run build --workspaces","test":"node --test scripts/*.test.mjs"},
+ "devDependencies":{"@playwright/test":"^1.56.1"}
+}

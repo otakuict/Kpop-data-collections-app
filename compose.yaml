@@ -1,0 +1,84 @@
+name: bias-archive
+services:
+  backend:
+    image: bias-archive-backend-dev
+    build:
+      context: .
+      dockerfile: backend/Dockerfile.dev
+    environment:
+      ADMIN_TOKEN: ${ADMIN_TOKEN:?Run scripts/init-local.sh first}
+      DATABASE_PATH: /data/gallery.sqlite
+      SEED_DATABASE: /seed/seed.sqlite
+      GIN_MODE: debug
+    ports:
+      - "127.0.0.1:${API_PORT:-8080}:8080"
+    volumes:
+      - ./backend:/src:ro
+      - ./data/seed.sqlite:/seed/seed.sqlite:ro
+      - gallery-data:/data
+      - go-modules:/go/pkg/mod
+      - go-build-cache:/cache/go-build
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/api/health"]
+      interval: 5s
+      timeout: 3s
+      start_period: 5m
+      retries: 3
+    restart: unless-stopped
+    stop_grace_period: 15s
+  frontend:
+    image: node:24-alpine
+    working_dir: /app
+    command: ["sh", "-c", "npm ci --workspace frontend --include-workspace-root && exec npm run dev --workspace frontend -- --port 80 --strictPort"]
+    environment:
+      API_PROXY: http://backend:8080
+      VITE_BACKOFFICE_URL: http://localhost:${BACKOFFICE_PORT:-5174}
+      VITE_USE_POLLING: "true"
+      HMR_CLIENT_PORT: ${GALLERY_PORT:-5173}
+    ports:
+      - "127.0.0.1:${GALLERY_PORT:-5173}:80"
+    volumes:
+      - ./frontend:/app/frontend
+      - ./package.json:/app/package.json:ro
+      - ./package-lock.json:/app/package-lock.json:ro
+      - ./backoffice/package.json:/app/backoffice/package.json:ro
+      - frontend-node-modules:/app/node_modules
+      - frontend-workspace-modules:/app/frontend/node_modules
+      - frontend-npm-cache:/root/.npm
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+  backoffice:
+    image: node:24-alpine
+    working_dir: /app
+    command: ["sh", "-c", "npm ci --workspace backoffice --include-workspace-root && exec npm run dev --workspace backoffice -- --port 80 --strictPort"]
+    environment:
+      API_PROXY: http://backend:8080
+      VITE_GALLERY_URL: http://localhost:${GALLERY_PORT:-5173}
+      VITE_USE_POLLING: "true"
+      HMR_CLIENT_PORT: ${BACKOFFICE_PORT:-5174}
+    ports:
+      - "127.0.0.1:${BACKOFFICE_PORT:-5174}:80"
+    volumes:
+      - ./backoffice:/app/backoffice
+      - ./package.json:/app/package.json:ro
+      - ./package-lock.json:/app/package-lock.json:ro
+      - ./frontend/package.json:/app/frontend/package.json:ro
+      - backoffice-node-modules:/app/node_modules
+      - backoffice-workspace-modules:/app/backoffice/node_modules
+      - backoffice-npm-cache:/root/.npm
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+volumes:
+  gallery-data:
+  go-modules:
+  go-build-cache:
+  frontend-node-modules:
+  frontend-workspace-modules:
+  frontend-npm-cache:
+  backoffice-node-modules:
+  backoffice-workspace-modules:
+  backoffice-npm-cache:

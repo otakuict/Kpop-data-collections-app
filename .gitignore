@@ -1,0 +1,13 @@
+node_modules/
+frontend/dist/
+backoffice/dist/
+.env
+.env.*
+!.env.example
+*.sqlite-wal
+*.sqlite-shm
+data/gallery.sqlite*
+backend/server
+playwright-report/
+test-results/
+.DS_Store

@@ -1,0 +1,22 @@
+root = "."
+tmp_dir = "/tmp/bias-air"
+
+[build]
+cmd = "go build -o /tmp/bias-air/server ./cmd/server"
+bin = "/tmp/bias-air/server"
+include_ext = ["go", "mod", "sum"]
+exclude_dir = ["vendor", "tmp"]
+exclude_regex = ["_test\\.go"]
+exclude_unchanged = true
+poll = true
+poll_interval = 500
+delay = 500
+stop_on_error = true
+send_interrupt = true
+kill_delay = "10s"
+
+[log]
+time = true
+
+[misc]
+clean_on_exit = true

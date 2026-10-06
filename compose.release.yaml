@@ -1,0 +1,31 @@
+# Use images published by the three independent GitHub Actions pipelines.
+# IMAGE_REPOSITORY is a lowercase GitHub owner/repository, e.g. my-team/bias-archive.
+# IMAGE_TAG is latest or sha-<full commit SHA>.
+services:
+  backend:
+    image: ghcr.io/${IMAGE_REPOSITORY:?Set lowercase GitHub owner/repo}-backend:${BACKEND_IMAGE_TAG:-${IMAGE_TAG:-latest}}
+    environment:
+      ADMIN_TOKEN: ${ADMIN_TOKEN:?Set administrator token}
+      DATABASE_PATH: /data/gallery.sqlite
+      SEED_DATABASE: /seed/seed.sqlite
+    volumes:
+      - gallery-data:/data
+    restart: unless-stopped
+  frontend:
+    image: ghcr.io/${IMAGE_REPOSITORY:?Set lowercase GitHub owner/repo}-frontend:${FRONTEND_IMAGE_TAG:-${IMAGE_TAG:-latest}}
+    ports:
+      - "127.0.0.1:${GALLERY_PORT:-5173}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+  backoffice:
+    image: ghcr.io/${IMAGE_REPOSITORY:?Set lowercase GitHub owner/repo}-backoffice:${BACKOFFICE_IMAGE_TAG:-${IMAGE_TAG:-latest}}
+    ports:
+      - "127.0.0.1:${BACKOFFICE_PORT:-5174}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+volumes:
+  gallery-data:
