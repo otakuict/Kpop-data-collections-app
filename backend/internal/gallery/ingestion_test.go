@@ -164,6 +164,42 @@ func TestExtractionStoresMultipleImagesAndSkipsPreviouslyDownloadedURLs(t *testi
 	}
 }
 
+func TestGankGoogleHostedPostStoresThreeDistinctImages(t *testing.T) {
+	s, err := Open(filepath.Join(t.TempDir(), "google-post.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	ctx := context.Background()
+	x, err := s.Save(ctx, 0, SetDraft{Title: "SEUNGBI", Group: "S2IT", Example: googleGankExample})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = s.CachePage(ctx, googleGankExample, []byte(googleGankDocument), "text/html"); err != nil {
+		t.Fatal(err)
+	}
+	original := fetchClient
+	defer func() { fetchClient = original }()
+	calls := 0
+	fetchClient = &http.Client{Transport: responseTransport(func(r *http.Request) (*http.Response, error) {
+		if r.URL.Host != "lh3.googleusercontent.com" {
+			t.Fatalf("unexpected image source: %s", r.URL)
+		}
+		calls++
+		img := image.NewRGBA(image.Rect(0, 0, 1, 1))
+		img.Set(0, 0, color.RGBA{R: uint8(calls * 70), A: 255})
+		var b bytes.Buffer
+		if err := png.Encode(&b, img); err != nil {
+			t.Fatal(err)
+		}
+		return &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": []string{"image/png"}}, Body: io.NopCloser(bytes.NewReader(b.Bytes())), Request: r}, nil
+	})}
+	x, err = Extract(ctx, s, x.ID)
+	if err != nil || len(x.Images) != 3 || calls != 3 || x.ImageState != "ready" || x.ImageError != "" {
+		t.Fatalf("Google-hosted album: %#v, %d requests, %v", x, calls, err)
+	}
+}
+
 func TestGankReservationWaitsForInFlightRequest(t *testing.T) {
 	s, err := Open(filepath.Join(t.TempDir(), "serial.sqlite"))
 	if err != nil {
