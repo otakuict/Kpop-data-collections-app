@@ -1,0 +1,405 @@
+{
+  "startedAt": "2026-10-06T15:09:24.889Z",
+  "finishedAt": "2026-10-06T15:24:38.165Z",
+  "before": {
+    "intervalSeconds": 20,
+    "dailyRequests": 120,
+    "requestsRemaining": 46,
+    "minImages": 2,
+    "maxImages": 5,
+    "pausedUntil": "",
+    "reason": ""
+  },
+  "ingestion": {
+    "intervalSeconds": 20,
+    "dailyRequests": 120,
+    "requestsRemaining": 0,
+    "minImages": 2,
+    "maxImages": 5,
+    "pausedUntil": "",
+    "reason": ""
+  },
+  "results": [
+    {
+      "set_id": 133,
+      "title": "260919 Kyujin",
+      "status": 200,
+      "images": 2,
+      "error": "",
+      "pausedUntil": ""
+    },
+    {
+      "set_id": 73,
+      "title": "260919 CHAEHYUN🚨LIMITED🚨",
+      "status": 429,
+      "images": 0,
+      "error": "lh3.googleusercontent.com ingestion paused until 2026-10-06T16:06:16Z (source HTTP 429)",
+      "pausedUntil": "2026-10-06T16:06:16Z"
+    },
+    {
+      "set_id": 151,
+      "title": "260911 Isa 1984-yoichi Ver.1",
+      "status": 200,
+      "images": 2,
+      "error": "",
+      "pausedUntil": ""
+    },
+    {
+      "set_id": 39,
+      "title": "260830  Shuhua 3349 limited",
+      "status": 429,
+      "images": 0,
+      "error": "lh3.googleusercontent.com ingestion paused until 2026-10-06T16:06:16Z (source HTTP 429)",
+      "pausedUntil": "2026-10-06T16:06:16Z"
+    },
+    {
+      "set_id": 28,
+      "title": "260829 athena 3150",
+      "status": 429,
+      "images": 0,
+      "error": "lh3.googleusercontent.com ingestion paused until 2026-10-06T16:06:16Z (source HTTP 429)",
+      "pausedUntil": "2026-10-06T16:06:16Z"
+    },
+    {
+      "set_id": 156,
+      "title": "260828 Xinyu (LIMITED) 1759",
+      "status": 200,
+      "images": 0,
+      "error": "No public post images found; upload 2–5 images manually",
+      "pausedUntil": ""
+    },
+    {
+      "set_id": 131,
+      "title": "260827 Anna 1675",
+      "status": 429,
+      "images": 0,
+      "error": "lh3.googleusercontent.com ingestion paused until 2026-10-06T16:06:16Z (source HTTP 429)",
+      "pausedUntil": "2026-10-06T16:06:16Z"
+    },
+    {
+      "set_id": 92,
+      "title": "260827 Chaewon",
+      "status": 429,
+      "images": 0,
+      "error": "lh3.googleusercontent.com ingestion paused until 2026-10-06T16:06:16Z (source HTTP 429)",
+      "pausedUntil": "2026-10-06T16:06:16Z"
+    },
+    {
+      "set_id": 91,
+      "title": "260827 CHAEWON「LIMITED」",
+      "status": 429,
+      "images": 0,
+      "error": "lh3.googleusercontent.com ingestion paused until 2026-10-06T16:06:16Z (source HTTP 429)",
+      "pausedUntil": "2026-10-06T16:06:16Z"
+    },
+    {
+      "set_id": 90,
+      "title": "260827 chaewon section A yoichi",
+      "status": 429,
+      "images": 0,
+      "error": "lh3.googleusercontent.com ingestion paused until 2026-10-06T16:06:16Z (source HTTP 429)",
+      "pausedUntil": "2026-10-06T16:06:16Z"
+    },
+    {
+      "set_id": 88,
+      "title": "260827 Chaewon",
+      "status": 429,
+      "images": 0,
+      "error": "lh3.googleusercontent.com ingestion paused until 2026-10-06T16:06:16Z (source HTTP 429)",
+      "pausedUntil": "2026-10-06T16:06:16Z"
+    },
+    {
+      "set_id": 87,
+      "title": "260827 Chaewon",
+      "status": 429,
+      "images": 0,
+      "error": "lh3.googleusercontent.com ingestion paused until 2026-10-06T16:06:16Z (source HTTP 429)",
+      "pausedUntil": "2026-10-06T16:06:16Z"
+    },
+    {
+      "set_id": 85,
+      "title": "260827 eunchae 2075",
+      "status": 429,
+      "images": 0,
+      "error": "lh3.googleusercontent.com ingestion paused until 2026-10-06T16:06:16Z (source HTTP 429)",
+      "pausedUntil": "2026-10-06T16:06:16Z"
+    },
+    {
+      "set_id": 84,
+      "title": "260827 Eunchae yoichi",
+      "status": 429,
+      "images": 0,
+      "error": "lh3.googleusercontent.com ingestion paused until 2026-10-06T16:06:16Z (source HTTP 429)",
+      "pausedUntil": "2026-10-06T16:06:16Z"
+    },
+    {
+      "set_id": 83,
+      "title": "260827 kazuha",
+      "status": 429,
+      "images": 0,
+      "error": "lh3.googleusercontent.com ingestion paused until 2026-10-06T16:06:16Z (source HTTP 429)",
+      "pausedUntil": "2026-10-06T16:06:16Z"
+    },
+    {
+      "set_id": 82,
+      "title": "260827 kazuha yoichi",
+      "status": 429,
+      "images": 0,
+      "error": "lh3.googleusercontent.com ingestion paused until 2026-10-06T16:06:16Z (source HTTP 429)",
+      "pausedUntil": "2026-10-06T16:06:16Z"
+    },
+    {
+      "set_id": 81,
+      "title": "260827 Sakura 1888 (limited) KDataStudio",
+      "status": 429,
+      "images": 0,
+      "error": "lh3.googleusercontent.com ingestion paused until 2026-10-06T16:06:16Z (source HTTP 429)",
+      "pausedUntil": "2026-10-06T16:06:16Z"
+    },
+    {
+      "set_id": 47,
+      "title": "260827 iroha",
+      "status": 429,
+      "images": 0,
+      "error": "lh3.googleusercontent.com ingestion paused until 2026-10-06T16:06:16Z (source HTTP 429)",
+      "pausedUntil": "2026-10-06T16:06:16Z"
+    },
+    {
+      "set_id": 37,
+      "title": "260827 Ian 1700",
+      "status": 429,
+      "images": 0,
+      "error": "lh3.googleusercontent.com ingestion paused until 2026-10-06T16:06:16Z (source HTTP 429)",
+      "pausedUntil": "2026-10-06T16:06:16Z"
+    },
+    {
+      "set_id": 74,
+      "title": "260822 Dayeon 2305 (limited) Yoichi69",
+      "status": 429,
+      "images": 0,
+      "error": "lh3.googleusercontent.com ingestion paused until 2026-10-06T16:06:16Z (source HTTP 429)",
+      "pausedUntil": "2026-10-06T16:06:16Z"
+    },
+    {
+      "set_id": 58,
+      "title": "260821 IVE Gaeul 260821",
+      "status": 429,
+      "images": 0,
+      "error": "lh3.googleusercontent.com ingestion paused until 2026-10-06T16:06:16Z (source HTTP 429)",
+      "pausedUntil": "2026-10-06T16:06:16Z"
+    },
+    {
+      "set_id": 57,
+      "title": "260821 rei 912",
+      "status": 429,
+      "images": 0,
+      "error": "lh3.googleusercontent.com ingestion paused until 2026-10-06T16:06:16Z (source HTTP 429)",
+      "pausedUntil": "2026-10-06T16:06:16Z"
+    },
+    {
+      "set_id": 99,
+      "title": "260814 chaewon 2007",
+      "status": 429,
+      "images": 0,
+      "error": "lh3.googleusercontent.com ingestion paused until 2026-10-06T16:06:16Z (source HTTP 429)",
+      "pausedUntil": "2026-10-06T16:06:16Z"
+    },
+    {
+      "set_id": 98,
+      "title": "260814 Kazuha",
+      "status": 429,
+      "images": 0,
+      "error": "lh3.googleusercontent.com ingestion paused until 2026-10-06T16:06:16Z (source HTTP 429)",
+      "pausedUntil": "2026-10-06T16:06:16Z"
+    },
+    {
+      "set_id": 97,
+      "title": "260814 kazuha 1425",
+      "status": 429,
+      "images": 0,
+      "error": "lh3.googleusercontent.com ingestion paused until 2026-10-06T16:06:16Z (source HTTP 429)",
+      "pausedUntil": "2026-10-06T16:06:16Z"
+    },
+    {
+      "set_id": 96,
+      "title": "260814 sakura 2028",
+      "status": 429,
+      "images": 0,
+      "error": "lh3.googleusercontent.com ingestion paused until 2026-10-06T16:06:16Z (source HTTP 429)",
+      "pausedUntil": "2026-10-06T16:06:16Z"
+    },
+    {
+      "set_id": 95,
+      "title": "260814 Yunjin yoichi ver2",
+      "status": 429,
+      "images": 0,
+      "error": "lh3.googleusercontent.com ingestion paused until 2026-10-06T16:06:16Z (source HTTP 429)",
+      "pausedUntil": "2026-10-06T16:06:16Z"
+    },
+    {
+      "set_id": 94,
+      "title": "260814 Eunchae 1907",
+      "status": 200,
+      "images": 0,
+      "error": "No public post images found; upload 2–5 images manually",
+      "pausedUntil": ""
+    },
+    {
+      "set_id": 41,
+      "title": "260811 Minnie 민니 1682",
+      "status": 429,
+      "images": 0,
+      "error": "lh3.googleusercontent.com ingestion paused until 2026-10-06T16:06:16Z (source HTTP 429)",
+      "pausedUntil": "2026-10-06T16:06:16Z"
+    },
+    {
+      "set_id": 51,
+      "title": "260809 Chaeryeong 3196",
+      "status": 429,
+      "images": 0,
+      "error": "lh3.googleusercontent.com ingestion paused until 2026-10-06T16:06:16Z (source HTTP 429)",
+      "pausedUntil": "2026-10-06T16:06:16Z"
+    },
+    {
+      "set_id": 49,
+      "title": "260809 LIA BACKVIEW SPECIAL LIMITED",
+      "status": 429,
+      "images": 0,
+      "error": "lh3.googleusercontent.com ingestion paused until 2026-10-06T16:06:16Z (source HTTP 429)",
+      "pausedUntil": "2026-10-06T16:06:16Z"
+    },
+    {
+      "set_id": 48,
+      "title": "260809 yuna backview collection",
+      "status": 429,
+      "images": 0,
+      "error": "lh3.googleusercontent.com ingestion paused until 2026-10-06T16:06:16Z (source HTTP 429)",
+      "pausedUntil": "2026-10-06T16:06:16Z"
+    },
+    {
+      "set_id": 55,
+      "title": "Lia 260808",
+      "status": 429,
+      "images": 0,
+      "error": "lh3.googleusercontent.com ingestion paused until 2026-10-06T16:06:16Z (source HTTP 429)",
+      "pausedUntil": "2026-10-06T16:06:16Z"
+    },
+    {
+      "set_id": 54,
+      "title": "260808 Chaeryeong 7859",
+      "status": 429,
+      "images": 0,
+      "error": "lh3.googleusercontent.com ingestion paused until 2026-10-06T16:06:16Z (source HTTP 429)",
+      "pausedUntil": "2026-10-06T16:06:16Z"
+    },
+    {
+      "set_id": 53,
+      "title": "260808 chaeryeong 7869",
+      "status": 429,
+      "images": 0,
+      "error": "lh3.googleusercontent.com ingestion paused until 2026-10-06T16:06:16Z (source HTTP 429)",
+      "pausedUntil": "2026-10-06T16:06:16Z"
+    },
+    {
+      "set_id": 52,
+      "title": "260808 Ryujin Coffee ver",
+      "status": 429,
+      "images": 0,
+      "error": "lh3.googleusercontent.com ingestion paused until 2026-10-06T16:06:16Z (source HTTP 429)",
+      "pausedUntil": "2026-10-06T16:06:16Z"
+    },
+    {
+      "set_id": 142,
+      "title": "260801 Joy",
+      "status": 429,
+      "images": 0,
+      "error": "lh3.googleusercontent.com ingestion paused until 2026-10-06T16:06:16Z (source HTTP 429)",
+      "pausedUntil": "2026-10-06T16:06:16Z"
+    },
+    {
+      "set_id": 141,
+      "title": "260801 Joy (3169 pics)",
+      "status": 429,
+      "images": 0,
+      "error": "lh3.googleusercontent.com ingestion paused until 2026-10-06T16:06:16Z (source HTTP 429)",
+      "pausedUntil": "2026-10-06T16:06:16Z"
+    },
+    {
+      "set_id": 140,
+      "title": "260801 Yeri 4226",
+      "status": 429,
+      "images": 0,
+      "error": "lh3.googleusercontent.com ingestion paused until 2026-10-06T16:06:16Z (source HTTP 429)",
+      "pausedUntil": "2026-10-06T16:06:16Z"
+    },
+    {
+      "set_id": 139,
+      "title": "260801 조이 3261",
+      "status": 429,
+      "images": 0,
+      "error": "lh3.googleusercontent.com ingestion paused until 2026-10-06T16:06:16Z (source HTTP 429)",
+      "pausedUntil": "2026-10-06T16:06:16Z"
+    },
+    {
+      "set_id": 101,
+      "title": "260801 LESSERAFIM (PRIZE)",
+      "status": 429,
+      "images": 0,
+      "error": "lh3.googleusercontent.com ingestion paused until 2026-10-06T16:06:16Z (source HTTP 429)",
+      "pausedUntil": "2026-10-06T16:06:16Z"
+    },
+    {
+      "set_id": 29,
+      "title": "260801 KEENA",
+      "status": 429,
+      "images": 0,
+      "error": "lh3.googleusercontent.com ingestion paused until 2026-10-06T16:06:16Z (source HTTP 429)",
+      "pausedUntil": "2026-10-06T16:06:16Z"
+    },
+    {
+      "set_id": 30,
+      "title": "260728 ATHENA",
+      "status": 429,
+      "images": 0,
+      "error": "lh3.googleusercontent.com ingestion paused until 2026-10-06T16:06:16Z (source HTTP 429)",
+      "pausedUntil": "2026-10-06T16:06:16Z"
+    },
+    {
+      "set_id": 36,
+      "title": "260726 Hwiseo Yoichi",
+      "status": 429,
+      "images": 0,
+      "error": "lh3.googleusercontent.com ingestion paused until 2026-10-06T16:06:16Z (source HTTP 429)",
+      "pausedUntil": "2026-10-06T16:06:16Z"
+    },
+    {
+      "set_id": 147,
+      "title": "260725 Bibi 2210",
+      "status": 429,
+      "images": 0,
+      "error": "lh3.googleusercontent.com ingestion paused until 2026-10-06T16:06:16Z (source HTTP 429)",
+      "pausedUntil": "2026-10-06T16:06:16Z"
+    },
+    {
+      "set_id": 80,
+      "title": "260724 NATTY SPECIAL LIMITED",
+      "status": 429,
+      "images": 0,
+      "error": "lh3.googleusercontent.com ingestion paused until 2026-10-06T16:06:16Z (source HTTP 429)",
+      "pausedUntil": "2026-10-06T16:06:16Z"
+    }
+  ],
+  "stopReason": "additional Gank budget exhausted",
+  "summary": {
+    "total": 165,
+    "storedImages": 93,
+    "complete": 42,
+    "counts": {
+      "0": 121,
+      "1": 2,
+      "2": 39,
+      "3": 1,
+      "5": 2
+    }
+  }
+}

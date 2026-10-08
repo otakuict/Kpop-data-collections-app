@@ -1,0 +1,22 @@
+{
+  "generatedAt": "2026-10-06T14:45:03.277Z",
+  "target": 2,
+  "attemptedSets": 1,
+  "pausedUntil": "",
+  "total": 165,
+  "complete": 28,
+  "counts": {
+    "0": 136,
+    "1": 1,
+    "2": 26,
+    "5": 2
+  },
+  "results": [
+    {
+      "id": 64,
+      "title": "260110 rei  RARE",
+      "count": 0,
+      "error": "No public post images found; upload 2–5 images manually"
+    }
+  ]
+}

@@ -1,0 +1,421 @@
+{
+  "startedAt": "2026-10-07T03:35:18.693Z",
+  "target": 2,
+  "mode": "retry valid cached pages without granting additional Gank requests",
+  "budgetBefore": {
+    "intervalSeconds": 20,
+    "dailyRequests": 120,
+    "requestsRemaining": 0,
+    "minImages": 2,
+    "maxImages": 5,
+    "pausedUntil": "",
+    "reason": ""
+  },
+  "imagesBefore": 93,
+  "completeBefore": 42,
+  "candidateIds": [
+    24,
+    136,
+    9,
+    10,
+    21,
+    22,
+    23,
+    28,
+    29,
+    30,
+    36,
+    37,
+    39,
+    41,
+    47,
+    48,
+    49,
+    51,
+    52,
+    53,
+    54,
+    55,
+    57,
+    58,
+    64,
+    73,
+    74,
+    80,
+    81,
+    82,
+    83,
+    84,
+    85,
+    87,
+    88,
+    90,
+    91,
+    92,
+    94,
+    95,
+    96,
+    97,
+    98,
+    99,
+    101,
+    131,
+    139,
+    140,
+    141,
+    142,
+    147,
+    156
+  ],
+  "results": [
+    {
+      "id": 24,
+      "before": 1,
+      "after": 2,
+      "error": ""
+    },
+    {
+      "id": 136,
+      "before": 1,
+      "after": 1,
+      "error": "Only 1 distinct public image(s) available; at least 2 required"
+    },
+    {
+      "id": 9,
+      "before": 0,
+      "after": 0,
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 10,
+      "before": 0,
+      "after": 0,
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 21,
+      "before": 0,
+      "after": 0,
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 22,
+      "before": 0,
+      "after": 0,
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 23,
+      "before": 0,
+      "after": 0,
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 28,
+      "before": 0,
+      "after": 2,
+      "error": ""
+    },
+    {
+      "id": 29,
+      "before": 0,
+      "after": 2,
+      "error": ""
+    },
+    {
+      "id": 30,
+      "before": 0,
+      "after": 2,
+      "error": ""
+    },
+    {
+      "id": 36,
+      "before": 0,
+      "after": 2,
+      "error": ""
+    },
+    {
+      "id": 37,
+      "before": 0,
+      "after": 2,
+      "error": ""
+    },
+    {
+      "id": 39,
+      "before": 0,
+      "after": 2,
+      "error": ""
+    },
+    {
+      "id": 41,
+      "before": 0,
+      "after": 2,
+      "error": ""
+    },
+    {
+      "id": 47,
+      "before": 0,
+      "after": 2,
+      "error": ""
+    },
+    {
+      "id": 48,
+      "before": 0,
+      "after": 2,
+      "error": ""
+    },
+    {
+      "id": 49,
+      "before": 0,
+      "after": 2,
+      "error": ""
+    },
+    {
+      "id": 51,
+      "before": 0,
+      "after": 2,
+      "error": ""
+    },
+    {
+      "id": 52,
+      "before": 0,
+      "after": 2,
+      "error": ""
+    },
+    {
+      "id": 53,
+      "before": 0,
+      "after": 2,
+      "error": ""
+    },
+    {
+      "id": 54,
+      "before": 0,
+      "after": 2,
+      "error": ""
+    },
+    {
+      "id": 55,
+      "before": 0,
+      "after": 2,
+      "error": ""
+    },
+    {
+      "id": 57,
+      "before": 0,
+      "after": 2,
+      "error": ""
+    },
+    {
+      "id": 58,
+      "before": 0,
+      "after": 2,
+      "error": ""
+    },
+    {
+      "id": 64,
+      "before": 0,
+      "after": 0,
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 73,
+      "before": 0,
+      "after": 2,
+      "error": ""
+    },
+    {
+      "id": 74,
+      "before": 0,
+      "after": 2,
+      "error": ""
+    },
+    {
+      "id": 80,
+      "before": 0,
+      "after": 2,
+      "error": ""
+    },
+    {
+      "id": 81,
+      "before": 0,
+      "after": 2,
+      "error": ""
+    },
+    {
+      "id": 82,
+      "before": 0,
+      "after": 2,
+      "error": ""
+    },
+    {
+      "id": 83,
+      "before": 0,
+      "after": 2,
+      "error": ""
+    },
+    {
+      "id": 84,
+      "before": 0,
+      "after": 2,
+      "error": ""
+    },
+    {
+      "id": 85,
+      "before": 0,
+      "after": 2,
+      "error": ""
+    },
+    {
+      "id": 87,
+      "before": 0,
+      "after": 2,
+      "error": ""
+    },
+    {
+      "id": 88,
+      "before": 0,
+      "after": 2,
+      "error": ""
+    },
+    {
+      "id": 90,
+      "before": 0,
+      "after": 2,
+      "error": ""
+    },
+    {
+      "id": 91,
+      "before": 0,
+      "after": 2,
+      "error": ""
+    },
+    {
+      "id": 92,
+      "before": 0,
+      "after": 2,
+      "error": ""
+    },
+    {
+      "id": 94,
+      "before": 0,
+      "after": 0,
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 95,
+      "before": 0,
+      "after": 2,
+      "error": ""
+    },
+    {
+      "id": 96,
+      "before": 0,
+      "after": 2,
+      "error": ""
+    },
+    {
+      "id": 97,
+      "before": 0,
+      "after": 2,
+      "error": ""
+    },
+    {
+      "id": 98,
+      "before": 0,
+      "after": 2,
+      "error": ""
+    },
+    {
+      "id": 99,
+      "before": 0,
+      "after": 2,
+      "error": ""
+    },
+    {
+      "id": 101,
+      "before": 0,
+      "after": 2,
+      "error": ""
+    },
+    {
+      "id": 131,
+      "before": 0,
+      "after": 2,
+      "error": ""
+    },
+    {
+      "id": 139,
+      "before": 0,
+      "after": 2,
+      "error": ""
+    },
+    {
+      "id": 140,
+      "before": 0,
+      "after": 2,
+      "error": ""
+    },
+    {
+      "id": 141,
+      "before": 0,
+      "after": 2,
+      "error": ""
+    },
+    {
+      "id": 142,
+      "before": 0,
+      "after": 2,
+      "error": ""
+    },
+    {
+      "id": 147,
+      "before": 0,
+      "after": 2,
+      "error": ""
+    },
+    {
+      "id": 156,
+      "before": 0,
+      "after": 0,
+      "error": "No public post images found; upload 2–5 images manually"
+    }
+  ],
+  "running": false,
+  "finishedAt": "2026-10-07T03:36:44.232Z",
+  "imagesAfter": 178,
+  "imagesAdded": 85,
+  "completeAfter": 85,
+  "counts": {
+    "0": 79,
+    "1": 1,
+    "2": 82,
+    "3": 1,
+    "5": 2
+  },
+  "budgetAfter": {
+    "intervalSeconds": 20,
+    "dailyRequests": 120,
+    "requestsRemaining": 0,
+    "minImages": 2,
+    "maxImages": 5,
+    "pausedUntil": "",
+    "reason": ""
+  },
+  "stopReason": "all incomplete cached sets attempted",
+  "seedExported": true,
+  "verification": [
+    "seed source fidelity, JPEG magic/MIME/hash, integrity and foreign keys passed",
+    "seed counts match API report",
+    "Gank request history remains 120: no new Gank requests",
+    "set 165 retains 3 images"
+  ],
+  "cachedPages": 89,
+  "providerCooldowns": [
+    {
+      "host": "ko-fi.com",
+      "paused_until": 1791384355886,
+      "reason": "source HTTP 403"
+    }
+  ]
+}

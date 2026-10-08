@@ -233,6 +233,11 @@ func ExtractImages(document, base string) []string {
 		if gank && n.Type == html.ElementNode && n.Data == "script" && n.FirstChild != nil {
 			script := n.FirstChild.Data
 			if strings.Contains(script, "window.__NUXT__") && strings.Contains(script, "postMedia") {
+				if strings.HasPrefix(baseURL.Path, "/post/") {
+					for _, raw := range gankNuxtPostImages(script, strings.TrimPrefix(baseURL.Path, "/post/")) {
+						add(raw, false)
+					}
+				}
 				for _, literal := range scriptURL.FindAllString(script, -1) {
 					var raw string
 					if json.Unmarshal([]byte(literal), &raw) == nil {

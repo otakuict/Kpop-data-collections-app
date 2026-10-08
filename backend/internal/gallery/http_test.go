@@ -111,6 +111,56 @@ func TestSSRFAddressPolicyAndSheetNormalization(t *testing.T) {
 		t.Fatal("lookalike host accepted")
 	}
 }
+
+func TestImportPreviewHTTPDoesNotWriteAndReturnsExactCSV(t *testing.T) {
+	s, err := Open(filepath.Join(t.TempDir(), "preview-http.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	token := "test-operator-token-at-least-24-chars"
+	router := Router(s, token)
+	csv := "Date,Name,GROUP,Example\n260915,Reviewed,aespa,post deleted\n"
+	call := func(path string, authorized bool) *httptest.ResponseRecorder {
+		var body bytes.Buffer
+		writer := multipart.NewWriter(&body)
+		writer.WriteField("sheetUrl", DefaultSheetURL)
+		part, _ := writer.CreateFormFile("csv", "source.csv")
+		part.Write([]byte(csv))
+		writer.Close()
+		req := httptest.NewRequest("POST", path, &body)
+		req.Header.Set("Content-Type", writer.FormDataContentType())
+		if authorized {
+			req.Header.Set("Authorization", "Bearer "+token)
+		}
+		response := httptest.NewRecorder()
+		router.ServeHTTP(response, req)
+		return response
+	}
+	if w := call("/api/admin/import/preview", false); w.Code != 401 {
+		t.Fatal("unauthorized preview accepted")
+	}
+	w := call("/api/admin/import/preview", true)
+	var preview struct {
+		Report   ImportReport `json:"report"`
+		CSV      string       `json:"csv"`
+		SheetURL string       `json:"sheetUrl"`
+	}
+	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &preview) != nil || preview.Report.Created != 1 || preview.CSV != csv || preview.SheetURL != DefaultSheetURL {
+		t.Fatalf("preview response %d %s", w.Code, w.Body.String())
+	}
+	p, _ := s.List(context.Background(), Filter{Page: 1, Limit: 24})
+	if p.Total != 0 {
+		t.Fatal("preview persisted rows")
+	}
+	if w := call("/api/admin/import", true); w.Code != 200 {
+		t.Fatalf("commit failed %s", w.Body.String())
+	}
+	p, _ = s.List(context.Background(), Filter{Page: 1, Limit: 24})
+	if p.Total != 1 || p.Items[0].Title != "Reviewed" {
+		t.Fatal("reviewed snapshot not committed")
+	}
+}
 func TestRasterRejectsHTMLAndOversizedDimensions(t *testing.T) {
 	if _, err := NormalizeImage([]byte("<svg xmlns='http://www.w3.org/2000/svg'></svg>"), ""); err == nil {
 		t.Fatal("SVG accepted")

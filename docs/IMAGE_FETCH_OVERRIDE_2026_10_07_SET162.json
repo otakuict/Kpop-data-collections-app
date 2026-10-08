@@ -1,0 +1,23 @@
+{
+  "generatedAt": "2026-10-07T03:56:43.934Z",
+  "target": 2,
+  "attemptedSets": 1,
+  "pausedUntil": "",
+  "total": 165,
+  "complete": 116,
+  "counts": {
+    "0": 48,
+    "1": 1,
+    "2": 113,
+    "3": 1,
+    "5": 2
+  },
+  "results": [
+    {
+      "id": 162,
+      "title": "260710 Sana 4293",
+      "count": 2,
+      "error": ""
+    }
+  ]
+}

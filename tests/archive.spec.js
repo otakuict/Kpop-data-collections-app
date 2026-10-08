@@ -1,4 +1,8 @@
 const { test, expect } = require('@playwright/test');
+test.beforeEach(async ({ page }) => {
+ await page.addInitScript(() => localStorage.setItem('bias.quick-guide.hidden.v1', '1'));
+});
+
 const office=process.env.E2E_BACKOFFICE_URL||'http://localhost:5184';
 const token=process.env.E2E_ADMIN_TOKEN||'e2e-only-administrator-token-24chars';
 
@@ -33,6 +37,7 @@ test('back-office rejects unauthorized writes and adds a real uploaded preview v
 
 test('CSV import is idempotent and retains manual entries',async({page})=>{
  await signIn(page);await page.getByRole('button',{name:'Import & previews'}).click();await page.getByLabel('Upload CSV',{exact:true}).setInputFiles('data/source.csv');await page.getByRole('button',{name:'Import CSV',exact:true}).click();
+ await expect(page.getByRole('dialog',{name:'Review import results.'})).toBeVisible();await expect(page.getByRole('dialog')).toContainText('No changes have been saved.');await page.getByRole('button',{name:'OK — Update',exact:true}).click();
  await expect(page.getByRole('status')).toContainText('Imported 165 rows: 0 new, 165 updated.');
  await page.getByRole('button',{name:'Image sets',exact:false}).click();await page.getByLabel('Search sets',{exact:true}).fill('E2E moment');await expect(page.getByRole('row').filter({hasText:'E2E moment'}).first()).toContainText('2/5 ready');
 });

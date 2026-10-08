@@ -233,69 +233,82 @@ func Router(store *Store, token string) *gin.Engine {
 		}
 		c.JSON(200, x)
 	})
-	admin.POST("/import", func(c *gin.Context) {
-		var sheetURL string
-		var b []byte
-		var source string
-		var err error
-		if strings.HasPrefix(c.GetHeader("Content-Type"), "multipart/form-data") {
-			if err = c.Request.ParseMultipartForm(1 << 20); err != nil {
-				c.JSON(400, gin.H{"error": "invalid CSV upload"})
+	importSheet := func(preview bool) gin.HandlerFunc {
+		return func(c *gin.Context) {
+			var sheetURL string
+			var b []byte
+			var source string
+			var err error
+			if strings.HasPrefix(c.GetHeader("Content-Type"), "multipart/form-data") {
+				if err = c.Request.ParseMultipartForm(1 << 20); err != nil {
+					c.JSON(400, gin.H{"error": "invalid CSV upload"})
+					return
+				}
+				defer c.Request.MultipartForm.RemoveAll()
+				sheetURL = c.PostForm("sheetUrl")
+				if sheetURL == "" {
+					sheetURL = DefaultSheetURL
+				}
+				_, source, err = SheetURL(sheetURL)
+				if err != nil {
+					c.JSON(400, gin.H{"error": err.Error()})
+					return
+				}
+				file, _, e := c.Request.FormFile("csv")
+				if e != nil {
+					c.JSON(400, gin.H{"error": "select a CSV file"})
+					return
+				}
+				b, err = io.ReadAll(io.LimitReader(file, 5<<20+1))
+				file.Close()
+			} else {
+				var request struct {
+					SheetURL string `json:"sheetUrl"`
+				}
+				c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 64<<10)
+				if err = c.ShouldBindJSON(&request); err != nil {
+					c.JSON(400, gin.H{"error": "sheetUrl is required"})
+					return
+				}
+				sheetURL = request.SheetURL
+				var remote string
+				remote, source, err = SheetURL(sheetURL)
+				if err == nil {
+					b, _, err = Fetch(c.Request.Context(), remote, 5<<20)
+				}
+			}
+			if err != nil {
+				c.JSON(400, gin.H{"error": fmt.Sprintf("Sheet import failed: %v", err)})
 				return
 			}
-			defer c.Request.MultipartForm.RemoveAll()
-			sheetURL = c.PostForm("sheetUrl")
-			if sheetURL == "" {
-				sheetURL = DefaultSheetURL
+			if len(b) > 5<<20 {
+				c.JSON(400, gin.H{"error": "CSV exceeds 5 MiB"})
+				return
 			}
-			_, source, err = SheetURL(sheetURL)
+			drafts, err := ParseSheet(bytes.NewReader(b), source)
 			if err != nil {
 				c.JSON(400, gin.H{"error": err.Error()})
 				return
 			}
-			file, _, e := c.Request.FormFile("csv")
-			if e != nil {
-				c.JSON(400, gin.H{"error": "select a CSV file"})
+			var report ImportReport
+			if preview {
+				report, err = store.PreviewImport(c.Request.Context(), drafts)
+			} else {
+				report, err = store.Import(c.Request.Context(), drafts)
+			}
+			if err != nil {
+				fail(c, err)
 				return
 			}
-			b, err = io.ReadAll(io.LimitReader(file, 5<<20+1))
-			file.Close()
-		} else {
-			var request struct {
-				SheetURL string `json:"sheetUrl"`
-			}
-			c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 64<<10)
-			if err = c.ShouldBindJSON(&request); err != nil {
-				c.JSON(400, gin.H{"error": "sheetUrl is required"})
+			if preview {
+				c.JSON(200, gin.H{"report": report, "csv": string(b), "sheetUrl": sheetURL})
 				return
 			}
-			sheetURL = request.SheetURL
-			var remote string
-			remote, source, err = SheetURL(sheetURL)
-			if err == nil {
-				b, _, err = Fetch(c.Request.Context(), remote, 5<<20)
-			}
+			c.JSON(200, report)
 		}
-		if err != nil {
-			c.JSON(400, gin.H{"error": fmt.Sprintf("Sheet import failed: %v", err)})
-			return
-		}
-		if len(b) > 5<<20 {
-			c.JSON(400, gin.H{"error": "CSV exceeds 5 MiB"})
-			return
-		}
-		drafts, err := ParseSheet(bytes.NewReader(b), source)
-		if err != nil {
-			c.JSON(400, gin.H{"error": err.Error()})
-			return
-		}
-		report, err := store.Import(c.Request.Context(), drafts)
-		if err != nil {
-			fail(c, err)
-			return
-		}
-		c.JSON(200, report)
-	})
+	}
+	admin.POST("/import/preview", importSheet(true))
+	admin.POST("/import", importSheet(false))
 	return r
 }
 func parseID(c *gin.Context) (SetID, bool) {

@@ -63,10 +63,21 @@ type Facets struct {
 	To       string  `json:"to"`
 }
 type ImportReport struct {
-	Created    int     `json:"created"`
-	Updated    int     `json:"updated"`
-	Total      int     `json:"total"`
-	Candidates []SetID `json:"candidates"`
+	Created        int            `json:"created"`
+	Updated        int            `json:"updated"`
+	Total          int            `json:"total"`
+	Candidates     []SetID        `json:"candidates"`
+	ScanCandidates []SetID        `json:"scanCandidates"`
+	Changed        int            `json:"changed"`
+	Unchanged      int            `json:"unchanged"`
+	Changes        []ImportChange `json:"changes"`
+}
+
+type ImportChange struct {
+	ID     SetID     `json:"id"`
+	Kind   string    `json:"kind"`
+	Before *SetDraft `json:"before,omitempty"`
+	After  SetDraft  `json:"after"`
 }
 
 func (d *SetDraft) Validate() error {

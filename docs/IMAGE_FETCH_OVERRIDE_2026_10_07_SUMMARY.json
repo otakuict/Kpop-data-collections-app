@@ -1,0 +1,1675 @@
+{
+  "finishedAt": "2026-10-07T03:57:03.896Z",
+  "temporaryGrant": 60,
+  "imagesBefore": 178,
+  "imagesAfter": 240,
+  "completeBefore": 85,
+  "completeAfter": 116,
+  "counts": {
+    "0": 48,
+    "1": 1,
+    "2": 113,
+    "3": 1,
+    "5": 2
+  },
+  "budget": {
+    "intervalSeconds": 20,
+    "dailyRequests": 180,
+    "requestsRemaining": 30,
+    "minImages": 2,
+    "maxImages": 5,
+    "pausedUntil": "",
+    "reason": ""
+  },
+  "sets": [
+    {
+      "id": 165,
+      "title": "261003 SEUNGBI🚨LIMITED🚨",
+      "images": 3,
+      "example": "https://ganknow.com/post/e63b82e9-3d38-4245-beed-84974767969e",
+      "error": ""
+    },
+    {
+      "id": 160,
+      "title": "260923 Mina Yoichi",
+      "images": 2,
+      "example": "https://ganknow.com/post/2196c127-6d17-4810-a4fc-c879ccc7f903",
+      "error": ""
+    },
+    {
+      "id": 159,
+      "title": "260923 Mina Loveshake",
+      "images": 2,
+      "example": "https://ganknow.com/post/986a7ccb-36ed-4253-bbc2-0b2d087f7929",
+      "error": ""
+    },
+    {
+      "id": 158,
+      "title": "260923Mina  kdata",
+      "images": 2,
+      "example": "https://ganknow.com/post/5aa14ab9-159d-48c7-8daf-61a28240ac7f",
+      "error": ""
+    },
+    {
+      "id": 153,
+      "title": "260919 TRIPLES Hayeon",
+      "images": 2,
+      "example": "https://ganknow.com/post/bec43cdf-e565-4017-8829-644e1ec6f50c",
+      "error": ""
+    },
+    {
+      "id": 133,
+      "title": "260919 Kyujin",
+      "images": 2,
+      "example": "https://ganknow.com/post/a3227d0f-c919-438b-b18f-965ff215a407",
+      "error": ""
+    },
+    {
+      "id": 73,
+      "title": "260919 CHAEHYUN🚨LIMITED🚨",
+      "images": 2,
+      "example": "https://ganknow.com/post/8e0f5aec-c01c-4fe6-ad49-4f771b62fbdd",
+      "error": ""
+    },
+    {
+      "id": 72,
+      "title": "260919 CHAEHYUN",
+      "images": 2,
+      "example": "https://ganknow.com/post/e66e2f1d-9536-4d16-8f94-b92698ad16f6",
+      "error": ""
+    },
+    {
+      "id": 71,
+      "title": "260919 Chaehyun 4552 Kdata",
+      "images": 2,
+      "example": "https://ganknow.com/post/93df4d60-1de6-4f83-a53a-a8a9e78074ff",
+      "error": ""
+    },
+    {
+      "id": 2,
+      "title": "260918 AESPA🚨LIMITED🚨",
+      "images": 2,
+      "example": "https://ganknow.com/post/c68afe8e-9889-4751-91d4-f16da0f8d0ef",
+      "error": ""
+    },
+    {
+      "id": 4,
+      "title": "260915 HEEJIN yoichi",
+      "images": 2,
+      "example": "https://ganknow.com/post/e700a9cd-32d6-4ff3-94ce-c3e0258f0580",
+      "error": ""
+    },
+    {
+      "id": 1,
+      "title": "260915  Karina kdata",
+      "images": 5,
+      "example": "https://ganknow.com/post/5ddbab87-f0f2-404a-89a9-eb2f897aad61",
+      "error": ""
+    },
+    {
+      "id": 78,
+      "title": "260913 Natty (2) + Julie + Haneul",
+      "images": 2,
+      "example": "https://ganknow.com/post/8462e8f1-f313-465f-82f6-bc934212f9dd",
+      "error": ""
+    },
+    {
+      "id": 77,
+      "title": "260913 Natty 2327",
+      "images": 2,
+      "example": "https://ganknow.com/post/e6c2dc39-6c13-4d26-8f15-7b36a7a00037",
+      "error": ""
+    },
+    {
+      "id": 155,
+      "title": "260912 Chaeyeon yoichi69 v1",
+      "images": 2,
+      "example": "https://ganknow.com/post/7559d1ed-d29e-4f9e-ada9-501c9bcf5ba1",
+      "error": ""
+    },
+    {
+      "id": 154,
+      "title": "260912 Chaeyeon yoichi69 v2",
+      "images": 2,
+      "example": "https://ganknow.com/post/5ff6bdb4-aa0d-431e-8f23-b019ca217e38",
+      "error": ""
+    },
+    {
+      "id": 152,
+      "title": "260912 CHAEYEON idollove",
+      "images": 2,
+      "example": "https://ganknow.com/post/224769b0-ce70-47a6-b44c-671d22aacdb5",
+      "error": ""
+    },
+    {
+      "id": 38,
+      "title": "260912 Yeju",
+      "images": 2,
+      "example": "https://ganknow.com/post/94c1c856-5fa4-43c7-8ed5-68a630bc1c4e",
+      "error": ""
+    },
+    {
+      "id": 151,
+      "title": "260911 Isa 1984-yoichi Ver.1",
+      "images": 2,
+      "example": "https://ganknow.com/post/d4fe2ad9-e7fb-40b6-9489-026c437e8c1c",
+      "error": ""
+    },
+    {
+      "id": 6,
+      "title": "260911 BABYMONSTER Ahyeon 1331p (baemonfan)",
+      "images": 2,
+      "example": "https://ganknow.com/post/d0a44e02-ba4f-4ca2-b6c3-25d4e11b5507",
+      "error": ""
+    },
+    {
+      "id": 27,
+      "title": "260910 Athena 4 sets",
+      "images": 2,
+      "example": "https://ganknow.com/post/fe065f12-0e43-4d15-b6c9-29348caaac0e",
+      "error": ""
+    },
+    {
+      "id": 146,
+      "title": "260906 YENA🚨LIMITED🚨",
+      "images": 2,
+      "example": "https://ganknow.com/post/788458d1-0232-4cf5-990c-84880f6c4e9b",
+      "error": ""
+    },
+    {
+      "id": 145,
+      "title": "260906 YENA  coffe(2)",
+      "images": 2,
+      "example": "https://ganknow.com/post/29d87ef3-2ae5-4f9c-8779-bce72789317c",
+      "error": ""
+    },
+    {
+      "id": 144,
+      "title": "260906 YENA  coffe(1)",
+      "images": 2,
+      "example": "https://ganknow.com/post/39a8362d-3141-45a6-b583-493c51f395cd",
+      "error": ""
+    },
+    {
+      "id": 76,
+      "title": "260906 Kya 3073(Yoichi)",
+      "images": 0,
+      "example": "post deleted , LIMITED 260906 KYA at 2026 SPOTV K-POP AWARDS (SKA) 3073 FILES",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 75,
+      "title": "260906 KIIIKIII Kya",
+      "images": 2,
+      "example": "https://ganknow.com/post/13bfedcb-a946-4a21-9fc7-c26e13cd186a",
+      "error": ""
+    },
+    {
+      "id": 32,
+      "title": "260905 CHAEYOUNG v1",
+      "images": 2,
+      "example": "https://ganknow.com/post/ad5df700-ef4b-4b1b-aa02-bf9fdf0bb142",
+      "error": ""
+    },
+    {
+      "id": 130,
+      "title": "260904 Nayoung 4148",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 35,
+      "title": "260904 chaeyoung",
+      "images": 2,
+      "example": "https://ganknow.com/post/5ca8ba25-e587-490b-a816-8c36b0d4d9c8",
+      "error": ""
+    },
+    {
+      "id": 34,
+      "title": "260904 jiheon",
+      "images": 2,
+      "example": "https://ganknow.com/post/683142ca-233a-4870-802a-dbfcd6d57bf8",
+      "error": ""
+    },
+    {
+      "id": 33,
+      "title": "260904 NAGYUNG",
+      "images": 2,
+      "example": "https://ganknow.com/post/27000cca-c4d1-4245-8aef-87e998eebed7",
+      "error": ""
+    },
+    {
+      "id": 39,
+      "title": "260830  Shuhua 3349 limited",
+      "images": 2,
+      "example": "https://ganknow.com/post/ff9427aa-6bcc-4a92-974a-d2321c2aafe7",
+      "error": ""
+    },
+    {
+      "id": 40,
+      "title": "260829&260830 Miyeon 3964 Limited",
+      "images": 2,
+      "example": "https://ganknow.com/post/79812a75-2599-41bf-974b-e2213e5e620d",
+      "error": ""
+    },
+    {
+      "id": 28,
+      "title": "260829 athena 3150",
+      "images": 2,
+      "example": "https://ganknow.com/post/ec2cdcb7-6315-4a27-a756-ba556e0a11c8",
+      "error": ""
+    },
+    {
+      "id": 156,
+      "title": "260828 Xinyu (LIMITED) 1759",
+      "images": 0,
+      "example": "https://ganknow.com/services/106511-kdatastudio-260828-xinyu-limited",
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 20,
+      "title": "260828 JEEWON",
+      "images": 2,
+      "example": "https://ganknow.com/post/04507c7c-93a3-41e2-952a-12ee2b87bdad",
+      "error": ""
+    },
+    {
+      "id": 19,
+      "title": "260828 JEEWON",
+      "images": 2,
+      "example": "https://ganknow.com/post/cba51444-5de6-4054-8945-0131a84e417f",
+      "error": ""
+    },
+    {
+      "id": 18,
+      "title": "260828 jeewon 2484",
+      "images": 2,
+      "example": "https://ganknow.com/post/c448d94b-5cd9-4905-8f94-5b4df673eed0",
+      "error": ""
+    },
+    {
+      "id": 17,
+      "title": "260828 JEEWON idollove ver2",
+      "images": 2,
+      "example": "https://ganknow.com/post/94f445f2-8d63-4624-9ac6-8ef0b34a3f3a",
+      "error": ""
+    },
+    {
+      "id": 16,
+      "title": "260828 Jeewon yoichi69 ver2  2506",
+      "images": 2,
+      "example": "https://ganknow.com/post/7ca1375f-a887-4cb3-be24-6f9c4f6ec01c",
+      "error": ""
+    },
+    {
+      "id": 131,
+      "title": "260827 Anna 1675",
+      "images": 2,
+      "example": "https://ganknow.com/post/9b88a481-b9e6-436b-869f-cb8690918402",
+      "error": ""
+    },
+    {
+      "id": 123,
+      "title": "260827 Eunchae 3540",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 93,
+      "title": "260827 Chaewon",
+      "images": 5,
+      "example": "https://loveshakedata.gumroad.com/l/260827-le-sserafim-chaewon-stage",
+      "error": ""
+    },
+    {
+      "id": 92,
+      "title": "260827 Chaewon",
+      "images": 2,
+      "example": "https://ganknow.com/post/54c39939-6771-4c95-bbce-2121ab66cf62",
+      "error": ""
+    },
+    {
+      "id": 91,
+      "title": "260827 CHAEWON「LIMITED」",
+      "images": 2,
+      "example": "https://ganknow.com/post/36621501-9e32-4108-a772-9cf4f485a5e4",
+      "error": ""
+    },
+    {
+      "id": 90,
+      "title": "260827 chaewon section A yoichi",
+      "images": 2,
+      "example": "https://ganknow.com/post/54c39939-6771-4c95-bbce-2121ab66cf62",
+      "error": ""
+    },
+    {
+      "id": 89,
+      "title": "260827 Chaewon 채원 4149",
+      "images": 2,
+      "example": "https://ganknow.com/post/c7d5f8c3-6959-4a76-ad99-e37ac4d50867",
+      "error": ""
+    },
+    {
+      "id": 88,
+      "title": "260827 Chaewon",
+      "images": 2,
+      "example": "https://ganknow.com/post/16092d51-0b12-4169-89e8-f2b440a613c1",
+      "error": ""
+    },
+    {
+      "id": 87,
+      "title": "260827 Chaewon",
+      "images": 2,
+      "example": "https://ganknow.com/post/d1c02737-72ad-41a5-b43e-cf81fd6c6cd1",
+      "error": ""
+    },
+    {
+      "id": 86,
+      "title": "260827 Eunchae 🚨LIMITED🚨 (C Section) 4099",
+      "images": 0,
+      "example": "spread legs Choreography , post deleted",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 85,
+      "title": "260827 eunchae 2075",
+      "images": 2,
+      "example": "https://ganknow.com/post/407a6cdb-b82a-4dc7-adac-4e01268cc5eb",
+      "error": ""
+    },
+    {
+      "id": 84,
+      "title": "260827 Eunchae yoichi",
+      "images": 2,
+      "example": "https://ganknow.com/post/cc10d0b5-5cb5-44b2-88d9-144d92379cf1",
+      "error": ""
+    },
+    {
+      "id": 83,
+      "title": "260827 kazuha",
+      "images": 2,
+      "example": "https://ganknow.com/post/29b2e6f4-0252-4d81-bf1f-2ad589d391bc",
+      "error": ""
+    },
+    {
+      "id": 82,
+      "title": "260827 kazuha yoichi",
+      "images": 2,
+      "example": "https://ganknow.com/post/29b2e6f4-0252-4d81-bf1f-2ad589d391bc",
+      "error": ""
+    },
+    {
+      "id": 81,
+      "title": "260827 Sakura 1888 (limited) KDataStudio",
+      "images": 2,
+      "example": "https://ganknow.com/post/704f7ab8-bd00-487a-b893-59520be4374a",
+      "error": ""
+    },
+    {
+      "id": 47,
+      "title": "260827 iroha",
+      "images": 2,
+      "example": "https://ganknow.com/post/8f06b1bb-f3d3-4965-a28d-79c72842b8ae",
+      "error": ""
+    },
+    {
+      "id": 37,
+      "title": "260827 Ian 1700",
+      "images": 2,
+      "example": "https://ganknow.com/post/d35251dd-22f7-4b2d-889f-c327fd99be1c",
+      "error": ""
+    },
+    {
+      "id": 143,
+      "title": "260822 SNSD 409 limited Idollove",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 74,
+      "title": "260822 Dayeon 2305 (limited) Yoichi69",
+      "images": 2,
+      "example": "https://ganknow.com/post/eeef5f3e-4137-4d27-b1c0-9f0a0c9bfe9a",
+      "error": ""
+    },
+    {
+      "id": 59,
+      "title": "260821 liz  1594 files",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 58,
+      "title": "260821 IVE Gaeul 260821",
+      "images": 2,
+      "example": "https://ganknow.com/post/a6ab8af2-667d-4333-bcd5-b32726f57c98",
+      "error": ""
+    },
+    {
+      "id": 57,
+      "title": "260821 rei 912",
+      "images": 2,
+      "example": "https://ganknow.com/post/327b0d64-5114-4401-8880-821af548f9be",
+      "error": ""
+    },
+    {
+      "id": 126,
+      "title": "260816 Kazuha & Yunjin",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 122,
+      "title": "260816 Eunchae 732 KData",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 100,
+      "title": "Eunchae 260816 1516",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 60,
+      "title": "260816 leeseo 1659",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 15,
+      "title": "260816 Jennie 963 limited Idollove",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 10,
+      "title": "260816 Jennie 5042",
+      "images": 0,
+      "example": "https://ganknow.com/post/a85c1aef-dfb0-486e-9cc1-233b274abe6e",
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 127,
+      "title": "260814 Sakura 1623 idolxdata",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 125,
+      "title": "260814 Yunjin 1835",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 99,
+      "title": "260814 chaewon 2007",
+      "images": 2,
+      "example": "https://ganknow.com/post/6ca7f7cd-c1a5-4da9-862f-958d3b33f412",
+      "error": ""
+    },
+    {
+      "id": 98,
+      "title": "260814 Kazuha",
+      "images": 2,
+      "example": "https://ganknow.com/post/9c72b148-4ae2-4dec-a816-4da9aa6b3664",
+      "error": ""
+    },
+    {
+      "id": 97,
+      "title": "260814 kazuha 1425",
+      "images": 2,
+      "example": "https://ganknow.com/post/44f1e5cc-d52f-4513-9ffd-4df920d0b7b7",
+      "error": ""
+    },
+    {
+      "id": 96,
+      "title": "260814 sakura 2028",
+      "images": 2,
+      "example": "https://ganknow.com/post/fb142d44-bc90-4479-9316-40f06aae72fa",
+      "error": ""
+    },
+    {
+      "id": 95,
+      "title": "260814 Yunjin yoichi ver2",
+      "images": 2,
+      "example": "https://ganknow.com/post/6b37a29f-8cc0-4029-80a7-b82b939061f5",
+      "error": ""
+    },
+    {
+      "id": 94,
+      "title": "260814 Eunchae 1907",
+      "images": 0,
+      "example": "https://ganknow.com/services/104235-yoichi69-260814-eunchae-limited",
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 11,
+      "title": "260814 Jennie 4556",
+      "images": 2,
+      "example": "https://ganknow.com/post/8d4e4c5a-c890-43e4-b171-a6ca71abcf03",
+      "error": ""
+    },
+    {
+      "id": 41,
+      "title": "260811 Minnie 민니 1682",
+      "images": 2,
+      "example": "https://ganknow.com/post/2243e602-19ef-4711-b012-f04590e39169",
+      "error": ""
+    },
+    {
+      "id": 51,
+      "title": "260809 Chaeryeong 3196",
+      "images": 2,
+      "example": "https://ganknow.com/post/6fe64dff-da60-4853-8ee1-045eeaa952bd",
+      "error": ""
+    },
+    {
+      "id": 50,
+      "title": "260809 chaeryeong (Backview collection)",
+      "images": 0,
+      "example": "No trade",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 49,
+      "title": "260809 LIA BACKVIEW SPECIAL LIMITED",
+      "images": 2,
+      "example": "https://ganknow.com/post/d1af6c56-d527-4d55-a802-833c915dd8cf",
+      "error": ""
+    },
+    {
+      "id": 48,
+      "title": "260809 yuna backview collection",
+      "images": 2,
+      "example": "https://ganknow.com/post/bb1e8614-516f-416f-a009-af8f381e19ff",
+      "error": ""
+    },
+    {
+      "id": 7,
+      "title": "260809 Ahyeon 1606",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 5,
+      "title": "260809 Asa 2159",
+      "images": 2,
+      "example": "https://ganknow.com/post/1703dfdd-71b6-4eb8-b577-44f58042037c",
+      "error": ""
+    },
+    {
+      "id": 55,
+      "title": "Lia 260808",
+      "images": 2,
+      "example": "https://ganknow.com/post/5dc338b4-fb32-4163-b410-56f7da4b9a17",
+      "error": ""
+    },
+    {
+      "id": 54,
+      "title": "260808 Chaeryeong 7859",
+      "images": 2,
+      "example": "https://ganknow.com/post/e938f55c-308c-4187-946b-f27a47bbed25",
+      "error": ""
+    },
+    {
+      "id": 53,
+      "title": "260808 chaeryeong 7869",
+      "images": 2,
+      "example": "https://ganknow.com/post/e938f55c-308c-4187-946b-f27a47bbed25",
+      "error": ""
+    },
+    {
+      "id": 52,
+      "title": "260808 Ryujin Coffee ver",
+      "images": 2,
+      "example": "https://ganknow.com/post/4fd64617-a1e5-4845-8beb-12fb3b81d623",
+      "error": ""
+    },
+    {
+      "id": 24,
+      "title": "260808 jimin 1664",
+      "images": 2,
+      "example": "https://ganknow.com/post/db121bf6-3cc3-46bd-b000-91a338939058",
+      "error": ""
+    },
+    {
+      "id": 3,
+      "title": "260803 ningning",
+      "images": 2,
+      "example": "https://ganknow.com/post/649a8695-acb5-4e7c-9ecd-842ea5cb54d4",
+      "error": ""
+    },
+    {
+      "id": 12,
+      "title": "260802 jennie",
+      "images": 2,
+      "example": "https://ganknow.com/post/649a8695-acb5-4e7c-9ecd-842ea5cb54d4",
+      "error": ""
+    },
+    {
+      "id": 142,
+      "title": "260801 Joy",
+      "images": 2,
+      "example": "https://ganknow.com/post/d9b10e5d-d67a-49c8-b723-7a2a2cdcb75b",
+      "error": ""
+    },
+    {
+      "id": 141,
+      "title": "260801 Joy (3169 pics)",
+      "images": 2,
+      "example": "https://ganknow.com/post/c48260c6-76a8-42b5-9feb-80f6513bcf82",
+      "error": ""
+    },
+    {
+      "id": 140,
+      "title": "260801 Yeri 4226",
+      "images": 2,
+      "example": "https://ganknow.com/post/00239afc-e6b0-4d2e-8e9f-df13c07651ad",
+      "error": ""
+    },
+    {
+      "id": 139,
+      "title": "260801 조이 3261",
+      "images": 2,
+      "example": "https://ganknow.com/post/d9b10e5d-d67a-49c8-b723-7a2a2cdcb75b",
+      "error": ""
+    },
+    {
+      "id": 101,
+      "title": "260801 LESSERAFIM (PRIZE)",
+      "images": 2,
+      "example": "https://ganknow.com/post/358e7c35-5ca5-44c8-80fc-91ce393f6d1d",
+      "error": ""
+    },
+    {
+      "id": 29,
+      "title": "260801 KEENA",
+      "images": 2,
+      "example": "https://ganknow.com/post/bb11a9f4-f1ea-4c12-9d2f-10a80da8d34d",
+      "error": ""
+    },
+    {
+      "id": 13,
+      "title": "260801 Jennie 465",
+      "images": 2,
+      "example": "https://ganknow.com/post/cf6882eb-e654-41f5-96b2-0dd459bec33f",
+      "error": ""
+    },
+    {
+      "id": 30,
+      "title": "260728 ATHENA",
+      "images": 2,
+      "example": "https://ganknow.com/post/72402679-26b4-45c7-9a08-bbfb79a160da",
+      "error": ""
+    },
+    {
+      "id": 157,
+      "title": "260726 & 260727 hayeon",
+      "images": 0,
+      "example": "https://ko-fi.com/s/60c885bbd5",
+      "error": "Get \"https://ko-fi.com/s/60c885bbd5\": ko-fi.com ingestion paused until 2026-10-07T14:45:55Z (source HTTP 403)"
+    },
+    {
+      "id": 36,
+      "title": "260726 Hwiseo Yoichi",
+      "images": 2,
+      "example": "https://ganknow.com/post/275434f4-dc06-4513-9f55-50d2316f795c",
+      "error": ""
+    },
+    {
+      "id": 147,
+      "title": "260725 Bibi 2210",
+      "images": 2,
+      "example": "https://ganknow.com/post/b21c4cba-c4d3-4e1f-9508-627b45af5c8d",
+      "error": ""
+    },
+    {
+      "id": 79,
+      "title": "260725 Julie",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 80,
+      "title": "260724 NATTY SPECIAL LIMITED",
+      "images": 2,
+      "example": "https://ganknow.com/post/ceef68b5-ce91-4ad8-a929-2abcfb6b084d",
+      "error": ""
+    },
+    {
+      "id": 102,
+      "title": "260712 eunchae 4043",
+      "images": 2,
+      "example": "https://ganknow.com/post/bab9b952-a242-43d1-906f-c01998cb6c2f",
+      "error": ""
+    },
+    {
+      "id": 121,
+      "title": "Kazuha - 260711 2848(Rare_KD)",
+      "images": 2,
+      "example": "https://ganknow.com/post/b27745c0-f53b-4087-8c44-58e370c7ab2a",
+      "error": ""
+    },
+    {
+      "id": 107,
+      "title": "260711 CHAEWON BACKVIEW COLLECTION",
+      "images": 2,
+      "example": "https://ganknow.com/post/1d90ef3d-a686-444e-90fb-9aefcc404c1a",
+      "error": ""
+    },
+    {
+      "id": 106,
+      "title": "260711 LESSERAFIM Chaewon coffe...",
+      "images": 2,
+      "example": "https://ganknow.com/post/72d90e3f-e7ed-48dd-b753-83b9194f4b79",
+      "error": ""
+    },
+    {
+      "id": 105,
+      "title": "260711 Sakura 4121",
+      "images": 2,
+      "example": "https://ganknow.com/post/50fad3b6-57ce-4a87-8681-830e082b5988",
+      "error": ""
+    },
+    {
+      "id": 104,
+      "title": "260711 윤진 4129",
+      "images": 2,
+      "example": "https://ganknow.com/post/5c07cf64-5b16-40f9-92ba-2ac88f710257",
+      "error": ""
+    },
+    {
+      "id": 103,
+      "title": "260711 은채 4774",
+      "images": 2,
+      "example": "https://ganknow.com/post/48e8b892-39c2-4d2c-8682-b8e0c52e6f1b",
+      "error": ""
+    },
+    {
+      "id": 164,
+      "title": "260710 Dahyun 1350 limited",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 163,
+      "title": "260710 Momo 1139 KData",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 162,
+      "title": "260710 Sana 4293",
+      "images": 2,
+      "example": "https://ganknow.com/post/6ad408ae-6290-4e22-9e29-c5240f00629a",
+      "error": ""
+    },
+    {
+      "id": 161,
+      "title": "260710 Momo  rare/limited",
+      "images": 0,
+      "example": "post deleted",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 8,
+      "title": "260627 Ahyeon 4206",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 9,
+      "title": "260626 Ahyeon 4092",
+      "images": 0,
+      "example": "https://ganknow.com/services/98425-kdatastudio-260626-ahyeon-limited",
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 148,
+      "title": "260620 dayoung 1734",
+      "images": 2,
+      "example": "https://ganknow.com/post/b45ad709-6dde-4acf-9ce8-d926a975970e",
+      "error": ""
+    },
+    {
+      "id": 112,
+      "title": "260620 KAZUHA 2024 PICS",
+      "images": 2,
+      "example": "https://ganknow.com/post/d0e72f12-e18f-49b6-8a42-1f2ca364a6c5",
+      "error": ""
+    },
+    {
+      "id": 111,
+      "title": "260620 Kazuha 1151",
+      "images": 2,
+      "example": "https://ganknow.com/post/83940744-cdbf-460a-97a1-3d7dadd8002b",
+      "error": ""
+    },
+    {
+      "id": 110,
+      "title": "260620 sakura 2685",
+      "images": 2,
+      "example": "https://ganknow.com/post/21b7c36a-caab-4d77-83e6-8b2594fa5673",
+      "error": ""
+    },
+    {
+      "id": 109,
+      "title": "260620 sakura (Exlusive)1321",
+      "images": 0,
+      "example": "https://ganknow.com/services/98885-kdatastudio-260620-sakura-limited",
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 108,
+      "title": "260620 카즈하 2024",
+      "images": 2,
+      "example": "https://ganknow.com/post/d0e72f12-e18f-49b6-8a42-1f2ca364a6c5",
+      "error": ""
+    },
+    {
+      "id": 135,
+      "title": "260613 YUBIN (2)",
+      "images": 2,
+      "example": "https://ganknow.com/post/07fd3dba-7329-454d-9f1a-615fcf090a1c",
+      "error": ""
+    },
+    {
+      "id": 134,
+      "title": "260613 YUBIN 3063 RARE",
+      "images": 2,
+      "example": "https://ganknow.com/post/ce367e7f-03c5-45f4-8cc5-83c46149f12b",
+      "error": ""
+    },
+    {
+      "id": 124,
+      "title": "260607 Sakura 2437",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 116,
+      "title": "260607 Eunchae 2000",
+      "images": 2,
+      "example": "https://ganknow.com/post/be153fb4-9722-4240-8ddd-ef76e0c2826d",
+      "error": ""
+    },
+    {
+      "id": 115,
+      "title": "260607 EUNCHAE 카즈하 604",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 114,
+      "title": "260607 EUNCHAE 2209",
+      "images": 2,
+      "example": "https://ganknow.com/post/be153fb4-9722-4240-8ddd-ef76e0c2826d",
+      "error": ""
+    },
+    {
+      "id": 113,
+      "title": "260607 EUNCHAE 홍은채 10342",
+      "images": 2,
+      "example": "https://ganknow.com/post/14cdf49d-c202-4494-bc4d-ac07b6819bb5",
+      "error": ""
+    },
+    {
+      "id": 117,
+      "title": "260530 Kazuha EXCLUSIVE",
+      "images": 0,
+      "example": "EXCLUSIVE",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 118,
+      "title": "260527 kazuha 1377",
+      "images": 2,
+      "example": "https://ganknow.com/post/d0be9eec-bc5f-43ad-b363-3c7f26a5aa77",
+      "error": ""
+    },
+    {
+      "id": 119,
+      "title": "260519 Kazuha RARE/LIMITED",
+      "images": 0,
+      "example": "cannot find post",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 149,
+      "title": "260502 dayoung",
+      "images": 2,
+      "example": "https://ganknow.com/post/bc3d8e5b-13a5-433a-8948-fe2dd3e7371c",
+      "error": ""
+    },
+    {
+      "id": 62,
+      "title": "260322 ive IVE 31661",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 61,
+      "title": "260322 Yujin  3585",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 63,
+      "title": "260321 WONYOUNG 3560",
+      "images": 0,
+      "example": "https://ganknow.com/services/88792-idolxdata-rare-260321-wonyoung-3560-pics",
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 42,
+      "title": "260222 Minnie - 비니",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 44,
+      "title": "260221 MIYEON",
+      "images": 2,
+      "example": "https://ganknow.com/post/5144ae72-8c84-4508-971f-336eb061bc75",
+      "error": ""
+    },
+    {
+      "id": 43,
+      "title": "260221 SHUHUA",
+      "images": 2,
+      "example": "https://ganknow.com/post/870ff6f8-4345-41fc-b83b-ef776656f8ae",
+      "error": ""
+    },
+    {
+      "id": 31,
+      "title": "260211 아테나 2070 Athena",
+      "images": 2,
+      "example": "https://ganknow.com/post/ce399c77-69cb-498b-a97b-47afd001d7f1",
+      "error": ""
+    },
+    {
+      "id": 26,
+      "title": "260208 hyungseo 2209",
+      "images": 2,
+      "example": "https://ganknow.com/post/c5c72914-0f7a-4680-990a-08790f7346e1",
+      "error": ""
+    },
+    {
+      "id": 25,
+      "title": "260208 Boeun",
+      "images": 2,
+      "example": "https://ganknow.com/post/ff3f1bb0-c759-44e6-aa10-7dba788765fe",
+      "error": ""
+    },
+    {
+      "id": 120,
+      "title": "260201 chaewon 4968",
+      "images": 2,
+      "example": "https://ganknow.com/post/2fc1cbdd-4337-4c24-8fc4-ea0e16916869",
+      "error": ""
+    },
+    {
+      "id": 64,
+      "title": "260110 rei  RARE",
+      "images": 0,
+      "example": "https://drive.google.com/file/d/1BFs-MdALjW3bMuxEUyXeZqsA6zf0ePRN/view?usp=sharing",
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 66,
+      "title": "251206 Leeseo (2)",
+      "images": 2,
+      "example": "https://ganknow.com/post/1dac8be3-c8b5-44d9-9ad0-c8b3499bbfb2",
+      "error": ""
+    },
+    {
+      "id": 65,
+      "title": "251206 leeseo IVE 1427",
+      "images": 2,
+      "example": "https://ganknow.com/post/1dac8be3-c8b5-44d9-9ad0-c8b3499bbfb2",
+      "error": ""
+    },
+    {
+      "id": 56,
+      "title": "251206 Gaeul",
+      "images": 0,
+      "example": "Outfit example only https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQHjJDaBDv47E8QI7Z9oQgvRxpldnp6fcSlLw9sXyxnGzolba85xuO14Z8&s=10",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 150,
+      "title": "251115 eunbi",
+      "images": 2,
+      "example": "https://ganknow.com/post/26a8b751-32ac-4f2c-88a4-b57d8d98d0fc",
+      "error": ""
+    },
+    {
+      "id": 70,
+      "title": "251031 Wonyoung 5789 (Exclusive)",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 67,
+      "title": "250907 rei",
+      "images": 0,
+      "example": "buy from partner",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 14,
+      "title": "250705 Jennie 1811 (EVENT PRIZE)",
+      "images": 2,
+      "example": "https://ganknow.com/post/2fe3b3ff-1740-4e59-a185-2f317365038f",
+      "error": ""
+    },
+    {
+      "id": 45,
+      "title": "250611 Shuhua 3454PICS",
+      "images": 2,
+      "example": "https://ganknow.com/post/10a6db68-cc0b-4419-8873-da4ea02df440",
+      "error": ""
+    },
+    {
+      "id": 129,
+      "title": "250510 chowon LIGHTSUM 1245",
+      "images": 0,
+      "example": "buy from partner",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 128,
+      "title": "250510 chowon LIGHTSUM 1606",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 136,
+      "title": "250419 ARIN",
+      "images": 1,
+      "example": "https://ganknow.com/post/7c585f8a-3f13-4f7d-ae39-8d7b08ae3e85",
+      "error": "Only 1 distinct public image(s) available; at least 2 required"
+    },
+    {
+      "id": 137,
+      "title": "250305 Arin",
+      "images": 0,
+      "example": "buy from partner",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 23,
+      "title": "240824 Jiwon 3573 part1",
+      "images": 0,
+      "example": "https://ganknow.com/services/106146-sakuradata-limited-sold-out-jiwon-3573pics-part-1",
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 22,
+      "title": "240824 Jiwon 3574 part2",
+      "images": 0,
+      "example": "https://ganknow.com/services/106478-sakuradata-limited-sold-out-jiwon-3574pics-part-2",
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 21,
+      "title": "240824 Jiwon 3641 part3",
+      "images": 0,
+      "example": "https://ganknow.com/services/106145-sakuradata-limited-sold-out-jiwon-3641pics-part-3",
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 46,
+      "title": "240530 miyeon  fancam KPFTIME",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 69,
+      "title": "240309 Leeseo backview collection",
+      "images": 2,
+      "example": "https://ganknow.com/post/509d741e-1c3f-4861-89b3-ad784ec0f49f",
+      "error": ""
+    },
+    {
+      "id": 68,
+      "title": "240309 wonyoung (Backview)",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 132,
+      "title": "220921 Hanni 1035 limited",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 138,
+      "title": "dont know date YUBIN",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    }
+  ],
+  "backgroundBatchRunning": false,
+  "imagesAdded": 62,
+  "incomplete": [
+    {
+      "id": 76,
+      "title": "260906 Kya 3073(Yoichi)",
+      "images": 0,
+      "example": "post deleted , LIMITED 260906 KYA at 2026 SPOTV K-POP AWARDS (SKA) 3073 FILES",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 130,
+      "title": "260904 Nayoung 4148",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 156,
+      "title": "260828 Xinyu (LIMITED) 1759",
+      "images": 0,
+      "example": "https://ganknow.com/services/106511-kdatastudio-260828-xinyu-limited",
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 123,
+      "title": "260827 Eunchae 3540",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 86,
+      "title": "260827 Eunchae 🚨LIMITED🚨 (C Section) 4099",
+      "images": 0,
+      "example": "spread legs Choreography , post deleted",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 143,
+      "title": "260822 SNSD 409 limited Idollove",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 59,
+      "title": "260821 liz  1594 files",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 126,
+      "title": "260816 Kazuha & Yunjin",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 122,
+      "title": "260816 Eunchae 732 KData",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 100,
+      "title": "Eunchae 260816 1516",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 60,
+      "title": "260816 leeseo 1659",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 15,
+      "title": "260816 Jennie 963 limited Idollove",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 10,
+      "title": "260816 Jennie 5042",
+      "images": 0,
+      "example": "https://ganknow.com/post/a85c1aef-dfb0-486e-9cc1-233b274abe6e",
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 127,
+      "title": "260814 Sakura 1623 idolxdata",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 125,
+      "title": "260814 Yunjin 1835",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 94,
+      "title": "260814 Eunchae 1907",
+      "images": 0,
+      "example": "https://ganknow.com/services/104235-yoichi69-260814-eunchae-limited",
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 50,
+      "title": "260809 chaeryeong (Backview collection)",
+      "images": 0,
+      "example": "No trade",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 7,
+      "title": "260809 Ahyeon 1606",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 157,
+      "title": "260726 & 260727 hayeon",
+      "images": 0,
+      "example": "https://ko-fi.com/s/60c885bbd5",
+      "error": "Get \"https://ko-fi.com/s/60c885bbd5\": ko-fi.com ingestion paused until 2026-10-07T14:45:55Z (source HTTP 403)"
+    },
+    {
+      "id": 79,
+      "title": "260725 Julie",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 164,
+      "title": "260710 Dahyun 1350 limited",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 163,
+      "title": "260710 Momo 1139 KData",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 161,
+      "title": "260710 Momo  rare/limited",
+      "images": 0,
+      "example": "post deleted",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 8,
+      "title": "260627 Ahyeon 4206",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 9,
+      "title": "260626 Ahyeon 4092",
+      "images": 0,
+      "example": "https://ganknow.com/services/98425-kdatastudio-260626-ahyeon-limited",
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 109,
+      "title": "260620 sakura (Exlusive)1321",
+      "images": 0,
+      "example": "https://ganknow.com/services/98885-kdatastudio-260620-sakura-limited",
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 124,
+      "title": "260607 Sakura 2437",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 115,
+      "title": "260607 EUNCHAE 카즈하 604",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 117,
+      "title": "260530 Kazuha EXCLUSIVE",
+      "images": 0,
+      "example": "EXCLUSIVE",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 119,
+      "title": "260519 Kazuha RARE/LIMITED",
+      "images": 0,
+      "example": "cannot find post",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 62,
+      "title": "260322 ive IVE 31661",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 61,
+      "title": "260322 Yujin  3585",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 63,
+      "title": "260321 WONYOUNG 3560",
+      "images": 0,
+      "example": "https://ganknow.com/services/88792-idolxdata-rare-260321-wonyoung-3560-pics",
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 42,
+      "title": "260222 Minnie - 비니",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 64,
+      "title": "260110 rei  RARE",
+      "images": 0,
+      "example": "https://drive.google.com/file/d/1BFs-MdALjW3bMuxEUyXeZqsA6zf0ePRN/view?usp=sharing",
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 56,
+      "title": "251206 Gaeul",
+      "images": 0,
+      "example": "Outfit example only https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQHjJDaBDv47E8QI7Z9oQgvRxpldnp6fcSlLw9sXyxnGzolba85xuO14Z8&s=10",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 70,
+      "title": "251031 Wonyoung 5789 (Exclusive)",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 67,
+      "title": "250907 rei",
+      "images": 0,
+      "example": "buy from partner",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 129,
+      "title": "250510 chowon LIGHTSUM 1245",
+      "images": 0,
+      "example": "buy from partner",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 128,
+      "title": "250510 chowon LIGHTSUM 1606",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 136,
+      "title": "250419 ARIN",
+      "images": 1,
+      "example": "https://ganknow.com/post/7c585f8a-3f13-4f7d-ae39-8d7b08ae3e85",
+      "error": "Only 1 distinct public image(s) available; at least 2 required"
+    },
+    {
+      "id": 137,
+      "title": "250305 Arin",
+      "images": 0,
+      "example": "buy from partner",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 23,
+      "title": "240824 Jiwon 3573 part1",
+      "images": 0,
+      "example": "https://ganknow.com/services/106146-sakuradata-limited-sold-out-jiwon-3573pics-part-1",
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 22,
+      "title": "240824 Jiwon 3574 part2",
+      "images": 0,
+      "example": "https://ganknow.com/services/106478-sakuradata-limited-sold-out-jiwon-3574pics-part-2",
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 21,
+      "title": "240824 Jiwon 3641 part3",
+      "images": 0,
+      "example": "https://ganknow.com/services/106145-sakuradata-limited-sold-out-jiwon-3641pics-part-3",
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 46,
+      "title": "240530 miyeon  fancam KPFTIME",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 68,
+      "title": "240309 wonyoung (Backview)",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 132,
+      "title": "220921 Hanni 1035 limited",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    },
+    {
+      "id": 138,
+      "title": "dont know date YUBIN",
+      "images": 0,
+      "example": "",
+      "error": "No public example URL in source row"
+    }
+  ],
+  "withoutPublicURL": [
+    76,
+    130,
+    123,
+    86,
+    143,
+    59,
+    126,
+    122,
+    100,
+    60,
+    15,
+    127,
+    125,
+    50,
+    7,
+    79,
+    164,
+    163,
+    161,
+    8,
+    124,
+    115,
+    117,
+    119,
+    62,
+    61,
+    42,
+    56,
+    70,
+    67,
+    129,
+    128,
+    137,
+    46,
+    68,
+    132,
+    138
+  ],
+  "incompletePublic": [
+    {
+      "id": 156,
+      "title": "260828 Xinyu (LIMITED) 1759",
+      "images": 0,
+      "example": "https://ganknow.com/services/106511-kdatastudio-260828-xinyu-limited",
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 10,
+      "title": "260816 Jennie 5042",
+      "images": 0,
+      "example": "https://ganknow.com/post/a85c1aef-dfb0-486e-9cc1-233b274abe6e",
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 94,
+      "title": "260814 Eunchae 1907",
+      "images": 0,
+      "example": "https://ganknow.com/services/104235-yoichi69-260814-eunchae-limited",
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 157,
+      "title": "260726 & 260727 hayeon",
+      "images": 0,
+      "example": "https://ko-fi.com/s/60c885bbd5",
+      "error": "Get \"https://ko-fi.com/s/60c885bbd5\": ko-fi.com ingestion paused until 2026-10-07T14:45:55Z (source HTTP 403)"
+    },
+    {
+      "id": 9,
+      "title": "260626 Ahyeon 4092",
+      "images": 0,
+      "example": "https://ganknow.com/services/98425-kdatastudio-260626-ahyeon-limited",
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 109,
+      "title": "260620 sakura (Exlusive)1321",
+      "images": 0,
+      "example": "https://ganknow.com/services/98885-kdatastudio-260620-sakura-limited",
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 63,
+      "title": "260321 WONYOUNG 3560",
+      "images": 0,
+      "example": "https://ganknow.com/services/88792-idolxdata-rare-260321-wonyoung-3560-pics",
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 64,
+      "title": "260110 rei  RARE",
+      "images": 0,
+      "example": "https://drive.google.com/file/d/1BFs-MdALjW3bMuxEUyXeZqsA6zf0ePRN/view?usp=sharing",
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 136,
+      "title": "250419 ARIN",
+      "images": 1,
+      "example": "https://ganknow.com/post/7c585f8a-3f13-4f7d-ae39-8d7b08ae3e85",
+      "error": "Only 1 distinct public image(s) available; at least 2 required"
+    },
+    {
+      "id": 23,
+      "title": "240824 Jiwon 3573 part1",
+      "images": 0,
+      "example": "https://ganknow.com/services/106146-sakuradata-limited-sold-out-jiwon-3573pics-part-1",
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 22,
+      "title": "240824 Jiwon 3574 part2",
+      "images": 0,
+      "example": "https://ganknow.com/services/106478-sakuradata-limited-sold-out-jiwon-3574pics-part-2",
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 21,
+      "title": "240824 Jiwon 3641 part3",
+      "images": 0,
+      "example": "https://ganknow.com/services/106145-sakuradata-limited-sold-out-jiwon-3641pics-part-3",
+      "error": "No public post images found; upload 2–5 images manually"
+    }
+  ],
+  "stageReports": [
+    "IMAGE_FETCH_OVERRIDE_2026_10_07.json",
+    "IMAGE_FETCH_OVERRIDE_2026_10_07_SET162.json"
+  ],
+  "seedExported": true,
+  "gankRequestsBefore": 120,
+  "gankRequestsAfter": 150,
+  "gankRequestsUsedThisRun": 30,
+  "cachedPages": 119,
+  "verification": [
+    "165 original source rows verified",
+    "240 JPEG MIME/magic/hashes verified",
+    "SQLite integrity and foreign keys passed",
+    "seed counts and set165 match API report"
+  ],
+  "providerCooldowns": [
+    {
+      "host": "ko-fi.com",
+      "paused_until": 1791384355886,
+      "reason": "source HTTP 403"
+    }
+  ]
+}
