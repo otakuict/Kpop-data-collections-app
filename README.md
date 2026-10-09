@@ -115,7 +115,7 @@ backoffice/               Svelte administration + template + nginx + Dockerfile
 backend/cmd/server/       Configuration, seed CLI, graceful shutdown
 backend/internal/gallery/ Metadata/store, import, safe media fetch, Gin routes
 data/                     Source snapshot + SQLite seed
-.github/workflows/        CI/CD production พร้อม browser integration
+.github/workflows/        CI/CD แยก frontend/backend/backoffice และ browser integration
 docs/design/              สอง design candidates, cross-judge และแบบที่เลือก
 ```
 
@@ -183,13 +183,17 @@ ADMIN_TOKEN=e2e-only-administrator-token-24chars GALLERY_PORT=5183 BACKOFFICE_PO
 
 ## GitHub CI/CD
 
-`cicd.yml` รวม verify, browser acceptance, build/publish และ production deploy ใน workflow เดียว อิงรูปแบบ [workflow ของ gank-data-finder](https://github.com/otakuict/gank-data-finder/blob/main/.github/workflows/cicd.yml) ทุก commit ที่ push `main` จะสร้างทั้งสาม image เพื่อให้ release ใช้ SHA เดียวกันทั้งหมด:
+`frontend.yml`, `backend.yml`, `backoffice.yml` เป็น workflow อิสระ แต่ละตัว verify → build/publish → deploy เฉพาะ service ของตัวเอง อิงรูปแบบ [workflow ของ gank-data-finder](https://github.com/otakuict/gank-data-finder/blob/main/.github/workflows/cicd.yml) Images อยู่บน Docker Hub:
 
 - `<DOCKERHUB_USERNAME>/bias-archive-frontend`
 - `<DOCKERHUB_USERNAME>/bias-archive-backoffice`
 - `<DOCKERHUB_USERNAME>/bias-archive-backend`
 
-PR เข้า `main` และ manual run จาก branch อื่นตรวจ Node/Go, browser และ Docker build โดยไม่ login/publish/deploy และมี namespace `ci-local` สำหรับ PR ที่ไม่มี repository variable เมื่อเป็น `main` จะ push tags แบบ full commit SHA และ `latest` แล้ว deploy ด้วย SHA เท่านั้น Deploy ต้องรอ browser tests และ image ทั้งสามสำเร็จ workflow concurrency ป้องกัน release บน `main` ทำงานทับกัน และยกเลิกเฉพาะ PR ที่กำลังรันเมื่อมี commit ใหม่ งาน main ที่ยังรอคิวอาจถูกแทนที่ด้วย commit ใหม่กว่าได้
+Push/PR เข้า `main` จะ trigger เฉพาะ workflow ที่ตรงกับ path ของ service นั้น การเปลี่ยนไฟล์ร่วม เช่น lockfile, release compose หรือ deploy script อาจ trigger หลาย workflow PR ตรวจและ build โดยไม่ login/publish/deploy เมื่อเป็น `main` จะ push full commit SHA และ `latest` ของ service นั้น แล้ว deploy ด้วย SHA ตัวเอง จึงใช้คนละ SHA ระหว่าง services ได้
+
+กด Actions → เลือก Frontend / Backend / Backoffice — CI and deploy → Run workflow → branch `main` เพื่อรัน service เดียวได้ Manual run จาก branch อื่นตรวจ/build เท่านั้น Workflow มี concurrency แยกตาม service/ref จึงไม่ยกเลิก pending deploy ของ service อื่น
+
+`integration.yml` เป็น browser acceptance ทั้ง stack ที่รันแยกบน GitHub-hosted runner ไม่มี job publish/deploy และไม่ได้เป็น dependency ของสาม pipeline เพื่อให้แต่ละ service deploy ได้อิสระ
 
 Dockerfile ทั้งสามใช้ multi-stage: Node → nginx สำหรับสองเว็บ และ Go → Debian slim สำหรับ API Runtime image ไม่รวม compiler/Node build dependencies; healthcheck ของเว็บตรวจ API ผ่าน nginx และ backend ตรวจ database readiness `ADMIN_TOKEN` รับตอนเริ่ม container เท่านั้น ส่วน `VITE_*` เป็น URL สาธารณะซึ่งฝังใน JavaScript ตอน build
 
@@ -213,9 +217,13 @@ Repository secret:
 
 อย่า override `DOCKERHUB_USERNAME` เป็นบัญชีอื่นใน Environment เพราะ image job ใช้ repository variable งานที่อ้าง Environment จะเข้าถึง secrets หลังผ่าน protection rules ตาม [GitHub documentation](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments)
 
-ติดตั้ง self-hosted runner บน production host Linux x64 พร้อม Docker Engine และ Compose v2 ที่รองรับ `up --wait` ใส่ labels `self-hosted`, `linux`, `x64`, `production` และสิทธิ์เข้าถึง Docker socket เฉพาะ deploy job เท่านั้นที่ใช้ runner นี้ ส่วน PR/verify/build ใช้ GitHub-hosted runner
+ติดตั้ง self-hosted runner บน production host Linux x64 พร้อม Docker Engine, Compose v2 ที่รองรับ `up --wait` และ `flock` (แพ็กเกจ util-linux) ใส่ labels `self-hosted`, `linux`, `x64`, `production` และสิทธิ์เข้าถึง Docker socket เฉพาะ deploy job เท่านั้นที่ใช้ runner นี้ ส่วน PR/verify/build ใช้ GitHub-hosted runner
 
-Deploy job login โดยใช้ Docker config directory แยกใน runner temp แล้วเรียก `bash scripts/deploy-server.sh "$SHA"` Script ตรวจ secret และ full SHA, pull ทั้งชุดก่อนเปลี่ยน container, เริ่ม backend ก่อนเว็บตาม health dependency แล้วรอ healthchecks ภายใน 180 วินาที ไม่อ่าน `.env` ใน checkout และไม่ลบ volume SQLite หาก pull ล้มเหลวจะไม่เริ่ม rollout; หาก healthcheck ล้มเหลว job จะ fail โดยไม่มี automatic rollback
+ใช้ self-hosted runner บน production host เดิม **1 ตัว** ได้ ทั้งสาม deploy jobs จะเข้าคิวรันทีละตัว Script ใช้ host lock ตาม Compose project ใน `$HOME/.local/state/bias-archive` เพิ่มเติมเพื่อป้องกันคำสั่ง deploy จาก user เดียวกันทำงานทับกัน ห้ามใช้ GitHub concurrency group ร่วมที่มี pending slot เดียว เพราะอาจยกเลิก deploy ของ service อื่นที่ยังรออยู่
+
+Deploy job login โดยใช้ Docker config directory แยกใน runner temp แล้วเรียก `bash scripts/deploy-server.sh <service> "$SHA"` Script ตรวจ secret และ full SHA, ตั้ง image tag เฉพาะ service, pull เฉพาะ image นั้น แล้ว `up -d --no-deps --wait --wait-timeout 180 <service>` ไม่อ่าน `.env` ใน checkout ไม่เปลี่ยน container/image ของ service อื่น และไม่ลบ SQLite volume หาก pull ล้มเหลวจะไม่เริ่ม rollout; หาก healthcheck ล้มเหลว job จะ fail โดยไม่มี automatic rollback
+
+ครั้งแรกให้รัน **Backend — CI and deploy** จน backend healthy ก่อน แล้วค่อยรัน **Frontend** และ **Backoffice** เพราะเว็บต้องมี backend ที่ทำงานอยู่ Script จะปฏิเสธ web deploy ก่อน pull หาก backend ยังไม่พร้อม หลัง bootstrap แล้ว deploy ทั้งสามแยกกันได้ตามปกติ nginx ของสองเว็บ resolve backend ผ่าน Docker DNS ใหม่เป็นระยะ จึงไม่ต้อง recreate เว็บเมื่อ backend เปลี่ยน IP
 
 ### Deploy หรือ rollback ด้วยมือ
 
@@ -225,9 +233,11 @@ Deploy job login โดยใช้ Docker config directory แยกใน runn
 export DOCKERHUB_USERNAME='your-dockerhub-username'
 # Export ADMIN_TOKEN from your host secret store; keep the same token on a rollback.
 # Set DEPLOY_PROJECT_NAME to the existing Compose project if it differs from the default.
-bash scripts/deploy-server.sh '<full commit SHA whose three images were published>'
+bash scripts/deploy-server.sh backend '<full SHA of the published backend image>'
+bash scripts/deploy-server.sh frontend '<full SHA of the published frontend image>'
+bash scripts/deploy-server.sh backoffice '<full SHA of the published backoffice image>'
 ```
 
-ใช้ SHA ของ release ก่อนหน้าเพื่อ rollback image ทั้งชุด การ rollback ไม่ rollback schema/data และ script ไม่ลบ volume ข้อมูล ระบบรองรับ backend replica เดียวต่อ SQLite volume Release compose bind สองเว็บที่ loopback สำหรับ reverse proxy/TLS และไม่เปิด backend port ภายนอก ต้องตั้ง reverse proxy/TLS บน host แยกต่างหาก
+เลือก service และ SHA ของ image ก่อนหน้าเพื่อ rollback เฉพาะ service นั้น การ rollback ไม่ rollback schema/data และ script ไม่ลบ volume ข้อมูล ระบบรองรับ backend replica เดียวต่อ SQLite volume Release compose bind สองเว็บที่ loopback สำหรับ reverse proxy/TLS และไม่เปิด backend port ภายนอก ต้องตั้ง reverse proxy/TLS บน host แยกต่างหาก
 
 สำรอง SQLite ด้วย SQLite backup API (`.backup`) หรือหยุด backend ก่อน copy volume; ไม่ copy เฉพาะ main database ขณะที่ WAL กำลังถูกเขียน

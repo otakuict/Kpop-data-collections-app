@@ -1,0 +1,85 @@
+name: Backoffice — CI and deploy
+on:
+  pull_request:
+    branches: [main]
+    paths: ['backoffice/**', 'compose.release.yaml', 'scripts/deploy-server.sh', 'scripts/release-workflow.test.mjs', '.dockerignore', '.github/workflows/backoffice.yml', 'package.json', 'package-lock.json', 'frontend/package.json', 'backoffice/package.json', 'scripts/sheet-scan.test.mjs']
+  push:
+    branches: [main]
+    paths: ['backoffice/**', 'compose.release.yaml', 'scripts/deploy-server.sh', 'scripts/release-workflow.test.mjs', '.dockerignore', '.github/workflows/backoffice.yml', 'package.json', 'package-lock.json', 'frontend/package.json', 'backoffice/package.json', 'scripts/sheet-scan.test.mjs']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: backoffice-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+env:
+  DOCKERHUB_IMAGE: ${{ vars.DOCKERHUB_USERNAME || 'ci-local' }}/bias-archive-backoffice
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --workspace backoffice --include-workspace-root
+      - run: npm run check --workspace backoffice
+      - run: node --test scripts/release-workflow.test.mjs scripts/sheet-scan.test.mjs
+      - run: npm run build --workspace backoffice
+  image:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Check publishing configuration
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        env:
+          DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+          VITE_GALLERY_URL: ${{ vars.VITE_GALLERY_URL }}
+        run: |
+          test -n "$DOCKERHUB_USERNAME"
+          test -n "$VITE_GALLERY_URL"
+      - uses: docker/login-action@v4
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backoffice/Dockerfile
+          pull: true
+          push: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
+          tags: |
+            ${{ env.DOCKERHUB_IMAGE }}:${{ github.sha }}
+            ${{ env.DOCKERHUB_IMAGE }}:latest
+          build-args: VITE_GALLERY_URL=${{ vars.VITE_GALLERY_URL || 'http://localhost:5173' }}
+          cache-from: type=gha,scope=backoffice
+          cache-to: type=gha,mode=max,scope=backoffice
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: image
+    runs-on: [self-hosted, linux, x64, production]
+    timeout-minutes: 15
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: Isolate Docker credentials
+        run: echo "DOCKER_CONFIG=$(mktemp -d "$RUNNER_TEMP/gallery-docker.XXXXXX")" >> "$GITHUB_ENV"
+      - uses: docker/login-action@v4
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Pull and deploy backoffice
+        env:
+          DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+          ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+          DEPLOY_PROJECT_NAME: ${{ vars.DEPLOY_PROJECT_NAME }}
+          GALLERY_PORT: ${{ vars.GALLERY_PORT }}
+          BACKOFFICE_PORT: ${{ vars.BACKOFFICE_PORT }}
+          SHA: ${{ github.sha }}
+        run: bash scripts/deploy-server.sh backoffice "$SHA"

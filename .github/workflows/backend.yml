@@ -1,37 +1,33 @@
-name: CI and production deployment
-
+name: Backend — CI and deploy
 on:
   pull_request:
     branches: [main]
+    paths: ['backend/**', 'compose.release.yaml', 'scripts/deploy-server.sh', 'scripts/release-workflow.test.mjs', '.dockerignore', '.github/workflows/backend.yml', 'data/**', 'scripts/verify-seed.py']
   push:
     branches: [main]
+    paths: ['backend/**', 'compose.release.yaml', 'scripts/deploy-server.sh', 'scripts/release-workflow.test.mjs', '.dockerignore', '.github/workflows/backend.yml', 'data/**', 'scripts/verify-seed.py']
   workflow_dispatch:
-
 permissions:
   contents: read
-
 concurrency:
-  group: cicd-${{ github.ref }}
+  group: backend-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-
+env:
+  DOCKERHUB_IMAGE: ${{ vars.DOCKERHUB_USERNAME || 'ci-local' }}/bias-archive-backend
 jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: npm
       - uses: actions/setup-go@v5
         with:
           go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
-      - run: npm ci
-      - run: npm run check
-      - run: npm test
-      - run: npm run build
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node --test scripts/release-workflow.test.mjs
       - run: go test -race ./...
         working-directory: backend
       - run: go vet ./...
@@ -41,54 +37,10 @@ jobs:
       - run: python3 scripts/verify-seed.py
       - run: go build ./cmd/server
         working-directory: backend
-
-  browser:
+  image:
     needs: verify
     runs-on: ubuntu-latest
-    timeout-minutes: 25
-    env:
-      ADMIN_TOKEN: e2e-only-administrator-token-24chars
-      GALLERY_PORT: '5183'
-      BACKOFFICE_PORT: '5184'
-      API_PORT: '8180'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: npm
-      - uses: docker/setup-buildx-action@v3
-      - run: npm ci
-      - run: npx playwright install --with-deps chromium
-      - run: docker compose -f compose.build.yaml -p bias-archive-test up -d --build --wait --wait-timeout 180
-      - run: npx playwright test
-      - uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: browser-failure
-          path: test-results/
-      - run: docker compose -f compose.build.yaml -p bias-archive-test logs --no-color
-        if: failure()
-      - run: docker compose -f compose.build.yaml -p bias-archive-test down -v
-        if: always()
-
-  image:
-    needs: [verify, browser]
-    runs-on: ubuntu-latest
     timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        service: [frontend, backoffice, backend]
-        include:
-          - service: frontend
-            build-args: VITE_BACKOFFICE_URL=${{ vars.VITE_BACKOFFICE_URL || 'http://localhost:5174' }}
-          - service: backoffice
-            build-args: VITE_GALLERY_URL=${{ vars.VITE_GALLERY_URL || 'http://localhost:5173' }}
-          - service: backend
-            build-args: ''
-    env:
-      DOCKERHUB_NAMESPACE: ${{ vars.DOCKERHUB_USERNAME || 'ci-local' }}
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
@@ -96,12 +48,8 @@ jobs:
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         env:
           DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
-          VITE_GALLERY_URL: ${{ vars.VITE_GALLERY_URL }}
-          VITE_BACKOFFICE_URL: ${{ vars.VITE_BACKOFFICE_URL }}
         run: |
           test -n "$DOCKERHUB_USERNAME"
-          test -n "$VITE_GALLERY_URL"
-          test -n "$VITE_BACKOFFICE_URL"
       - uses: docker/login-action@v4
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         with:
@@ -110,16 +58,14 @@ jobs:
       - uses: docker/build-push-action@v6
         with:
           context: .
-          file: ${{ matrix.service }}/Dockerfile
+          file: backend/Dockerfile
           pull: true
           push: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
           tags: |
-            ${{ env.DOCKERHUB_NAMESPACE }}/bias-archive-${{ matrix.service }}:${{ github.sha }}
-            ${{ env.DOCKERHUB_NAMESPACE }}/bias-archive-${{ matrix.service }}:latest
-          build-args: ${{ matrix.build-args }}
-          cache-from: type=gha,scope=${{ matrix.service }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
-
+            ${{ env.DOCKERHUB_IMAGE }}:${{ github.sha }}
+            ${{ env.DOCKERHUB_IMAGE }}:latest
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
   deploy:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: image
@@ -134,7 +80,7 @@ jobs:
         with:
           username: ${{ vars.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: Pull and deploy release
+      - name: Pull and deploy backend
         env:
           DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
           ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
@@ -142,4 +88,4 @@ jobs:
           GALLERY_PORT: ${{ vars.GALLERY_PORT }}
           BACKOFFICE_PORT: ${{ vars.BACKOFFICE_PORT }}
           SHA: ${{ github.sha }}
-        run: bash scripts/deploy-server.sh "$SHA"
+        run: bash scripts/deploy-server.sh backend "$SHA"

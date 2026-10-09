@@ -1,9 +1,9 @@
-# All images belong to the same release commit. Keep the original release project
-# name so its existing gallery-data volume is reused, even in a runner checkout.
+# Each service can use its own release commit. IMAGE_TAG is an optional common
+# fallback for manual bootstrapping; deploy-server.sh updates only its target.
 name: ${DEPLOY_PROJECT_NAME:-otakuict-data-gallery}
 services:
   backend:
-    image: ${DOCKERHUB_USERNAME:?Set Docker Hub username}/bias-archive-backend:${IMAGE_TAG:?Set release commit SHA}
+    image: ${DOCKERHUB_USERNAME:?Set Docker Hub username}/bias-archive-backend:${BACKEND_IMAGE_TAG:-${IMAGE_TAG:-latest}}
     environment:
       ADMIN_TOKEN: ${ADMIN_TOKEN:?Set administrator token}
       DATABASE_PATH: /data/gallery.sqlite
@@ -12,7 +12,7 @@ services:
       - gallery-data:/data
     restart: unless-stopped
   frontend:
-    image: ${DOCKERHUB_USERNAME:?Set Docker Hub username}/bias-archive-frontend:${IMAGE_TAG:?Set release commit SHA}
+    image: ${DOCKERHUB_USERNAME:?Set Docker Hub username}/bias-archive-frontend:${FRONTEND_IMAGE_TAG:-${IMAGE_TAG:-latest}}
     ports:
       - "127.0.0.1:${GALLERY_PORT:-5173}:80"
     depends_on:
@@ -20,7 +20,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
   backoffice:
-    image: ${DOCKERHUB_USERNAME:?Set Docker Hub username}/bias-archive-backoffice:${IMAGE_TAG:?Set release commit SHA}
+    image: ${DOCKERHUB_USERNAME:?Set Docker Hub username}/bias-archive-backoffice:${BACKOFFICE_IMAGE_TAG:-${IMAGE_TAG:-latest}}
     ports:
       - "127.0.0.1:${BACKOFFICE_PORT:-5174}:80"
     depends_on:
