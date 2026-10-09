@@ -12,3 +12,4 @@ FROM nginx:1.28-alpine
 COPY backoffice/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/backoffice/dist /usr/share/nginx/html
 EXPOSE 80
+HEALTHCHECK --interval=15s --timeout=5s --start-period=10s CMD wget -q -O /dev/null http://127.0.0.1/api/health || exit 1

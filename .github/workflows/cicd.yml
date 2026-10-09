@@ -1,0 +1,145 @@
+name: CI and production deployment
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cicd-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - run: npm ci
+      - run: npm run check
+      - run: npm test
+      - run: npm run build
+      - run: go test -race ./...
+        working-directory: backend
+      - run: go vet ./...
+        working-directory: backend
+      - run: test -z "$(gofmt -l .)"
+        working-directory: backend
+      - run: python3 scripts/verify-seed.py
+      - run: go build ./cmd/server
+        working-directory: backend
+
+  browser:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      ADMIN_TOKEN: e2e-only-administrator-token-24chars
+      GALLERY_PORT: '5183'
+      BACKOFFICE_PORT: '5184'
+      API_PORT: '8180'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: docker/setup-buildx-action@v3
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: docker compose -f compose.build.yaml -p bias-archive-test up -d --build --wait --wait-timeout 180
+      - run: npx playwright test
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: browser-failure
+          path: test-results/
+      - run: docker compose -f compose.build.yaml -p bias-archive-test logs --no-color
+        if: failure()
+      - run: docker compose -f compose.build.yaml -p bias-archive-test down -v
+        if: always()
+
+  image:
+    needs: [verify, browser]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [frontend, backoffice, backend]
+        include:
+          - service: frontend
+            build-args: VITE_BACKOFFICE_URL=${{ vars.VITE_BACKOFFICE_URL || 'http://localhost:5174' }}
+          - service: backoffice
+            build-args: VITE_GALLERY_URL=${{ vars.VITE_GALLERY_URL || 'http://localhost:5173' }}
+          - service: backend
+            build-args: ''
+    env:
+      DOCKERHUB_NAMESPACE: ${{ vars.DOCKERHUB_USERNAME || 'ci-local' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Check publishing configuration
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        env:
+          DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+          VITE_GALLERY_URL: ${{ vars.VITE_GALLERY_URL }}
+          VITE_BACKOFFICE_URL: ${{ vars.VITE_BACKOFFICE_URL }}
+        run: |
+          test -n "$DOCKERHUB_USERNAME"
+          test -n "$VITE_GALLERY_URL"
+          test -n "$VITE_BACKOFFICE_URL"
+      - uses: docker/login-action@v4
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.service }}/Dockerfile
+          pull: true
+          push: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
+          tags: |
+            ${{ env.DOCKERHUB_NAMESPACE }}/bias-archive-${{ matrix.service }}:${{ github.sha }}
+            ${{ env.DOCKERHUB_NAMESPACE }}/bias-archive-${{ matrix.service }}:latest
+          build-args: ${{ matrix.build-args }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: image
+    runs-on: [self-hosted, linux, x64, production]
+    timeout-minutes: 15
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: Isolate Docker credentials
+        run: echo "DOCKER_CONFIG=$(mktemp -d "$RUNNER_TEMP/gallery-docker.XXXXXX")" >> "$GITHUB_ENV"
+      - uses: docker/login-action@v4
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Pull and deploy release
+        env:
+          DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+          ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+          DEPLOY_PROJECT_NAME: ${{ vars.DEPLOY_PROJECT_NAME }}
+          GALLERY_PORT: ${{ vars.GALLERY_PORT }}
+          BACKOFFICE_PORT: ${{ vars.BACKOFFICE_PORT }}
+          SHA: ${{ github.sha }}
+        run: bash scripts/deploy-server.sh "$SHA"

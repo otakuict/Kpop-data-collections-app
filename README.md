@@ -115,7 +115,7 @@ backoffice/               Svelte administration + template + nginx + Dockerfile
 backend/cmd/server/       Configuration, seed CLI, graceful shutdown
 backend/internal/gallery/ Metadata/store, import, safe media fetch, Gin routes
 data/                     Source snapshot + SQLite seed
-.github/workflows/        FE, BE, back-office และ browser integration
+.github/workflows/        CI/CD production พร้อม browser integration
 docs/design/              สอง design candidates, cross-judge และแบบที่เลือก
 ```
 
@@ -183,23 +183,51 @@ ADMIN_TOKEN=e2e-only-administrator-token-24chars GALLERY_PORT=5183 BACKOFFICE_PO
 
 ## GitHub CI/CD
 
-Workflow แยกเป็น `frontend.yml`, `backend.yml`, `backoffice.yml` แต่ละตัว trigger ตาม path ที่เกี่ยวข้อง, verify, build Docker image และ publish ไป GHCR เมื่อ push main; PR ตรวจ build โดยไม่ publish มี `integration.yml` เปิด Compose และทดสอบ browser ทั้ง stack เพิ่มเติม
+`cicd.yml` รวม verify, browser acceptance, build/publish และ production deploy ใน workflow เดียว อิงรูปแบบ [workflow ของ gank-data-finder](https://github.com/otakuict/gank-data-finder/blob/main/.github/workflows/cicd.yml) ทุก commit ที่ push `main` จะสร้างทั้งสาม image เพื่อให้ release ใช้ SHA เดียวกันทั้งหมด:
 
-Images: `ghcr.io/<owner>/<repo>-frontend`, `-backend`, `-backoffice`; tags `sha-<full commit SHA>` และ `latest` ทั้งสามส่วน build/deploy แยกกันได้ ใช้ `FRONTEND_IMAGE_TAG`, `BACKOFFICE_IMAGE_TAG`, `BACKEND_IMAGE_TAG` แยกกันเมื่อเลือก immutable tags เพราะ commit ที่แก้เพียง app เดียวจะ publish เพียง image ของ app นั้น ระบบนี้รองรับ backend replica เดียวต่อ SQLite volume
+- `<DOCKERHUB_USERNAME>/bias-archive-frontend`
+- `<DOCKERHUB_USERNAME>/bias-archive-backoffice`
+- `<DOCKERHUB_USERNAME>/bias-archive-backend`
 
-ตั้ง repository variables `VITE_GALLERY_URL` และ `VITE_BACKOFFICE_URL` เป็น URL จริงก่อน production build และให้ workflow มี package write permission ผ่าน `GITHUB_TOKEN`
+PR เข้า `main` และ manual run จาก branch อื่นตรวจ Node/Go, browser และ Docker build โดยไม่ login/publish/deploy และมี namespace `ci-local` สำหรับ PR ที่ไม่มี repository variable เมื่อเป็น `main` จะ push tags แบบ full commit SHA และ `latest` แล้ว deploy ด้วย SHA เท่านั้น Deploy ต้องรอ browser tests และ image ทั้งสามสำเร็จ workflow concurrency ป้องกัน release บน `main` ทำงานทับกัน และยกเลิกเฉพาะ PR ที่กำลังรันเมื่อมี commit ใหม่ งาน main ที่ยังรอคิวอาจถูกแทนที่ด้วย commit ใหม่กว่าได้
 
-Deploy images ที่ publish แล้วบน host ที่มี Docker:
+Dockerfile ทั้งสามใช้ multi-stage: Node → nginx สำหรับสองเว็บ และ Go → Debian slim สำหรับ API Runtime image ไม่รวม compiler/Node build dependencies; healthcheck ของเว็บตรวจ API ผ่าน nginx และ backend ตรวจ database readiness `ADMIN_TOKEN` รับตอนเริ่ม container เท่านั้น ส่วน `VITE_*` เป็น URL สาธารณะซึ่งฝังใน JavaScript ตอน build
+
+### ตั้งค่า GitHub ก่อนใช้งาน
+
+Repository variables:
+
+- `DOCKERHUB_USERNAME` — บัญชีเจ้าของทั้งสาม Docker Hub repositories
+- `VITE_GALLERY_URL`, `VITE_BACKOFFICE_URL` — URL HTTPS สาธารณะของสองเว็บ ต้องตั้งก่อน publish บน `main`; PR ใช้ localhost ได้หากไม่มี variable
+
+Repository secret:
+
+- `DOCKERHUB_TOKEN` — Docker Hub access token ที่ push/pull images ได้ ใช้โดย image job
+
+สร้าง GitHub Environment ชื่อ `production`, จำกัด deployment branch เป็น `main` และตั้ง:
+
+- Secret `ADMIN_TOKEN` — token สุ่มอย่างน้อย 24 ตัวอักษร ใช้เฉพาะ deploy/runtime
+- Secret `DOCKERHUB_TOKEN` — หากต้องการ credential สำหรับ deploy แยกจาก build ให้ใช้ token ที่ pull ได้ในบัญชีเดียวกัน; หากไม่ตั้งจะใช้ repository secret
+- Optional variables `GALLERY_PORT`, `BACKOFFICE_PORT` — default 5173/5174
+- Optional variable `DEPLOY_PROJECT_NAME` — default `otakuict-data-gallery` ซึ่งตรงกับชื่อ project เดิมของ release compose ใน checkout นี้ หากระบบเดิมใช้ `-p` หรือ `COMPOSE_PROJECT_NAME` ให้ตั้งชื่อนั้นเพื่อ reuse volume เดิม
+
+อย่า override `DOCKERHUB_USERNAME` เป็นบัญชีอื่นใน Environment เพราะ image job ใช้ repository variable งานที่อ้าง Environment จะเข้าถึง secrets หลังผ่าน protection rules ตาม [GitHub documentation](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments)
+
+ติดตั้ง self-hosted runner บน production host Linux x64 พร้อม Docker Engine และ Compose v2 ที่รองรับ `up --wait` ใส่ labels `self-hosted`, `linux`, `x64`, `production` และสิทธิ์เข้าถึง Docker socket เฉพาะ deploy job เท่านั้นที่ใช้ runner นี้ ส่วน PR/verify/build ใช้ GitHub-hosted runner
+
+Deploy job login โดยใช้ Docker config directory แยกใน runner temp แล้วเรียก `bash scripts/deploy-server.sh "$SHA"` Script ตรวจ secret และ full SHA, pull ทั้งชุดก่อนเปลี่ยน container, เริ่ม backend ก่อนเว็บตาม health dependency แล้วรอ healthchecks ภายใน 180 วินาที ไม่อ่าน `.env` ใน checkout และไม่ลบ volume SQLite หาก pull ล้มเหลวจะไม่เริ่ม rollout; หาก healthcheck ล้มเหลว job จะ fail โดยไม่มี automatic rollback
+
+### Deploy หรือ rollback ด้วยมือ
+
+บน host เดิมที่ login Docker Hub แล้ว ให้ export runtime configuration จาก secret store ของ host (ไม่ใส่ token จริงใน command history):
 
 ```sh
-export IMAGE_REPOSITORY='owner/repo'
-export IMAGE_TAG=latest
-# .env มี ADMIN_TOKEN ที่สุ่มใหม่สำหรับ environment นี้
-# private GHCR packages ต้อง docker login ghcr.io ก่อน pull
-docker compose -f compose.release.yaml pull
-docker compose -f compose.release.yaml up -d
+export DOCKERHUB_USERNAME='your-dockerhub-username'
+# Export ADMIN_TOKEN from your host secret store; keep the same token on a rollback.
+# Set DEPLOY_PROJECT_NAME to the existing Compose project if it differs from the default.
+bash scripts/deploy-server.sh '<full commit SHA whose three images were published>'
 ```
 
-Release compose bind frontend/back-office ที่ loopback สำหรับ reverse proxy/TLS และไม่เปิด backend ออกภายนอก ขณะนี้มี workflow และ release manifest พร้อม แต่ยังไม่ได้ผูก GitHub remote, publish images หรือ rollout ไป production เพราะยังไม่ได้ระบุ repository/deployment host
+ใช้ SHA ของ release ก่อนหน้าเพื่อ rollback image ทั้งชุด การ rollback ไม่ rollback schema/data และ script ไม่ลบ volume ข้อมูล ระบบรองรับ backend replica เดียวต่อ SQLite volume Release compose bind สองเว็บที่ loopback สำหรับ reverse proxy/TLS และไม่เปิด backend port ภายนอก ต้องตั้ง reverse proxy/TLS บน host แยกต่างหาก
 
 สำรอง SQLite ด้วย SQLite backup API (`.backup`) หรือหยุด backend ก่อน copy volume; ไม่ copy เฉพาะ main database ขณะที่ WAL กำลังถูกเขียน

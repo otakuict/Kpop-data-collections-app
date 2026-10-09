@@ -1,4 +1,9 @@
 .git
+.github
+docs
+tests
+compose*.yaml
+*.md
 node_modules
 **/node_modules
 **/dist

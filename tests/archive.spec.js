@@ -10,7 +10,7 @@ async function signIn(page){await page.goto(office);await page.getByLabel('Admin
 
 test('gallery filters real seed records, groups dates, opens details, and handles empty results',async({page},testInfo)=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('/');
- await expect(page.locator('.gallery-card')).toHaveCount(24);await expect(page.getByRole('heading',{name:/Your bias/})).toBeVisible();
+ await expect(page.locator('.gallery-card')).toHaveCount(24);await expect(page.getByRole('region',{name:'Archive introduction'}).getByRole('heading',{level:1})).toBeVisible();
  await page.screenshot({path:`test-results/gallery-${testInfo.project.name}.png`,fullPage:true});
  await page.getByRole('button',{name:'aespa',exact:true}).click();await expect(page.locator('.gallery-card')).toHaveCount(3);
  if(testInfo.project.name==='mobile')await page.getByRole('button',{name:'Filters',exact:true}).click();
