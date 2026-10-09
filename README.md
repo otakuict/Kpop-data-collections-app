@@ -204,18 +204,17 @@ Repository variables:
 - `DOCKERHUB_USERNAME` — บัญชีเจ้าของทั้งสาม Docker Hub repositories
 - `VITE_GALLERY_URL`, `VITE_BACKOFFICE_URL` — URL HTTPS สาธารณะของสองเว็บ ต้องตั้งก่อน publish บน `main`; PR ใช้ localhost ได้หากไม่มี variable
 
-Repository secret:
+Repository secrets:
 
-- `DOCKERHUB_TOKEN` — Docker Hub access token ที่ push/pull images ได้ ใช้โดย image job
+- `DOCKERHUB_TOKEN` — Docker Hub access token ที่ push/pull images ได้ ใช้ทั้ง image และ deploy jobs
+- `ADMIN_TOKEN` — token สุ่มอย่างน้อย 24 ตัวอักษร ใช้เฉพาะ deploy/runtime
 
-สร้าง GitHub Environment ชื่อ `production`, จำกัด deployment branch เป็น `main` และตั้ง:
+Optional repository variables:
 
-- Secret `ADMIN_TOKEN` — token สุ่มอย่างน้อย 24 ตัวอักษร ใช้เฉพาะ deploy/runtime
-- Secret `DOCKERHUB_TOKEN` — หากต้องการ credential สำหรับ deploy แยกจาก build ให้ใช้ token ที่ pull ได้ในบัญชีเดียวกัน; หากไม่ตั้งจะใช้ repository secret
-- Optional variables `GALLERY_PORT`, `BACKOFFICE_PORT` — default 5173/5174
-- Optional variable `DEPLOY_PROJECT_NAME` — default `otakuict-data-gallery` ซึ่งตรงกับชื่อ project เดิมของ release compose ใน checkout นี้ หากระบบเดิมใช้ `-p` หรือ `COMPOSE_PROJECT_NAME` ให้ตั้งชื่อนั้นเพื่อ reuse volume เดิม
+- `GALLERY_PORT`, `BACKOFFICE_PORT` — default 5173/5174
+- `DEPLOY_PROJECT_NAME` — default `otakuict-data-gallery` ซึ่งตรงกับชื่อ project เดิมของ release compose ใน checkout นี้ หากระบบเดิมใช้ `-p` หรือ `COMPOSE_PROJECT_NAME` ให้ตั้งชื่อนั้นเพื่อ reuse volume เดิม
 
-อย่า override `DOCKERHUB_USERNAME` เป็นบัญชีอื่นใน Environment เพราะ image job ใช้ repository variable งานที่อ้าง Environment จะเข้าถึง secrets หลังผ่าน protection rules ตาม [GitHub documentation](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments)
+ตั้งทั้งหมดที่ Repository → Settings → Secrets and variables → Actions โดยเลือกแท็บ Secrets หรือ Variables ตามประเภท Deploy jobs ใช้ repository configuration โดยตรง และเงื่อนไขใน workflow จำกัด publish/deploy ให้รันเฉพาะ `main` ที่ไม่ใช่ PR
 
 ติดตั้ง self-hosted runner บน production host Linux x64 พร้อม Docker Engine, Compose v2 ที่รองรับ `up --wait` และ `flock` (แพ็กเกจ util-linux) ใส่ labels `self-hosted`, `linux`, `x64`, `production` และสิทธิ์เข้าถึง Docker socket เฉพาะ deploy job เท่านั้นที่ใช้ runner นี้ ส่วน PR/verify/build ใช้ GitHub-hosted runner
 

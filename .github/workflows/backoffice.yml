@@ -65,7 +65,6 @@ jobs:
     needs: image
     runs-on: [self-hosted, linux, x64, production]
     timeout-minutes: 15
-    environment: production
     steps:
       - uses: actions/checkout@v4
       - name: Isolate Docker credentials
