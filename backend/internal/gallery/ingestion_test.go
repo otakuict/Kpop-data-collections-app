@@ -122,6 +122,109 @@ func TestDailyGankBudgetStopsRequestsAcrossSubdomains(t *testing.T) {
 	}
 }
 
+func TestAdditionalGankBudgetPreservesHistoryAndStopsAfterSixtyMoreRequests(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "extra-budget.sqlite")
+	s, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	now := time.Now().Truncate(time.Millisecond)
+	for range GankDailyRequests {
+		if _, err := s.db.Exec("INSERT INTO remote_requests(host,at) VALUES('ganknow.com',?)", now.Add(-time.Hour).UnixMilli()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := s.reserveRemote(ctx, "ganknow.com", now, GankInterval); !isRemotePaused(err) {
+		t.Fatalf("initial budget should be paused: %v", err)
+	}
+	if err := s.GrantGankRequests(ctx, 60); err != nil {
+		t.Fatal(err)
+	}
+	s.Close()
+	s, err = Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	status, err := s.IngestionStatus(ctx)
+	if err != nil || status.DailyRequests != 120 || status.RequestsRemaining != 60 || status.PausedUntil != "" {
+		t.Fatalf("grant lost across restart: %#v %v", status, err)
+	}
+	for i := range 60 {
+		at := now.Add(time.Duration(i) * 21 * time.Second)
+		if wait, err := s.reserveRemote(ctx, remoteKey("media.ganknow.com"), at, GankInterval); err != nil || wait != 0 {
+			t.Fatalf("additional request %d: %v %v", i+1, wait, err)
+		}
+		if err := s.releaseRemote(ctx, "ganknow.com", at); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := s.reserveRemote(ctx, "ganknow.com", now.Add(time.Hour), GankInterval); !isRemotePaused(err) {
+		t.Fatalf("request beyond the additional sixty allowed: %v", err)
+	}
+	var count int
+	if err := s.db.QueryRow("SELECT count(*) FROM remote_requests WHERE host='ganknow.com'").Scan(&count); err != nil || count != 120 {
+		t.Fatalf("request history changed: %d %v", count, err)
+	}
+	status, err = s.IngestionStatus(ctx)
+	if err != nil || status.RequestsRemaining != 0 {
+		t.Fatalf("exhausted grant: %#v %v", status, err)
+	}
+	if _, err := s.db.Exec("UPDATE remote_budgets SET until=?", now.Add(-time.Second).UnixMilli()); err != nil {
+		t.Fatal(err)
+	}
+	status, err = s.IngestionStatus(ctx)
+	if err != nil || status.DailyRequests != GankDailyRequests {
+		t.Fatalf("temporary grant did not expire: %#v %v", status, err)
+	}
+}
+
+func TestAdditionalGankBudgetCannotClearProviderCooldown(t *testing.T) {
+	s, err := Open(filepath.Join(t.TempDir(), "provider-budget.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	ctx := context.Background()
+	if err := s.pauseRemote(ctx, "ganknow.com", time.Now().Add(time.Hour), "source HTTP 429"); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.GrantGankRequests(ctx, 60); !isRemotePaused(err) {
+		t.Fatalf("provider cooldown cleared: %v", err)
+	}
+	for _, extra := range []int{0, 61} {
+		if err := s.GrantGankRequests(ctx, extra); err == nil {
+			t.Fatalf("invalid grant accepted: %d", extra)
+		}
+	}
+}
+
+func TestExpiredGankGrantWaitsForEnoughRequestsToLeaveBaseWindow(t *testing.T) {
+	s, err := Open(filepath.Join(t.TempDir(), "expired-grant.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	now := time.Now().Truncate(time.Millisecond)
+	for _, at := range []time.Time{now.Add(-23 * time.Hour), now.Add(-time.Hour)} {
+		for range 60 {
+			if _, err := s.db.Exec("INSERT INTO remote_requests(host,at) VALUES('ganknow.com',?)", at.UnixMilli()); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	if _, err := s.db.Exec("INSERT INTO remote_budgets(host,max_requests,until) VALUES('ganknow.com',120,?)", now.Add(-time.Second).UnixMilli()); err != nil {
+		t.Fatal(err)
+	}
+	_, err = s.reserveRemote(context.Background(), "ganknow.com", now, GankInterval)
+	var paused *RemotePausedError
+	want := now.Add(23 * time.Hour)
+	if !errors.As(err, &paused) || !paused.Until.Equal(want) {
+		t.Fatalf("expired grant should wait until %s: %v", want, err)
+	}
+}
+
 func TestExtractionStoresMultipleImagesAndSkipsPreviouslyDownloadedURLs(t *testing.T) {
 	s, err := Open(filepath.Join(t.TempDir(), "extract.sqlite"))
 	if err != nil {
@@ -161,6 +264,42 @@ func TestExtractionStoresMultipleImagesAndSkipsPreviouslyDownloadedURLs(t *testi
 	x, err = ExtractTo(ctx, s, x.ID, 3)
 	if err != nil || len(x.Images) != 3 || calls != 3 {
 		t.Fatalf("repeat fetched previous URLs: %d images, %d requests, %v", len(x.Images), calls, err)
+	}
+}
+
+func TestGankGoogleHostedPostStoresThreeDistinctImages(t *testing.T) {
+	s, err := Open(filepath.Join(t.TempDir(), "google-post.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	ctx := context.Background()
+	x, err := s.Save(ctx, 0, SetDraft{Title: "SEUNGBI", Group: "S2IT", Example: googleGankExample})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = s.CachePage(ctx, googleGankExample, []byte(googleGankSSRDocument), "text/html"); err != nil {
+		t.Fatal(err)
+	}
+	original := fetchClient
+	defer func() { fetchClient = original }()
+	calls := 0
+	fetchClient = &http.Client{Transport: responseTransport(func(r *http.Request) (*http.Response, error) {
+		if r.URL.Host != "lh3.googleusercontent.com" {
+			t.Fatalf("unexpected image source: %s", r.URL)
+		}
+		calls++
+		img := image.NewRGBA(image.Rect(0, 0, 1, 1))
+		img.Set(0, 0, color.RGBA{R: uint8(calls * 70), A: 255})
+		var b bytes.Buffer
+		if err := png.Encode(&b, img); err != nil {
+			t.Fatal(err)
+		}
+		return &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": []string{"image/png"}}, Body: io.NopCloser(bytes.NewReader(b.Bytes())), Request: r}, nil
+	})}
+	x, err = Extract(ctx, s, x.ID)
+	if err != nil || len(x.Images) != 3 || calls != 3 || x.ImageState != "ready" || x.ImageError != "" {
+		t.Fatalf("Google-hosted album: %#v, %d requests, %v", x, calls, err)
 	}
 }
 

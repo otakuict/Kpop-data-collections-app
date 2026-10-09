@@ -1,0 +1,119 @@
+{
+  "generatedAt": "2026-10-06T15:06:16.654Z",
+  "target": 2,
+  "attemptedSets": 17,
+  "pausedUntil": "2026-10-06T16:06:16Z",
+  "total": 165,
+  "complete": 40,
+  "counts": {
+    "0": 123,
+    "1": 2,
+    "2": 37,
+    "3": 1,
+    "5": 2
+  },
+  "results": [
+    {
+      "id": 3,
+      "title": "260803 ningning",
+      "count": 2,
+      "error": ""
+    },
+    {
+      "id": 5,
+      "title": "260809 Asa 2159",
+      "count": 2,
+      "error": ""
+    },
+    {
+      "id": 12,
+      "title": "260802 jennie",
+      "count": 2,
+      "error": ""
+    },
+    {
+      "id": 136,
+      "title": "250419 ARIN",
+      "count": 1,
+      "error": "Only 1 distinct public image(s) available; at least 2 required"
+    },
+    {
+      "id": 9,
+      "title": "260626 Ahyeon 4092",
+      "count": 0,
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 10,
+      "title": "260816 Jennie 5042",
+      "count": 0,
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 11,
+      "title": "260814 Jennie 4556",
+      "count": 2,
+      "error": ""
+    },
+    {
+      "id": 13,
+      "title": "260801 Jennie 465",
+      "count": 2,
+      "error": ""
+    },
+    {
+      "id": 14,
+      "title": "250705 Jennie 1811 (EVENT PRIZE)",
+      "count": 2,
+      "error": ""
+    },
+    {
+      "id": 16,
+      "title": "260828 Jeewon yoichi69 ver2  2506",
+      "count": 2,
+      "error": ""
+    },
+    {
+      "id": 17,
+      "title": "260828 JEEWON idollove ver2",
+      "count": 2,
+      "error": ""
+    },
+    {
+      "id": 18,
+      "title": "260828 jeewon 2484",
+      "count": 2,
+      "error": ""
+    },
+    {
+      "id": 19,
+      "title": "260828 JEEWON",
+      "count": 2,
+      "error": ""
+    },
+    {
+      "id": 20,
+      "title": "260828 JEEWON",
+      "count": 2,
+      "error": ""
+    },
+    {
+      "id": 21,
+      "title": "240824 Jiwon 3641 part3",
+      "count": 0,
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 22,
+      "title": "240824 Jiwon 3574 part2",
+      "count": 0,
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 23,
+      "title": "240824 Jiwon 3573 part1",
+      "count": 0,
+      "error": "No public post images found; upload 2–5 images manually"
+    }
+  ]
+}

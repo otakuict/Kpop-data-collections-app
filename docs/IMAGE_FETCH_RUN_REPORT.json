@@ -1,0 +1,90 @@
+{
+  "startedAt": "2026-10-06T14:45:53.607Z",
+  "finishedAt": "2026-10-06T14:45:55.861Z",
+  "before": {
+    "intervalSeconds": 20,
+    "dailyRequests": 60,
+    "requestsRemaining": 0,
+    "minImages": 2,
+    "maxImages": 5,
+    "pausedUntil": "2026-10-07T08:59:58Z",
+    "reason": "local daily request budget reached (60 per 24 hours)"
+  },
+  "ingestion": {
+    "intervalSeconds": 20,
+    "dailyRequests": 60,
+    "requestsRemaining": 0,
+    "minImages": 2,
+    "maxImages": 5,
+    "pausedUntil": "2026-10-07T08:59:58Z",
+    "reason": "local daily request budget reached (60 per 24 hours)"
+  },
+  "results": [
+    {
+      "set_id": 64,
+      "title": "260110 rei  RARE",
+      "count": 0,
+      "state": "failed",
+      "error": "No public post images found; upload 2–5 images manually",
+      "status": 200
+    },
+    {
+      "set_id": 3,
+      "status": 200,
+      "title": "260803 ningning",
+      "count": 1,
+      "state": "ready",
+      "error": "Only 1 distinct public image(s) available; at least 2 required",
+      "pausedUntil": ""
+    },
+    {
+      "set_id": 5,
+      "status": 200,
+      "title": "260809 Asa 2159",
+      "count": 1,
+      "state": "ready",
+      "error": "Only 1 distinct public image(s) available; at least 2 required",
+      "pausedUntil": ""
+    },
+    {
+      "set_id": 12,
+      "status": 200,
+      "title": "260802 jennie",
+      "count": 1,
+      "state": "ready",
+      "error": "Only 1 distinct public image(s) available; at least 2 required",
+      "pausedUntil": ""
+    },
+    {
+      "set_id": 157,
+      "status": 429,
+      "title": "260726 & 260727 hayeon",
+      "count": null,
+      "state": "failed",
+      "error": "ko-fi.com ingestion paused until 2026-10-07T14:45:55Z (source HTTP 403)",
+      "pausedUntil": "2026-10-07T14:45:55Z"
+    }
+  ],
+  "summary": {
+    "total": 165,
+    "storedImages": 66,
+    "complete": 28,
+    "counts": {
+      "0": 133,
+      "1": 4,
+      "2": 26,
+      "5": 2
+    }
+  },
+  "seedExported": true,
+  "verification": {
+    "seed": "165 source rows match; SQLite integrity, foreign keys, JPEG magic and all image hashes pass",
+    "storedImageReadback": "new image IDs 64,65,66 return JPEG bytes from local API; inspected the two distinct source images",
+    "gankRequestsRemainingUnchanged": true
+  },
+  "notes": [
+    "set_id 3 and 12 have the same example URL and therefore store the same source photo; metadata preserved from source Sheet.",
+    "Cached pages yielded only one image each; sets 3,5,12 remain incomplete.",
+    "No scheduled/background ingestion is running. Retry Gank after 2026-10-07T08:59:58Z."
+  ]
+}

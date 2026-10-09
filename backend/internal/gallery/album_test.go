@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -68,5 +69,39 @@ func TestGumroadExtractionUsesProductCoversAndIgnoresRecommendations(t *testing.
 	urls := ExtractImages(doc, "https://loveshakedata.gumroad.com/l/chaewon")
 	if len(urls) != 2 || urls[1] != "https://public-files.gumroad.com/second" {
 		t.Fatalf("wrong product covers: %#v", urls)
+	}
+}
+
+const googleGankExample = "https://ganknow.com/post/e63b82e9-3d38-4245-beed-84974767969e"
+const googleGankDocument = `<meta property="og:image" content="https://lh3.googleusercontent.com/first=w1200-h627-c">
+<meta name="twitter:image" content="https://lh3.googleusercontent.com/first=w1200-h627-c">
+<div id="e63b82e9-3d38-4245-beed-84974767969e">
+<img src="https://lh3.googleusercontent.com/avatar" alt="Avatar of IdolLove">
+<img src="https://lh3.googleusercontent.com/border">
+<img src="https://lh3.googleusercontent.com/first=s1024" alt="SEUNGBI - IdolLove">
+<img src="https://lh3.googleusercontent.com/second=s1024" alt="SEUNGBI - IdolLove">
+<img src="https://lh3.googleusercontent.com/third=s1024" alt="SEUNGBI - IdolLove">
+</div>
+<div id="another-post"><img src="https://lh3.googleusercontent.com/unrelated=s1024" alt="SEUNGBI - IdolLove"></div>
+<script>window.__NUXT__={postMedia:[],blurUrl:"https:\u002F\u002Flh3.googleusercontent.com\u002Fblur",avatar:"https:\u002F\u002Flh3.googleusercontent.com\u002Favatar"};</script>`
+
+func TestGankExtractionReadsGoogleHostedImagesOnlyFromCurrentPost(t *testing.T) {
+	urls := ExtractImages(googleGankDocument, googleGankExample)
+	if len(urls) != 3 || urls[0] != "https://lh3.googleusercontent.com/first" || urls[1] != "https://lh3.googleusercontent.com/second" || urls[2] != "https://lh3.googleusercontent.com/third" {
+		t.Fatalf("wrong Google-hosted post images: %#v", urls)
+	}
+}
+
+const googleGankSSRDocument = `<meta property="og:image" content="https://lh3.googleusercontent.com/first=w1200-h627-c">
+<script>window.__NUXT__=(function(g,i,m,n,o,p,q,r){return {data:[{post:{id:g,accessType:"public",postMedia:[{url:m,type:i,blurUrl:p},{url:n,type:i,thumbUrl:p},{url:o,type:i},{url:q,type:"video"}],author:{avatar:p}}},{post:{id:"another-post",accessType:"public",postMedia:[{url:r,type:i}]}}]}}("e63b82e9-3d38-4245-beed-84974767969e","image","https:\u002F\u002Flh3.googleusercontent.com\u002Ffirst","https:\u002F\u002Flh3.googleusercontent.com\u002Fsecond","https:\u002F\u002Flh3.googleusercontent.com\u002Fthird","https:\u002F\u002Flh3.googleusercontent.com\u002Favatar","https:\u002F\u002Flh3.googleusercontent.com\u002Fvideo","https:\u002F\u002Flh3.googleusercontent.com\u002Funrelated"));</script>`
+
+func TestGankExtractionResolvesGoogleImageReferencesFromServerHTML(t *testing.T) {
+	urls := ExtractImages(googleGankSSRDocument, googleGankExample)
+	if len(urls) != 3 || urls[1] != "https://lh3.googleusercontent.com/second" || urls[2] != "https://lh3.googleusercontent.com/third" {
+		t.Fatalf("Nuxt post images not resolved: %#v", urls)
+	}
+	private := strings.ReplaceAll(googleGankSSRDocument, `accessType:"public"`, `accessType:"private"`)
+	if urls := ExtractImages(private, googleGankExample); len(urls) != 1 {
+		t.Fatalf("non-public post yielded additional images: %#v", urls)
 	}
 }

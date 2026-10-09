@@ -1,9 +1,9 @@
-# Use images published by the three independent GitHub Actions pipelines.
-# IMAGE_REPOSITORY is a lowercase GitHub owner/repository, e.g. my-team/bias-archive.
-# IMAGE_TAG is latest or sha-<full commit SHA>.
+# Each service can use its own release commit. IMAGE_TAG is an optional common
+# fallback for manual bootstrapping; deploy-server.sh updates only its target.
+name: ${DEPLOY_PROJECT_NAME:-otakuict-data-gallery}
 services:
   backend:
-    image: ghcr.io/${IMAGE_REPOSITORY:?Set lowercase GitHub owner/repo}-backend:${BACKEND_IMAGE_TAG:-${IMAGE_TAG:-latest}}
+    image: ${DOCKERHUB_USERNAME:?Set Docker Hub username}/bias-archive-backend:${BACKEND_IMAGE_TAG:-${IMAGE_TAG:-latest}}
     environment:
       ADMIN_TOKEN: ${ADMIN_TOKEN:?Set administrator token}
       DATABASE_PATH: /data/gallery.sqlite
@@ -12,7 +12,7 @@ services:
       - gallery-data:/data
     restart: unless-stopped
   frontend:
-    image: ghcr.io/${IMAGE_REPOSITORY:?Set lowercase GitHub owner/repo}-frontend:${FRONTEND_IMAGE_TAG:-${IMAGE_TAG:-latest}}
+    image: ${DOCKERHUB_USERNAME:?Set Docker Hub username}/bias-archive-frontend:${FRONTEND_IMAGE_TAG:-${IMAGE_TAG:-latest}}
     ports:
       - "127.0.0.1:${GALLERY_PORT:-5173}:80"
     depends_on:
@@ -20,7 +20,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
   backoffice:
-    image: ghcr.io/${IMAGE_REPOSITORY:?Set lowercase GitHub owner/repo}-backoffice:${BACKOFFICE_IMAGE_TAG:-${IMAGE_TAG:-latest}}
+    image: ${DOCKERHUB_USERNAME:?Set Docker Hub username}/bias-archive-backoffice:${BACKOFFICE_IMAGE_TAG:-${IMAGE_TAG:-latest}}
     ports:
       - "127.0.0.1:${BACKOFFICE_PORT:-5174}:80"
     depends_on:

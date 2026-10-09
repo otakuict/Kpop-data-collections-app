@@ -1,0 +1,263 @@
+{
+  "generatedAt": "2026-10-07T03:56:23.626Z",
+  "target": 2,
+  "attemptedSets": 41,
+  "pausedUntil": "2026-10-07T14:45:55Z",
+  "total": 165,
+  "complete": 115,
+  "counts": {
+    "0": 49,
+    "1": 1,
+    "2": 112,
+    "3": 1,
+    "5": 2
+  },
+  "results": [
+    {
+      "id": 136,
+      "title": "250419 ARIN",
+      "count": 1,
+      "error": "Only 1 distinct public image(s) available; at least 2 required"
+    },
+    {
+      "id": 9,
+      "title": "260626 Ahyeon 4092",
+      "count": 0,
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 10,
+      "title": "260816 Jennie 5042",
+      "count": 0,
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 21,
+      "title": "240824 Jiwon 3641 part3",
+      "count": 0,
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 22,
+      "title": "240824 Jiwon 3574 part2",
+      "count": 0,
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 23,
+      "title": "240824 Jiwon 3573 part1",
+      "count": 0,
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 25,
+      "title": "260208 Boeun",
+      "count": 2,
+      "error": ""
+    },
+    {
+      "id": 26,
+      "title": "260208 hyungseo 2209",
+      "count": 2,
+      "error": ""
+    },
+    {
+      "id": 31,
+      "title": "260211 아테나 2070 Athena",
+      "count": 2,
+      "error": ""
+    },
+    {
+      "id": 43,
+      "title": "260221 SHUHUA",
+      "count": 2,
+      "error": ""
+    },
+    {
+      "id": 44,
+      "title": "260221 MIYEON",
+      "count": 2,
+      "error": ""
+    },
+    {
+      "id": 45,
+      "title": "250611 Shuhua 3454PICS",
+      "count": 2,
+      "error": ""
+    },
+    {
+      "id": 63,
+      "title": "260321 WONYOUNG 3560",
+      "count": 0,
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 64,
+      "title": "260110 rei  RARE",
+      "count": 0,
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 65,
+      "title": "251206 leeseo IVE 1427",
+      "count": 2,
+      "error": ""
+    },
+    {
+      "id": 66,
+      "title": "251206 Leeseo (2)",
+      "count": 2,
+      "error": ""
+    },
+    {
+      "id": 69,
+      "title": "240309 Leeseo backview collection",
+      "count": 2,
+      "error": ""
+    },
+    {
+      "id": 94,
+      "title": "260814 Eunchae 1907",
+      "count": 0,
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 102,
+      "title": "260712 eunchae 4043",
+      "count": 2,
+      "error": ""
+    },
+    {
+      "id": 103,
+      "title": "260711 은채 4774",
+      "count": 2,
+      "error": ""
+    },
+    {
+      "id": 104,
+      "title": "260711 윤진 4129",
+      "count": 2,
+      "error": ""
+    },
+    {
+      "id": 105,
+      "title": "260711 Sakura 4121",
+      "count": 2,
+      "error": ""
+    },
+    {
+      "id": 106,
+      "title": "260711 LESSERAFIM Chaewon coffe...",
+      "count": 2,
+      "error": ""
+    },
+    {
+      "id": 107,
+      "title": "260711 CHAEWON BACKVIEW COLLECTION",
+      "count": 2,
+      "error": ""
+    },
+    {
+      "id": 108,
+      "title": "260620 카즈하 2024",
+      "count": 2,
+      "error": ""
+    },
+    {
+      "id": 109,
+      "title": "260620 sakura (Exlusive)1321",
+      "count": 0,
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 110,
+      "title": "260620 sakura 2685",
+      "count": 2,
+      "error": ""
+    },
+    {
+      "id": 111,
+      "title": "260620 Kazuha 1151",
+      "count": 2,
+      "error": ""
+    },
+    {
+      "id": 112,
+      "title": "260620 KAZUHA 2024 PICS",
+      "count": 2,
+      "error": ""
+    },
+    {
+      "id": 113,
+      "title": "260607 EUNCHAE 홍은채 10342",
+      "count": 2,
+      "error": ""
+    },
+    {
+      "id": 114,
+      "title": "260607 EUNCHAE 2209",
+      "count": 2,
+      "error": ""
+    },
+    {
+      "id": 116,
+      "title": "260607 Eunchae 2000",
+      "count": 2,
+      "error": ""
+    },
+    {
+      "id": 118,
+      "title": "260527 kazuha 1377",
+      "count": 2,
+      "error": ""
+    },
+    {
+      "id": 120,
+      "title": "260201 chaewon 4968",
+      "count": 2,
+      "error": ""
+    },
+    {
+      "id": 121,
+      "title": "Kazuha - 260711 2848(Rare_KD)",
+      "count": 2,
+      "error": ""
+    },
+    {
+      "id": 134,
+      "title": "260613 YUBIN 3063 RARE",
+      "count": 2,
+      "error": ""
+    },
+    {
+      "id": 135,
+      "title": "260613 YUBIN (2)",
+      "count": 2,
+      "error": ""
+    },
+    {
+      "id": 148,
+      "title": "260620 dayoung 1734",
+      "count": 2,
+      "error": ""
+    },
+    {
+      "id": 149,
+      "title": "260502 dayoung",
+      "count": 2,
+      "error": ""
+    },
+    {
+      "id": 150,
+      "title": "251115 eunbi",
+      "count": 2,
+      "error": ""
+    },
+    {
+      "id": 156,
+      "title": "260828 Xinyu (LIMITED) 1759",
+      "count": 0,
+      "error": "No public post images found; upload 2–5 images manually"
+    }
+  ]
+}

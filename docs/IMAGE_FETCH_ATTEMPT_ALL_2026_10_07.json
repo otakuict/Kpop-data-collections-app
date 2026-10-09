@@ -1,0 +1,60 @@
+{
+  "generatedAt": "2026-10-07T03:44:31.467Z",
+  "target": 2,
+  "attemptedSets": 6,
+  "pausedUntil": "2026-10-07T08:59:58Z",
+  "total": 165,
+  "complete": 85,
+  "counts": {
+    "0": 79,
+    "1": 1,
+    "2": 82,
+    "3": 1,
+    "5": 2
+  },
+  "results": [
+    {
+      "id": 136,
+      "title": "250419 ARIN",
+      "count": 1,
+      "error": "Only 1 distinct public image(s) available; at least 2 required"
+    },
+    {
+      "id": 9,
+      "title": "260626 Ahyeon 4092",
+      "count": 0,
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 10,
+      "title": "260816 Jennie 5042",
+      "count": 0,
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 21,
+      "title": "240824 Jiwon 3641 part3",
+      "count": 0,
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 22,
+      "title": "240824 Jiwon 3574 part2",
+      "count": 0,
+      "error": "No public post images found; upload 2–5 images manually"
+    },
+    {
+      "id": 23,
+      "title": "240824 Jiwon 3573 part1",
+      "count": 0,
+      "error": "No public post images found; upload 2–5 images manually"
+    }
+  ],
+  "stopReason": "local daily request budget reached (120 per 24 hours)",
+  "blockedSetId": 25,
+  "imagesAdded": 0,
+  "imagesAfter": 178,
+  "newGankRequests": 0,
+  "backgroundBatchRunning": false,
+  "seedExported": true
+}

@@ -1,25 +1,33 @@
-name: Backend — verify and publish
+name: Backend — CI and deploy
 on:
   pull_request:
-    paths: ['backend/**', 'data/**', 'scripts/verify-seed.py', '.github/workflows/backend.yml']
+    branches: [main]
+    paths: ['backend/**', 'compose.release.yaml', 'scripts/deploy-server.sh', 'scripts/release-workflow.test.mjs', '.dockerignore', '.github/workflows/backend.yml', 'data/**', 'scripts/verify-seed.py']
   push:
     branches: [main]
-    paths: ['backend/**', 'data/**', 'scripts/verify-seed.py', '.github/workflows/backend.yml']
+    paths: ['backend/**', 'compose.release.yaml', 'scripts/deploy-server.sh', 'scripts/release-workflow.test.mjs', '.dockerignore', '.github/workflows/backend.yml', 'data/**', 'scripts/verify-seed.py']
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
   group: backend-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+env:
+  DOCKERHUB_IMAGE: ${{ vars.DOCKERHUB_USERNAME || 'ci-local' }}/bias-archive-backend
 jobs:
   verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node --test scripts/release-workflow.test.mjs
       - run: go test -race ./...
         working-directory: backend
       - run: go vet ./...
@@ -32,34 +40,52 @@ jobs:
   image:
     needs: verify
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
-      - name: Resolve image name
-        id: image
-        run: echo "name=ghcr.io/${GITHUB_REPOSITORY,,}-backend" >> "$GITHUB_OUTPUT"
-      - uses: docker/metadata-action@v5
-        id: meta
+      - name: Check publishing configuration
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        env:
+          DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+        run: |
+          test -n "$DOCKERHUB_USERNAME"
+      - uses: docker/login-action@v4
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         with:
-          images: ${{ steps.image.outputs.name }}
-          tags: |
-            type=sha,format=long
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
-      - uses: docker/login-action@v3
-        if: github.event_name != 'pull_request'
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
       - uses: docker/build-push-action@v6
         with:
           context: .
           file: backend/Dockerfile
-          push: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          pull: true
+          push: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
+          tags: |
+            ${{ env.DOCKERHUB_IMAGE }}:${{ github.sha }}
+            ${{ env.DOCKERHUB_IMAGE }}:latest
           cache-from: type=gha,scope=backend
           cache-to: type=gha,mode=max,scope=backend
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: image
+    runs-on: [self-hosted, linux, x64, production]
+    timeout-minutes: 15
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: Isolate Docker credentials
+        run: echo "DOCKER_CONFIG=$(mktemp -d "$RUNNER_TEMP/gallery-docker.XXXXXX")" >> "$GITHUB_ENV"
+      - uses: docker/login-action@v4
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Pull and deploy backend
+        env:
+          DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+          ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+          DEPLOY_PROJECT_NAME: ${{ vars.DEPLOY_PROJECT_NAME }}
+          GALLERY_PORT: ${{ vars.GALLERY_PORT }}
+          BACKOFFICE_PORT: ${{ vars.BACKOFFICE_PORT }}
+          SHA: ${{ github.sha }}
+        run: bash scripts/deploy-server.sh backend "$SHA"

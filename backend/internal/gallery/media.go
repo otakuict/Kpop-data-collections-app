@@ -151,6 +151,7 @@ func Fetch(ctx context.Context, raw string, max int64) ([]byte, string, error) {
 }
 
 var cropSuffix = regexp.MustCompile(`=w\d+(?:-h\d+)?(?:-[a-z]+)?$`)
+var googleImageSuffix = regexp.MustCompile(`=(?:s\d+|w\d+(?:-h\d+)?)(?:-[a-z]+)?$`)
 
 var scriptURL = regexp.MustCompile(`"https:(?:\\.|[^"\\])*"`)
 
@@ -174,10 +175,13 @@ func ExtractImages(document, base string) []string {
 		}
 		u = baseURL.ResolveReference(u)
 		if gank {
-			if u.Hostname() != "media.ganknow.com" || (postMedia && !strings.Contains(u.Path, "/PM.")) {
+			if u.Hostname() == "lh3.googleusercontent.com" && !postMedia {
+				raw = googleImageSuffix.ReplaceAllString(u.String(), "")
+			} else if u.Hostname() == "media.ganknow.com" && (!postMedia || strings.Contains(u.Path, "/PM.")) {
+				raw = cropSuffix.ReplaceAllString(u.String(), "")
+			} else {
 				return
 			}
-			raw = cropSuffix.ReplaceAllString(u.String(), "")
 		} else {
 			raw = u.String()
 		}
@@ -229,6 +233,11 @@ func ExtractImages(document, base string) []string {
 		if gank && n.Type == html.ElementNode && n.Data == "script" && n.FirstChild != nil {
 			script := n.FirstChild.Data
 			if strings.Contains(script, "window.__NUXT__") && strings.Contains(script, "postMedia") {
+				if strings.HasPrefix(baseURL.Path, "/post/") {
+					for _, raw := range gankNuxtPostImages(script, strings.TrimPrefix(baseURL.Path, "/post/")) {
+						add(raw, false)
+					}
+				}
 				for _, literal := range scriptURL.FindAllString(script, -1) {
 					var raw string
 					if json.Unmarshal([]byte(literal), &raw) == nil {
@@ -242,6 +251,59 @@ func ExtractImages(document, base string) []string {
 		}
 	}
 	visit(root)
+	if gank && strings.HasPrefix(baseURL.Path, "/post/") {
+		for _, raw := range gankGooglePostImages(root, strings.TrimPrefix(baseURL.Path, "/post/"), seen) {
+			add(raw, false)
+		}
+	}
+	return urls
+}
+
+func htmlAttribute(n *html.Node, key string) string {
+	for _, attr := range n.Attr {
+		if attr.Key == key {
+			return attr.Val
+		}
+	}
+	return ""
+}
+
+func gankGooglePostImages(root *html.Node, postID string, socialURLs map[string]bool) []string {
+	images := []*html.Node{}
+	var visit func(*html.Node, bool)
+	visit = func(n *html.Node, inPost bool) {
+		if id := htmlAttribute(n, "id"); id != "" {
+			inPost = id == postID
+		}
+		if inPost && n.Type == html.ElementNode && n.Data == "img" {
+			images = append(images, n)
+		}
+		for child := n.FirstChild; child != nil; child = child.NextSibling {
+			visit(child, inPost)
+		}
+	}
+	visit(root, false)
+	postAlt := ""
+	for _, img := range images {
+		raw := googleImageSuffix.ReplaceAllString(htmlAttribute(img, "src"), "")
+		if strings.HasPrefix(raw, "https://lh3.googleusercontent.com/") && socialURLs[raw] {
+			postAlt = htmlAttribute(img, "alt")
+			break
+		}
+	}
+	if postAlt == "" {
+		return nil
+	}
+	urls := []string{}
+	for _, img := range images {
+		if htmlAttribute(img, "alt") != postAlt {
+			continue
+		}
+		raw := htmlAttribute(img, "src")
+		if strings.HasPrefix(raw, "https://lh3.googleusercontent.com/") {
+			urls = append(urls, raw)
+		}
+	}
 	return urls
 }
 

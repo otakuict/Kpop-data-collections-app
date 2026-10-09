@@ -34,6 +34,7 @@ func Open(path string) (*Store, error) {
  CREATE TABLE IF NOT EXISTS remote_limits (host TEXT PRIMARY KEY, next_at INTEGER NOT NULL DEFAULT 0, paused_until INTEGER NOT NULL DEFAULT 0, reason TEXT NOT NULL DEFAULT '');
  CREATE TABLE IF NOT EXISTS remote_leases (host TEXT PRIMARY KEY, until INTEGER NOT NULL);
  CREATE TABLE IF NOT EXISTS remote_requests (host TEXT NOT NULL, at INTEGER NOT NULL);
+ CREATE TABLE IF NOT EXISTS remote_budgets (host TEXT PRIMARY KEY, max_requests INTEGER NOT NULL, until INTEGER NOT NULL);
  CREATE INDEX IF NOT EXISTS remote_requests_host_time ON remote_requests(host,at);
  CREATE TABLE IF NOT EXISTS page_cache (url TEXT PRIMARY KEY, bytes BLOB NOT NULL, mime TEXT NOT NULL, fetched_at INTEGER NOT NULL);
  PRAGMA user_version=2;`)
@@ -46,7 +47,15 @@ func Open(path string) (*Store, error) {
 func (s *Store) Close() error { return s.db.Close() }
 
 func (s *Store) Import(ctx context.Context, drafts []SetDraft) (ImportReport, error) {
-	report := ImportReport{Total: len(drafts), Candidates: []SetID{}}
+	return s.importSheet(ctx, drafts, false)
+}
+
+func (s *Store) PreviewImport(ctx context.Context, drafts []SetDraft) (ImportReport, error) {
+	return s.importSheet(ctx, drafts, true)
+}
+
+func (s *Store) importSheet(ctx context.Context, drafts []SetDraft, preview bool) (ImportReport, error) {
+	report := ImportReport{Total: len(drafts), Candidates: []SetID{}, ScanCandidates: []SetID{}, Changes: []ImportChange{}}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return report, err
@@ -56,13 +65,14 @@ func (s *Store) Import(ctx context.Context, drafts []SetDraft) (ImportReport, er
 		if d.ImportKey == "" {
 			return report, fmt.Errorf("import row missing identity")
 		}
-		var id SetID
-		var oldExample string
-		err = tx.QueryRowContext(ctx, "SELECT id,example FROM sets WHERE import_key=?", d.ImportKey).Scan(&id, &oldExample)
+		old, lookupErr := scanSet(tx.QueryRowContext(ctx, "SELECT "+setColumns+" FROM sets WHERE import_key=?", d.ImportKey))
+		err = lookupErr
 		if err != nil && err != sql.ErrNoRows {
 			return report, err
 		}
-		if err == sql.ErrNoRows {
+		id := old.ID
+		isNew := err == sql.ErrNoRows
+		if isNew {
 			result, e := tx.ExecContext(ctx, `INSERT INTO sets(title,group_name,date,source,example,notes,raw_date,raw_cells,import_key,import_warning,origin) VALUES(?,?,?,?,?,?,?,?,?,?,'sheet')`, d.Title, d.Group, d.Date, d.Source, d.Example, d.Notes, d.RawDate, d.RawCells, d.ImportKey, d.ImportWarning)
 			if e != nil {
 				return report, e
@@ -73,13 +83,21 @@ func (s *Store) Import(ctx context.Context, drafts []SetDraft) (ImportReport, er
 			}
 			id = SetID(n)
 			report.Created++
+			report.Changes = append(report.Changes, ImportChange{ID: id, Kind: "new", After: d})
 		} else {
+			old.ImportKey = d.ImportKey
 			_, err = tx.ExecContext(ctx, `UPDATE sets SET title=?,group_name=?,date=?,source=?,example=?,notes=?,raw_date=?,raw_cells=?,import_warning=? WHERE id=?`, d.Title, d.Group, d.Date, d.Source, d.Example, d.Notes, d.RawDate, d.RawCells, d.ImportWarning, id)
 			if err != nil {
 				return report, err
 			}
 			report.Updated++
-			if oldExample != d.Example {
+			if old.SetDraft != d {
+				report.Changed++
+				report.Changes = append(report.Changes, ImportChange{ID: id, Kind: "updated", Before: &old.SetDraft, After: d})
+			} else {
+				report.Unchanged++
+			}
+			if old.Example != d.Example {
 				if _, err = tx.ExecContext(ctx, "DELETE FROM images WHERE set_id=?", id); err != nil {
 					return report, err
 				}
@@ -88,6 +106,9 @@ func (s *Store) Import(ctx context.Context, drafts []SetDraft) (ImportReport, er
 				}
 			}
 		}
+		if (isNew || old.Example != d.Example) && strings.HasPrefix(d.Example, "https://") {
+			report.ScanCandidates = append(report.ScanCandidates, id)
+		}
 		var count int
 		if err = tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM images WHERE set_id=?", id).Scan(&count); err != nil {
 			return report, err
@@ -95,6 +116,9 @@ func (s *Store) Import(ctx context.Context, drafts []SetDraft) (ImportReport, er
 		if count < MinSetImages {
 			report.Candidates = append(report.Candidates, id)
 		}
+	}
+	if preview {
+		return report, nil
 	}
 	return report, tx.Commit()
 }
