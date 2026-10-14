@@ -15,6 +15,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const MaxUploadImageBytes = 15 << 20
+
 func Router(store *Store, token string) *gin.Engine {
 	r := gin.New()
 	r.Use(gin.Recovery())
@@ -124,7 +126,7 @@ func Router(store *Store, token string) *gin.Engine {
 			return
 		}
 		c.Header("Cache-Control", "no-store")
-		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 64<<20)
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 80<<20)
 		c.Next()
 	})
 	admin.GET("/ingestion", func(c *gin.Context) {
@@ -200,8 +202,8 @@ func Router(store *Store, token string) *gin.Engine {
 		}
 		rasters := []Raster{}
 		for _, f := range files {
-			if f.Size > MaxImageBytes {
-				c.JSON(400, gin.H{"error": "each image must be at most 12 MiB"})
+			if f.Size > MaxUploadImageBytes {
+				c.JSON(400, gin.H{"error": "each image must be at most 15 MiB"})
 				return
 			}
 			reader, err := f.Open()
@@ -209,9 +211,9 @@ func Router(store *Store, token string) *gin.Engine {
 				c.JSON(400, gin.H{"error": "cannot read uploaded file"})
 				return
 			}
-			b, err := io.ReadAll(io.LimitReader(reader, MaxImageBytes+1))
+			b, err := io.ReadAll(io.LimitReader(reader, MaxUploadImageBytes+1))
 			reader.Close()
-			if err != nil || len(b) > MaxImageBytes {
+			if err != nil || len(b) > MaxUploadImageBytes {
 				c.JSON(400, gin.H{"error": "cannot read uploaded image"})
 				return
 			}
