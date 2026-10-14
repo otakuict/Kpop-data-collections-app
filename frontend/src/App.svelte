@@ -68,7 +68,7 @@
 <svelte:head><title>BIAS — Your bias. In focus.</title></svelte:head>
 
 <header class="topbar">
- <a class="brand" href="/" aria-label="BIAS home"><span class="brand-mark"><Asterisk size={27} strokeWidth={2.6}/></span>BIAS<span class="brand-dot">®</span></a>
+ <a class="brand" href="/" aria-label="BIAS home"><span class="brand-mark"><Asterisk size={27} strokeWidth={2.6}/></span>Kpop Data<span class="brand-dot">®</span></a>
  <nav aria-label="Main navigation"><button class:active={by==='none'} onclick={()=>{by='none';reset();}}>Discover</button><button class:active={by==='group'} onclick={()=>by='group'}>Collections</button><button onclick={()=>about=true}>About the archive</button></nav>
  <a class="office-link" href={backoffice} target="_blank" rel="noreferrer">Back office <ArrowUpRight size={15}/></a>
 </header>
