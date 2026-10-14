@@ -99,6 +99,8 @@ jobs:
           IMAGE_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
+          GH_TOKEN="$(printf '%s' "$GH_TOKEN" | tr -d '[:space:]')"
+          export GH_TOKEN
           test -n "$GH_TOKEN"
           jq -n --arg sha "$IMAGE_SHA" \
             '{event_type: "image-published", client_payload: {application: "bias-archive-backoffice", sha: $sha}}' \
