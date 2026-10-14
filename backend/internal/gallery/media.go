@@ -341,6 +341,9 @@ func NormalizeImage(b []byte, source string) (Raster, error) {
 		draw.CatmullRom.Scale(scaled, scaled.Bounds(), img, img.Bounds(), draw.Over, nil)
 		img = scaled
 	}
+	if format == "jpeg" {
+		img = orientImage(img, jpegOrientation(b))
+	}
 	var out bytes.Buffer
 	if err = jpeg.Encode(&out, img, &jpeg.Options{Quality: 82}); err != nil {
 		return Raster{}, err

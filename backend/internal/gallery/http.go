@@ -235,6 +235,27 @@ func Router(store *Store, token string) *gin.Engine {
 		}
 		c.JSON(200, x)
 	})
+	admin.POST("/sets/:id/images/:imageID/rotate", func(c *gin.Context) {
+		id, ok := parseID(c)
+		if !ok {
+			return
+		}
+		imageID, err := strconv.ParseInt(c.Param("imageID"), 10, 64)
+		if err != nil || imageID <= 0 {
+			c.JSON(400, gin.H{"error": "invalid image ID"})
+			return
+		}
+		if err := store.RotateImage(c.Request.Context(), id, ImageID(imageID)); err != nil {
+			fail(c, err)
+			return
+		}
+		x, err := store.Get(c.Request.Context(), id)
+		if err != nil {
+			fail(c, err)
+			return
+		}
+		c.JSON(200, x)
+	})
 	importSheet := func(preview bool) gin.HandlerFunc {
 		return func(c *gin.Context) {
 			var sheetURL string

@@ -132,17 +132,18 @@ func scanSet(row interface{ Scan(...any) error }) (Set, error) {
 	return x, err
 }
 func (s *Store) attach(ctx context.Context, x *Set) error {
-	rows, err := s.db.QueryContext(ctx, "SELECT id,source_url FROM images WHERE set_id=? ORDER BY id", x.ID)
+	rows, err := s.db.QueryContext(ctx, "SELECT id,source_url,hash FROM images WHERE set_id=? ORDER BY id", x.ID)
 	if err != nil {
 		return err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var img Image
-		if err := rows.Scan(&img.ID, &img.SourceURL); err != nil {
+		var hash string
+		if err := rows.Scan(&img.ID, &img.SourceURL, &hash); err != nil {
 			return err
 		}
-		img.URL = fmt.Sprintf("/api/images/%d", img.ID)
+		img.URL = fmt.Sprintf("/api/images/%d?v=%s", img.ID, hash[:12])
 		x.Images = append(x.Images, img)
 	}
 	return rows.Err()

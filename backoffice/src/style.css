@@ -55,6 +55,9 @@ input[readonly]{background:#14263b;color:#b4c2d2}
 .alert.error{background:#2a2324;border-color:#67463f;color:#f2c294}
 .alert.success{background:#113539;border-color:#2d7379;color:#a4e9e9}
 .upload-label{background:#10243b;border-color:#3b7594}
+.stored-images{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:10px;margin:15px 0}
+.stored-images img{display:block;width:100%;aspect-ratio:4/5;object-fit:cover;border-radius:4px}
+.stored-images button{width:100%;margin-top:5px;padding:5px 2px;font-size:10px;color:var(--forest)}
 .icon-btn:hover:not(:disabled),.pagination button:hover:not(:disabled){background:#193850;border-color:#4f94b7;color:var(--highlight)}
 .review-table{scrollbar-color:#436584 #0c1726}
 .review-table th{background:#173047;color:#e1eef9}
