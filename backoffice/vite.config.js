@@ -10,6 +10,7 @@ const proxy = {
 
 export default defineConfig({
   plugins: [svelte()],
+  base: process.env.VITE_BASE_PATH || '/',
   server: {
     proxy,
     watch: {

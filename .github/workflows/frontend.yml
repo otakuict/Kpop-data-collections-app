@@ -61,7 +61,7 @@ jobs:
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
   deploy:
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.DEPLOYMENT_MODE != 'gitops'
     needs: image
     runs-on: [self-hosted, linux, x64, production]
     timeout-minutes: 15
@@ -83,3 +83,19 @@ jobs:
           BACKOFFICE_PORT: ${{ vars.BACKOFFICE_PORT }}
           SHA: ${{ github.sha }}
         run: bash scripts/deploy-server.sh frontend "$SHA"
+  gitops:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.DEPLOYMENT_MODE == 'gitops'
+    needs: image
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Request a DevOps image update pull request
+        env:
+          GH_TOKEN: ${{ secrets.GITOPS_DISPATCH_TOKEN }}
+          IMAGE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          test -n "$GH_TOKEN"
+          jq -n --arg sha "$IMAGE_SHA" \
+            '{event_type: "image-published", client_payload: {application: "bias-archive-frontend", sha: $sha}}' \
+            | gh api --method POST repos/otakuict/private-server-devops/dispatches --input -
