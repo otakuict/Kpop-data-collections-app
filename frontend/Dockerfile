@@ -10,6 +10,8 @@ ENV VITE_BACKOFFICE_URL=$VITE_BACKOFFICE_URL
 RUN npm run build --workspace frontend
 FROM nginx:1.28-alpine
 COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
+COPY scripts/configure-nginx-resolver.sh /docker-entrypoint.d/15-configure-nginx-resolver.sh
+RUN chmod 755 /docker-entrypoint.d/15-configure-nginx-resolver.sh
 COPY --from=build /app/frontend/dist /usr/share/nginx/html
 EXPOSE 80
 HEALTHCHECK --interval=15s --timeout=5s --start-period=10s CMD wget -q -O /dev/null http://127.0.0.1/api/health || exit 1

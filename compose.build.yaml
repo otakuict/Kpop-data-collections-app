@@ -32,6 +32,7 @@ services:
       dockerfile: backoffice/Dockerfile
       args:
         VITE_GALLERY_URL: http://localhost:${GALLERY_PORT:-5173}
+        VITE_BASE_PATH: /backoffice/
     ports:
       - "127.0.0.1:${BACKOFFICE_PORT:-5174}:80"
     depends_on:

@@ -28,6 +28,8 @@ jobs:
       - run: npm run check --workspace backoffice
       - run: node --test scripts/release-workflow.test.mjs scripts/sheet-scan.test.mjs
       - run: npm run build --workspace backoffice
+        env:
+          VITE_BASE_PATH: /backoffice/
   image:
     needs: verify
     runs-on: ubuntu-latest
@@ -57,11 +59,13 @@ jobs:
           tags: |
             ${{ env.DOCKERHUB_IMAGE }}:${{ github.sha }}
             ${{ env.DOCKERHUB_IMAGE }}:latest
-          build-args: VITE_GALLERY_URL=${{ vars.VITE_GALLERY_URL || 'http://localhost:5173' }}
+          build-args: |
+            VITE_GALLERY_URL=${{ vars.VITE_GALLERY_URL || 'http://localhost:5173' }}
+            VITE_BASE_PATH=${{ vars.DEPLOYMENT_MODE == 'gitops' && '/backoffice/' || '/' }}
           cache-from: type=gha,scope=backoffice
           cache-to: type=gha,mode=max,scope=backoffice
   deploy:
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.DEPLOYMENT_MODE != 'gitops'
     needs: image
     runs-on: [self-hosted, linux, x64, production]
     timeout-minutes: 15
@@ -83,3 +87,19 @@ jobs:
           BACKOFFICE_PORT: ${{ vars.BACKOFFICE_PORT }}
           SHA: ${{ github.sha }}
         run: bash scripts/deploy-server.sh backoffice "$SHA"
+  gitops:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.DEPLOYMENT_MODE == 'gitops'
+    needs: image
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Request a DevOps image update pull request
+        env:
+          GH_TOKEN: ${{ secrets.GITOPS_DISPATCH_TOKEN }}
+          IMAGE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          test -n "$GH_TOKEN"
+          jq -n --arg sha "$IMAGE_SHA" \
+            '{event_type: "image-published", client_payload: {application: "bias-archive-backoffice", sha: $sha}}' \
+            | gh api --method POST repos/otakuict/private-server-devops/dispatches --input -

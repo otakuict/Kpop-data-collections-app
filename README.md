@@ -1,5 +1,7 @@
 # BIAS — K-pop image archive
 
+K3s/Argo CD onboarding and the one-hostname `/backoffice/` route are described in [docs/GITOPS.md](docs/GITOPS.md). The production manifests start with zero replicas until the administrator Secret, SQLite PVC, and images are checked.
+
 เว็บ gallery พร้อม API และ back-office ใน monorepo เดียว ใช้ Svelte 5 + Vite, Go/Gin, SQLite และ Docker โดย SQLite เก็บทั้ง metadata และรูป preview แบบ BLOB
 
 ## พัฒนาด้วย Docker (live reload)

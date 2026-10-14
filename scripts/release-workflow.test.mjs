@@ -121,3 +121,13 @@ test('release compose accepts separate service tags and preserves the project an
   assert.ok(compose.includes('gallery-data:/data'));
   assert.ok(!compose.includes('8080:8080'));
 });
+
+test('each published service deploys through exactly one selected mode', () => {
+  for (const service of ['backend', 'frontend', 'backoffice']) {
+    const workflow = readFileSync(join(root, `.github/workflows/${service}.yml`), 'utf8');
+    assert.match(workflow, /deploy:\r?\n    if: .*vars\.DEPLOYMENT_MODE != 'gitops'/);
+    assert.match(workflow, /gitops:\r?\n    if: .*vars\.DEPLOYMENT_MODE == 'gitops'/);
+    assert.ok(workflow.includes(`application: "bias-archive-${service}"`));
+    assert.ok(workflow.includes('secrets.GITOPS_DISPATCH_TOKEN'));
+  }
+});
