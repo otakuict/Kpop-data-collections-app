@@ -27,7 +27,7 @@ docker compose -f compose.build.yaml up -d --build
 - Back-office: http://localhost:5174
 - API health: http://localhost:8080/api/health
 
-เข้า back-office ด้วยค่า `ADMIN_TOKEN` ใน `.env` ซึ่งสคริปต์สร้างแบบสุ่มให้ ค่านี้ใช้เฉพาะฝั่ง server และเก็บใน memory ของ browser หลัง sign in; refresh/ปิดแท็บแล้วต้อง sign in ใหม่ `.env` ไม่ถูก commit หรือใส่ Docker image
+เข้า back-office ด้วยค่า `ADMIN_TOKEN` ใน `.env` ซึ่งสคริปต์สร้างแบบสุ่มให้ ค่านี้ใช้เฉพาะฝั่ง server หลัง sign in ระบบแลกเป็น JWT อายุ 24 ชั่วโมงและเก็บ JWT ใน `sessionStorage` ของแท็บนั้น จึง refresh ได้โดยไม่ต้อง sign in ใหม่; sign out จะล้าง JWT และเมื่อหมดอายุต้อง sign in ใหม่ `.env` ไม่ถูก commit หรือใส่ Docker image
 
 API เป็นผู้เขียน SQLite เพียง service เดียว ข้อมูลอยู่ใน named volume `gallery-data` และคงอยู่หลัง restart/rebuild ใช้ `docker compose down` เพื่อหยุดโดยเก็บข้อมูลไว้
 
@@ -129,14 +129,15 @@ docs/design/              สอง design candidates, cross-judge และแ�
 | `GET /api/images/:id` | JPEG BLOB จาก SQLite |
 | `GET /api/health` | Readiness ของ API + database |
 | `GET /api/admin/ingestion` | Gank policy, remaining budget and cooldown |
-| `GET /api/admin/status` | ตรวจ bearer token |
+| `POST /api/admin/session` | แลก `ADMIN_TOKEN` เป็น JWT อายุ 24 ชั่วโมง |
+| `GET /api/admin/status` | ตรวจ bearer token หรือ JWT |
 | `POST /api/admin/sets` / `PUT /api/admin/sets/:id` | เพิ่ม/แก้ไข metadata JSON |
 | `POST /api/admin/sets/:id/images` | Multipart field `images` |
 | `POST /api/admin/sets/:id/extract` | Extract images up to 5 (`?target=2` for bulk filling) |
 | `POST /api/admin/import/preview` | JSON `sheetUrl` หรือ multipart CSV; dry-run report + exact CSV snapshot, ไม่บันทึกข้อมูล |
 | `POST /api/admin/import` | JSON `sheetUrl` หรือ multipart `csv` + `sheetUrl` |
 
-Admin endpoints ใช้ `Authorization: Bearer <ADMIN_TOKEN>` Server ปฏิเสธ token ที่สั้นกว่า 24 ตัวอักษร Remote fetch รับเฉพาะ public HTTPS, ตรวจ DNS/IP และ redirect, ปฏิเสธ private/loopback/link-local/reserved addresses, จำกัดขนาด/เวลา/MIME/pixel Gallery และ back-office proxy `/api` ผ่าน Vite ในโหมดพัฒนาและ nginx ใน production จึงใช้ same-origin requests
+Admin endpoints ใช้ `Authorization: Bearer <JWT>` จาก back-office หรือ `Authorization: Bearer <ADMIN_TOKEN>` สำหรับการเรียก API โดยตรง Server ปฏิเสธ admin token ที่สั้นกว่า 24 ตัวอักษร Remote fetch รับเฉพาะ public HTTPS, ตรวจ DNS/IP และ redirect, ปฏิเสธ private/loopback/link-local/reserved addresses, จำกัดขนาด/เวลา/MIME/pixel Gallery และ back-office proxy `/api` ผ่าน Vite ในโหมดพัฒนาและ nginx ใน production จึงใช้ same-origin requests
 
 ## Local development โดยไม่ใช้ Docker
 

@@ -1,10 +1,88 @@
 package gallery
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
+	"net/url"
 	"regexp"
 	"strings"
 )
+
+var gankServiceSlugPattern = regexp.MustCompile(`^[0-9]+-[A-Za-z0-9-]{1,200}$`)
+
+func gankServiceSlug(raw string) (string, bool) {
+	u, err := ParseRemoteURL(raw)
+	if err != nil {
+		return "", false
+	}
+	host := strings.TrimSuffix(strings.ToLower(u.Hostname()), ".")
+	if host != "ganknow.com" && host != "www.ganknow.com" {
+		return "", false
+	}
+	if !strings.HasPrefix(u.Path, "/services/") {
+		return "", false
+	}
+	slug := strings.TrimSuffix(strings.TrimPrefix(u.Path, "/services/"), "/")
+	return slug, gankServiceSlugPattern.MatchString(slug)
+}
+
+// Gank's service page loads its gallery from the listing API after the initial HTML response.
+func fetchGankServiceImages(ctx context.Context, store *Store, slug string) ([]string, error) {
+	base := "https://api.ganknow.com/v1/catalogs/services/slug/" + url.PathEscape(slug)
+	b, _, err := fetchDocument(ctx, store, base)
+	if err != nil {
+		var status *sourceStatusError
+		if !errors.As(err, &status) || status.Code != 404 {
+			return nil, err
+		}
+		b, _, err = fetchDocument(ctx, store, base+"/old")
+		if err != nil {
+			return nil, err
+		}
+	}
+	urls, err := gankServiceImages(b)
+	if err != nil {
+		return nil, fmt.Errorf("invalid Gank service data: %w", err)
+	}
+	return urls, nil
+}
+
+func gankServiceImages(b []byte) ([]string, error) {
+	var response struct {
+		Data struct {
+			Media []struct {
+				Type   string `json:"type"`
+				Active *bool  `json:"isActive"`
+				URL    string `json:"url"`
+			} `json:"media"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(b, &response); err != nil {
+		return nil, err
+	}
+	urls := []string{}
+	seen := map[string]bool{}
+	for _, media := range response.Data.Media {
+		if media.Type != "image" || media.Active != nil && !*media.Active {
+			continue
+		}
+		u, err := ParseRemoteURL(media.URL)
+		if err != nil {
+			continue
+		}
+		host := strings.TrimSuffix(strings.ToLower(u.Hostname()), ".")
+		if host != "lh3.googleusercontent.com" && (host != "media.ganknow.com" || !strings.HasPrefix(u.Path, "/public/")) {
+			continue
+		}
+		if !seen[u.String()] {
+			seen[u.String()] = true
+			urls = append(urls, u.String())
+		}
+	}
+	return urls, nil
+}
 
 var nuxtCall = regexp.MustCompile(`(?s)window\.__NUXT__\s*=\s*\(function\(([^)]*)\)\s*\{.*\}\s*\((.*)\)\s*\);?\s*$`)
 var nuxtPost = regexp.MustCompile(`(?s)\bpost\s*:\s*\{\s*id\s*:\s*([^,{}]+),(.*?)\bpostMedia\s*:\s*\[([^\]]*)\]`)

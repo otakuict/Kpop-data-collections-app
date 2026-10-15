@@ -2,7 +2,6 @@ package gallery
 
 import (
 	"bytes"
-	"crypto/subtle"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -19,6 +18,7 @@ const MaxUploadImageBytes = 15 << 20
 
 func Router(store *Store, token string) *gin.Engine {
 	r := gin.New()
+	presence := newPresenceTracker()
 	r.Use(gin.Recovery())
 	r.SetTrustedProxies(nil)
 	r.Use(func(c *gin.Context) {
@@ -58,6 +58,7 @@ func Router(store *Store, token string) *gin.Engine {
 		}
 		c.JSON(200, gin.H{"status": "ok"})
 	})
+	r.POST("/api/presence", presence.heartbeat)
 	r.GET("/api/facets", func(c *gin.Context) {
 		f, err := store.Facets(c.Request.Context())
 		if err != nil {
@@ -118,10 +119,18 @@ func Router(store *Store, token string) *gin.Engine {
 		c.Header("Cache-Control", "public, max-age=86400")
 		c.Data(200, mime, b)
 	})
+	r.POST("/api/admin/session", func(c *gin.Context) {
+		c.Header("Cache-Control", "no-store")
+		if !validAdminToken(adminBearer(c.GetHeader("Authorization")), token) {
+			c.JSON(401, gin.H{"error": "A valid administrator token is required"})
+			return
+		}
+		c.JSON(200, gin.H{"token": issueAdminJWT(token, time.Now()), "expiresIn": int(adminSessionLifetime.Seconds())})
+	})
 	admin := r.Group("/api/admin")
 	admin.Use(func(c *gin.Context) {
-		supplied := strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer ")
-		if len(token) < 24 || subtle.ConstantTimeCompare([]byte(supplied), []byte(token)) != 1 {
+		supplied := adminBearer(c.GetHeader("Authorization"))
+		if !validAdminToken(supplied, token) && !validAdminJWT(supplied, token, time.Now()) {
 			c.AbortWithStatusJSON(401, gin.H{"error": "A valid administrator token is required"})
 			return
 		}

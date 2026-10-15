@@ -8,6 +8,19 @@ const token=process.env.E2E_ADMIN_TOKEN||'e2e-only-administrator-token-24chars';
 
 async function signIn(page){await page.goto(office);await page.getByLabel('Administrator token').fill(token);await page.getByRole('button',{name:'Open the workspace'}).click();await expect(page.getByRole('heading',{name:'The back office.'})).toBeVisible();}
 
+test('back-office keeps its JWT after refresh and clears it on sign out',async({page})=>{
+ await signIn(page);
+ const jwt=await page.evaluate(()=>sessionStorage.getItem('bias.admin.jwt.v1'));
+ expect(jwt).toMatch(/^eyJ/);
+ expect(jwt).not.toBe(token);
+ await page.reload();
+ await expect(page.getByRole('heading',{name:'The back office.'})).toBeVisible();
+ await page.getByRole('button',{name:'Sign out'}).click();
+ expect(await page.evaluate(()=>sessionStorage.getItem('bias.admin.jwt.v1'))).toBeNull();
+ await page.reload();
+ await expect(page.getByLabel('Administrator token')).toBeVisible();
+});
+
 test('gallery filters real seed records, groups dates, opens details, and handles empty results',async({page},testInfo)=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('/');
  await expect(page.locator('.gallery-card')).toHaveCount(24);await expect(page.getByRole('region',{name:'Archive introduction'}).getByRole('heading',{level:1})).toBeVisible();

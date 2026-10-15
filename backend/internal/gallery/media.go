@@ -385,16 +385,25 @@ func ExtractTo(ctx context.Context, store *Store, id SetID, target int) (Set, er
 	if !strings.HasPrefix(x.Example, "https://") {
 		return outcome("missing", "No public example URL in source row; upload 2–5 images manually")
 	}
-	b, mime, err := fetchDocument(ctx, store, x.Example)
+	var b []byte
+	var mime string
+	var urls []string
+	if slug, service := gankServiceSlug(x.Example); service {
+		urls, err = fetchGankServiceImages(ctx, store, slug)
+	} else {
+		b, mime, err = fetchDocument(ctx, store, x.Example)
+		if err == nil {
+			urls = []string{x.Example}
+			if !strings.HasPrefix(mime, "image/") {
+				urls = ExtractImages(string(b), x.Example)
+			}
+		}
+	}
 	if err != nil {
 		return failure(err)
 	}
-	urls := []string{x.Example}
-	if !strings.HasPrefix(mime, "image/") {
-		urls = ExtractImages(string(b), x.Example)
-	}
 	if len(urls) == 0 {
-		return outcome("failed", "No public post images found; upload 2–5 images manually")
+		return outcome("failed", "No public images found; upload 2–5 images manually")
 	}
 	existing := map[string]bool{}
 	for _, img := range x.Images {

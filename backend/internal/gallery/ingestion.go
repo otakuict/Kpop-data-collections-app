@@ -222,6 +222,10 @@ type remoteBody struct {
 	once    sync.Once
 }
 
+type sourceStatusError struct{ Code int }
+
+func (e *sourceStatusError) Error() string { return fmt.Sprintf("source returned HTTP %d", e.Code) }
+
 func (b *remoteBody) Close() error { err := b.ReadCloser.Close(); b.once.Do(b.release); return err }
 
 type remoteTransport struct {
@@ -291,7 +295,7 @@ func fetchStored(ctx context.Context, store *Store, raw string, max int64) ([]by
 	}
 	defer response.Body.Close()
 	if response.StatusCode != 200 {
-		return nil, "", fmt.Errorf("source returned HTTP %d", response.StatusCode)
+		return nil, "", &sourceStatusError{Code: response.StatusCode}
 	}
 	b, err := io.ReadAll(io.LimitReader(response.Body, max+1))
 	if err != nil {

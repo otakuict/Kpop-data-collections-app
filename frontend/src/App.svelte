@@ -13,6 +13,7 @@
  let by=$state('none'), page=$state(0), items=$state([]), total=$state(0), facets=$state({groups:[],total:0,ready:0});
  let loading=$state(true), error=$state(''), mounted=$state(false), selected=$state(null), imageIndex=$state(0), about=$state(false), filtersOpen=$state(false);
  let loadingMore=$state(false), moreError=$state('');
+ let online=$state(null);
  let view=$state(initial.get('view')==='table'?'table':'cards'), guide=$state(false), guideHidden=$state(false);
  let activeRequest, timer, queryVersion=0;
  const sections=$derived(groupSets(items,by));
@@ -47,7 +48,23 @@
   const query=queryString({q,group,from,to,sort,view:view==='table'?'table':''});
   if(mounted)window.history.replaceState(null,'',`${window.location.pathname}${query?`?${query}`:''}${window.location.hash}`);
  });
- onMount(()=>{guideHidden=!shouldShowGuide();guide=!guideHidden;mounted=true;json('/api/facets').then(result=>facets=result).catch(()=>{});return()=>activeRequest?.abort();});
+ onMount(()=>{
+  guideHidden=!shouldShowGuide();guide=!guideHidden;mounted=true;
+  json('/api/facets').then(result=>facets=result).catch(()=>{});
+  async function heartbeat(){
+   if(document.hidden)return;
+   try{
+    const response=await fetch('/api/presence',{method:'POST',cache:'no-store'});
+    if(!response.ok)throw new Error('Presence unavailable');
+    online=(await response.json()).online;
+   }catch{online=null;}
+  }
+  function visible(){if(!document.hidden)heartbeat();}
+  heartbeat();
+  const interval=setInterval(heartbeat,20000);
+  document.addEventListener('visibilitychange',visible);
+  return()=>{activeRequest?.abort();clearInterval(interval);document.removeEventListener('visibilitychange',visible);};
+ });
  function loadMore(){if(!loading&&!loadingMore&&!error&&!moreError&&items.length<total)load({q,group,from,to,sort},page+1);}
  function infiniteScroll(node){
   const observer=new IntersectionObserver(entries=>{if(entries.some(entry=>entry.isIntersecting))loadMore();},{rootMargin:'400px 0px'});
@@ -79,7 +96,7 @@
    <h1>OTAKU ICETEA.<br/><em>Collection.</em><span class="headline-star">✳</span></h1>
    <p>Every stage. Every era. A little closer.<br/>Explore a growing collection of K-pop image sets.</p>
    <a href="#collection" class="explore-link">Explore the archive <ArrowRight size={18}/></a>
-   <div class="hero-stats"><div><strong>{facets.total || '—'}</strong><span>IMAGE SETS</span></div><div><strong>{facets.groups.length || '—'}</strong><span>GROUPS & ARTISTS</span></div><span class="stats-note">Collected with care.<br/>Made to be discovered.</span></div>
+   <div class="hero-stats"><div><strong>{facets.total || '—'}</strong><span>IMAGE SETS</span></div><div><strong>{facets.groups.length || '—'}</strong><span>GROUPS & ARTISTS</span></div><div class="online-stat" role="status" aria-label={online===null?'Online count unavailable':`${online} visitors online now`}><strong><span class="online-dot" class:offline={online===null}></span>{online ?? '—'}</strong><span>ONLINE NOW</span></div></div>
   </div>
   <section class="hero-contact" aria-label="Contact">
    <div class="eyebrow small">LET'S CONNECT</div><h2>Contact<span>.</span></h2>
