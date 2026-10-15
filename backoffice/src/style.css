@@ -64,3 +64,14 @@ input[readonly]{background:#14263b;color:#b4c2d2}
 .import-review .editor-footer{background:var(--surface)}
 dialog{background:var(--surface);border:1px solid #314d6b;box-shadow:0 24px 110px #0009}
 @media(max-width:650px){header{height:72px}.brand{font-size:25px}.brand-mark{width:30px;height:30px}.login-layout{min-height:calc(100vh - 72px)}.catalog-panel th:first-child{width:88px}input,textarea,.group-filter select{font-size:16px}}
+
+.style-fields{border:1px solid var(--line);border-radius:7px;padding:13px 16px;margin:18px 0;color:var(--ink)}
+.style-fields legend{font-size:11px;font-weight:650;padding:0 6px}
+.card-color-control{display:flex;align-items:center;gap:12px;font-size:10px;margin:5px 0 12px}
+.card-color-control label{margin:0}
+.card-color-control input{width:42px;height:36px;padding:2px;margin:0;cursor:pointer;flex-shrink:0}
+.card-color-control span{color:var(--muted);margin-right:auto}
+.style-check{display:flex;align-items:flex-start;gap:10px;margin:10px 0;cursor:pointer}
+.style-check input{width:17px;height:17px;margin:0;accent-color:#5fd2ef;flex-shrink:0}
+.style-check span{font-size:11px}
+.style-check small{margin-top:2px}

@@ -31,13 +31,37 @@ type Image struct {
 	SourceURL string  `json:"sourceUrl"`
 }
 
+// SetStyle is stored as JSON so card presentation can grow without new columns.
+type SetStyle struct {
+	Color    string `json:"color"`
+	Wishlist bool   `json:"wishlist"`
+	New      bool   `json:"new"`
+}
+
+func (s *SetStyle) Validate() error {
+	if s.Color == "" {
+		return nil
+	}
+	if len(s.Color) != 7 || s.Color[0] != '#' {
+		return fmt.Errorf("card color must be a six-digit hex color")
+	}
+	for _, c := range s.Color[1:] {
+		if !strings.ContainsRune("0123456789abcdefABCDEF", c) {
+			return fmt.Errorf("card color must be a six-digit hex color")
+		}
+	}
+	s.Color = strings.ToLower(s.Color)
+	return nil
+}
+
 type Set struct {
 	ID SetID `json:"id"`
 	SetDraft
-	Origin     string  `json:"origin"`
-	ImageState string  `json:"imageState"`
-	ImageError string  `json:"imageError"`
-	Images     []Image `json:"images"`
+	Style      SetStyle `json:"style"`
+	Origin     string   `json:"origin"`
+	ImageState string   `json:"imageState"`
+	ImageError string   `json:"imageError"`
+	Images     []Image  `json:"images"`
 }
 
 type Filter struct {

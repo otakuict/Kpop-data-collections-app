@@ -148,17 +148,26 @@ func Router(store *Store, token string) *gin.Engine {
 	})
 	admin.GET("/status", func(c *gin.Context) { c.JSON(200, gin.H{"authenticated": true}) })
 	save := func(c *gin.Context, id SetID) {
-		var d SetDraft
+		var payload struct {
+			SetDraft
+			Style *SetStyle `json:"style"`
+		}
 		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 64<<10)
-		if err := c.ShouldBindJSON(&d); err != nil {
+		if err := c.ShouldBindJSON(&payload); err != nil {
 			c.JSON(400, gin.H{"error": "invalid metadata JSON"})
 			return
 		}
-		if err := d.Validate(); err != nil {
+		if err := payload.SetDraft.Validate(); err != nil {
 			c.JSON(400, gin.H{"error": err.Error()})
 			return
 		}
-		x, err := store.Save(c.Request.Context(), id, d)
+		if payload.Style != nil {
+			if err := payload.Style.Validate(); err != nil {
+				c.JSON(400, gin.H{"error": err.Error()})
+				return
+			}
+		}
+		x, err := store.SaveStyled(c.Request.Context(), id, payload.SetDraft, payload.Style)
 		if err != nil {
 			fail(c, err)
 			return

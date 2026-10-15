@@ -2,10 +2,70 @@ package gallery
 
 import (
 	"context"
+	"database/sql"
 	"path/filepath"
 	"strings"
 	"testing"
 )
+
+func TestSetStyleMigrationAndImportPreservesEdits(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "legacy.sqlite")
+	legacy, err := sql.Open("sqlite3", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = legacy.Exec(`CREATE TABLE sets (id INTEGER PRIMARY KEY, title TEXT NOT NULL, group_name TEXT NOT NULL, date TEXT NOT NULL DEFAULT '', source TEXT NOT NULL DEFAULT '', example TEXT NOT NULL DEFAULT '', notes TEXT NOT NULL DEFAULT '', raw_date TEXT NOT NULL DEFAULT '', raw_cells TEXT NOT NULL DEFAULT '{}', import_key TEXT UNIQUE, import_warning TEXT NOT NULL DEFAULT '', origin TEXT NOT NULL DEFAULT 'manual', image_state TEXT NOT NULL DEFAULT 'pending', image_error TEXT NOT NULL DEFAULT ''); INSERT INTO sets(title,group_name) VALUES('Existing','aespa');`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	legacy.Close()
+	s, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	ctx := context.Background()
+	existing, err := s.Get(ctx, 1)
+	if err != nil || existing.Style.New || existing.Style.Wishlist || existing.Style.Color != "" {
+		t.Fatalf("legacy style: %#v, %v", existing.Style, err)
+	}
+	created, err := s.SaveStyled(ctx, 0, SetDraft{Title: "New set", Group: "aespa"}, &SetStyle{New: true, Wishlist: true, Color: "#AABBCC"})
+	if err != nil || !created.Style.New || !created.Style.Wishlist || created.Style.Color != "#aabbcc" {
+		t.Fatalf("created style: %#v, %v", created.Style, err)
+	}
+	_, err = s.Save(ctx, created.ID, SetDraft{Title: "Renamed", Group: "aespa"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	created, err = s.Get(ctx, created.ID)
+	if err != nil || !created.Style.Wishlist || created.Style.Color != "#aabbcc" {
+		t.Fatalf("metadata edit lost style: %#v, %v", created.Style, err)
+	}
+	if _, err = s.SaveStyled(ctx, created.ID, SetDraft{Title: "Bad", Group: "aespa"}, &SetStyle{Color: "red"}); err == nil {
+		t.Fatal("invalid card color accepted")
+	}
+	drafts := []SetDraft{{Title: "Imported", Group: "IVE", ImportKey: "sheet:1"}}
+	report, err := s.Import(ctx, drafts)
+	if err != nil || report.Created != 1 {
+		t.Fatalf("import: %#v, %v", report, err)
+	}
+	imported, err := s.Get(ctx, report.Candidates[0])
+	if err != nil || !imported.Style.New {
+		t.Fatalf("new import style: %#v, %v", imported.Style, err)
+	}
+	_, err = s.SaveStyled(ctx, imported.ID, SetDraft{Title: imported.Title, Group: imported.Group}, &SetStyle{Wishlist: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = s.Import(ctx, drafts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	imported, err = s.Get(ctx, imported.ID)
+	if err != nil || imported.Style.New || !imported.Style.Wishlist {
+		t.Fatalf("reimport replaced card style: %#v, %v", imported.Style, err)
+	}
+}
 
 func TestExtractionCannotAttachImageFromChangedExample(t *testing.T) {
 	s, err := Open(filepath.Join(t.TempDir(), "test.sqlite"))

@@ -25,9 +25,14 @@ dialog::backdrop{background:#00000066;backdrop-filter:blur(3px)}
 .hero{background:radial-gradient(ellipse at 80% 40%,#16385b55,transparent 65%)}.hero-contact{background:linear-gradient(145deg,#12263d,#101a2b);border-color:#294765;box-shadow:0 18px 50px #02081440}.explore-link{color:var(--highlight);border-color:#387792}.group-list button.chosen{box-shadow:inset 3px 0 0 var(--accent)}.search-box:focus-within{border-color:var(--accent);box-shadow:0 0 0 2px #5fd2ef14}.group-tag{background:#10243b;border-color:#29506e;color:#b7d9f2}
 
 .card-stage{position:relative;min-width:0}
-.gallery-card{position:relative;padding:8px;border:1px solid #23374c;border-radius:12px;background:#101b2b;transform:var(--card-transform,none);box-shadow:0 5px 18px #00000026;transition:box-shadow .25s,border-color .25s}
+.gallery-card{position:relative;padding:8px;border:1px solid #23374c;border-radius:12px;overflow:hidden;background:#101b2b;transform:var(--card-transform,none);box-shadow:0 5px 18px #00000026;transition:box-shadow .25s,border-color .25s}
+.gallery-card.custom-color{border-color:var(--card-color);background:color-mix(in srgb,var(--card-color) 16%,#101b2b)}
+.corner-ribbon{position:absolute;z-index:4;top:22px;width:104px;padding:5px 0;text-align:center;text-transform:uppercase;letter-spacing:.8px;font-size:9px;font-weight:750;line-height:1.2;color:#fff;box-shadow:0 2px 7px #0009;pointer-events:none}
+.ribbon-wishlist{left:-26px;transform:rotate(-45deg);background:#268455}
+.ribbon-new{right:-26px;transform:rotate(45deg);background:#c83f49}
 .gallery-card::after{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:radial-gradient(circle 220px at var(--sheen-x,50%) var(--sheen-y,50%),#d9efff66,transparent 80%);opacity:0;transition:opacity .25s}
 .gallery-card.is-floating{border-color:#496c90;box-shadow:0 20px 35px #0007,0 0 20px #5fd2ef0d}
+.gallery-card.custom-color.is-floating{border-color:var(--card-color)}
 .gallery-card.is-floating::after{opacity:.35}
 .card-stage:has(.is-floating){z-index:2}
 .card-meta{padding:13px 3px 5px}

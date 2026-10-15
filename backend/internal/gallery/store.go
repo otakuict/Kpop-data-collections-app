@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -26,7 +27,7 @@ func Open(path string) (*Store, error) {
 	}
 	db.SetMaxOpenConns(1)
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS sets (
- id INTEGER PRIMARY KEY, title TEXT NOT NULL, group_name TEXT NOT NULL, date TEXT NOT NULL DEFAULT '', source TEXT NOT NULL DEFAULT '', example TEXT NOT NULL DEFAULT '', notes TEXT NOT NULL DEFAULT '', raw_date TEXT NOT NULL DEFAULT '', raw_cells TEXT NOT NULL DEFAULT '{}', import_key TEXT UNIQUE, import_warning TEXT NOT NULL DEFAULT '', origin TEXT NOT NULL DEFAULT 'manual', image_state TEXT NOT NULL DEFAULT 'pending', image_error TEXT NOT NULL DEFAULT '');
+ id INTEGER PRIMARY KEY, title TEXT NOT NULL, group_name TEXT NOT NULL, date TEXT NOT NULL DEFAULT '', source TEXT NOT NULL DEFAULT '', example TEXT NOT NULL DEFAULT '', notes TEXT NOT NULL DEFAULT '', raw_date TEXT NOT NULL DEFAULT '', raw_cells TEXT NOT NULL DEFAULT '{}', import_key TEXT UNIQUE, import_warning TEXT NOT NULL DEFAULT '', origin TEXT NOT NULL DEFAULT 'manual', image_state TEXT NOT NULL DEFAULT 'pending', image_error TEXT NOT NULL DEFAULT '', style TEXT NOT NULL DEFAULT '{}');
  CREATE INDEX IF NOT EXISTS sets_group_date ON sets(group_name,date DESC,id);
  CREATE INDEX IF NOT EXISTS sets_date ON sets(date DESC,id);
  CREATE TABLE IF NOT EXISTS images (id INTEGER PRIMARY KEY, set_id INTEGER NOT NULL REFERENCES sets(id) ON DELETE CASCADE, mime TEXT NOT NULL, bytes BLOB NOT NULL, hash TEXT NOT NULL, source_url TEXT NOT NULL DEFAULT '', UNIQUE(set_id,hash));
@@ -37,7 +38,42 @@ func Open(path string) (*Store, error) {
  CREATE TABLE IF NOT EXISTS remote_budgets (host TEXT PRIMARY KEY, max_requests INTEGER NOT NULL, until INTEGER NOT NULL);
  CREATE INDEX IF NOT EXISTS remote_requests_host_time ON remote_requests(host,at);
  CREATE TABLE IF NOT EXISTS page_cache (url TEXT PRIMARY KEY, bytes BLOB NOT NULL, mime TEXT NOT NULL, fetched_at INTEGER NOT NULL);
- PRAGMA user_version=2;`)
+ `)
+	if err != nil {
+		db.Close()
+		return nil, err
+	}
+	var styleColumn int
+	rows, err := db.Query(`PRAGMA table_info(sets)`)
+	if err != nil {
+		db.Close()
+		return nil, err
+	}
+	for rows.Next() {
+		var cid, notNull, primaryKey int
+		var name, kind string
+		var defaultValue sql.NullString
+		if err = rows.Scan(&cid, &name, &kind, &notNull, &defaultValue, &primaryKey); err != nil {
+			break
+		}
+		if name == "style" {
+			styleColumn++
+		}
+	}
+	if err == nil {
+		err = rows.Err()
+	}
+	rows.Close()
+	if err == nil && styleColumn == 0 {
+		_, err = db.Exec(`ALTER TABLE sets ADD COLUMN style TEXT NOT NULL DEFAULT '{}'`)
+	}
+	if err == nil {
+		var version int
+		err = db.QueryRow(`PRAGMA user_version`).Scan(&version)
+		if err == nil && version < 3 {
+			_, err = db.Exec(`PRAGMA user_version=3`)
+		}
+	}
 	if err != nil {
 		db.Close()
 		return nil, err
@@ -73,7 +109,7 @@ func (s *Store) importSheet(ctx context.Context, drafts []SetDraft, preview bool
 		id := old.ID
 		isNew := err == sql.ErrNoRows
 		if isNew {
-			result, e := tx.ExecContext(ctx, `INSERT INTO sets(title,group_name,date,source,example,notes,raw_date,raw_cells,import_key,import_warning,origin) VALUES(?,?,?,?,?,?,?,?,?,?,'sheet')`, d.Title, d.Group, d.Date, d.Source, d.Example, d.Notes, d.RawDate, d.RawCells, d.ImportKey, d.ImportWarning)
+			result, e := tx.ExecContext(ctx, `INSERT INTO sets(title,group_name,date,source,example,notes,raw_date,raw_cells,import_key,import_warning,origin,style) VALUES(?,?,?,?,?,?,?,?,?,?,'sheet',?)`, d.Title, d.Group, d.Date, d.Source, d.Example, d.Notes, d.RawDate, d.RawCells, d.ImportKey, d.ImportWarning, `{"new":true}`)
 			if e != nil {
 				return report, e
 			}
@@ -123,11 +159,15 @@ func (s *Store) importSheet(ctx context.Context, drafts []SetDraft, preview bool
 	return report, tx.Commit()
 }
 
-const setColumns = `id,title,group_name,date,source,example,notes,raw_date,raw_cells,import_warning,origin,image_state,image_error`
+const setColumns = `id,title,group_name,date,source,example,notes,raw_date,raw_cells,import_warning,origin,image_state,image_error,style`
 
 func scanSet(row interface{ Scan(...any) error }) (Set, error) {
 	var x Set
-	err := row.Scan(&x.ID, &x.Title, &x.Group, &x.Date, &x.Source, &x.Example, &x.Notes, &x.RawDate, &x.RawCells, &x.ImportWarning, &x.Origin, &x.ImageState, &x.ImageError)
+	var styleJSON string
+	err := row.Scan(&x.ID, &x.Title, &x.Group, &x.Date, &x.Source, &x.Example, &x.Notes, &x.RawDate, &x.RawCells, &x.ImportWarning, &x.Origin, &x.ImageState, &x.ImageError, &styleJSON)
+	if err == nil {
+		err = json.Unmarshal([]byte(styleJSON), &x.Style)
+	}
 	x.Images = []Image{}
 	return x, err
 }
@@ -234,11 +274,28 @@ func (s *Store) Facets(ctx context.Context) (Facets, error) {
 	return f, rows.Err()
 }
 func (s *Store) Save(ctx context.Context, id SetID, d SetDraft) (Set, error) {
+	return s.SaveStyled(ctx, id, d, nil)
+}
+
+func (s *Store) SaveStyled(ctx context.Context, id SetID, d SetDraft, style *SetStyle) (Set, error) {
 	if err := d.Validate(); err != nil {
 		return Set{}, err
 	}
+	var styleJSON any
+	if style != nil {
+		if err := style.Validate(); err != nil {
+			return Set{}, err
+		}
+		encoded, err := json.Marshal(style)
+		if err != nil {
+			return Set{}, err
+		}
+		styleJSON = string(encoded)
+	} else if id == 0 {
+		styleJSON = `{"new":true}`
+	}
 	if id == 0 {
-		r, err := s.db.ExecContext(ctx, `INSERT INTO sets(title,group_name,date,source,example,notes) VALUES(?,?,?,?,?,?)`, d.Title, d.Group, d.Date, d.Source, d.Example, d.Notes)
+		r, err := s.db.ExecContext(ctx, `INSERT INTO sets(title,group_name,date,source,example,notes,style) VALUES(?,?,?,?,?,?,?)`, d.Title, d.Group, d.Date, d.Source, d.Example, d.Notes, styleJSON)
 		if err != nil {
 			return Set{}, err
 		}
@@ -257,7 +314,7 @@ func (s *Store) Save(ctx context.Context, id SetID, d SetDraft) (Set, error) {
 	if err = tx.QueryRowContext(ctx, "SELECT example FROM sets WHERE id=?", id).Scan(&oldExample); err != nil {
 		return Set{}, err
 	}
-	_, err = tx.ExecContext(ctx, "UPDATE sets SET title=?,group_name=?,date=?,source=?,example=?,notes=? WHERE id=?", d.Title, d.Group, d.Date, d.Source, d.Example, d.Notes, id)
+	_, err = tx.ExecContext(ctx, "UPDATE sets SET title=?,group_name=?,date=?,source=?,example=?,notes=?,style=COALESCE(?,style) WHERE id=?", d.Title, d.Group, d.Date, d.Source, d.Example, d.Notes, styleJSON, id)
 	if err != nil {
 		return Set{}, err
 	}
