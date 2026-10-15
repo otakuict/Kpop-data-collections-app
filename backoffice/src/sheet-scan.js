@@ -41,3 +41,28 @@ export async function extractSets(api, ids, {target=2,shouldStop=()=>false,onPro
  }
  return batch;
 }
+
+export async function reloadSets(api, sets, {shouldStop=()=>false,onProgress=()=>{},onCurrent=()=>{},onSet=()=>{}}={}) {
+ const batch={done:0,total:sets.length,reloaded:0,failed:0,stopped:false,pause:null,firstError:''};
+ onProgress({...batch});
+ for (const set of sets) {
+  if (shouldStop()) {batch.stopped=true;break;}
+  onCurrent(set);
+  try {
+   const updated=await api(`/admin/sets/${set.id}/reload-images`,{method:'POST'});
+   onSet(updated);
+   if (updated.imageError && updated.images.length<2) {
+    batch.failed++;
+    batch.firstError ||= `${set.title}: ${updated.imageError}`;
+   } else batch.reloaded++;
+  } catch(error) {
+   batch.failed++;
+   batch.firstError ||= `${set.title}: ${error.message}`;
+   if (error.pausedUntil || shouldStop()) {batch.pause=error.pausedUntil?error:null;batch.stopped=true;}
+  }
+  batch.done++;
+  onProgress({...batch});
+  if (batch.stopped) break;
+ }
+ return batch;
+}

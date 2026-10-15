@@ -11,7 +11,7 @@
  const initial = new URLSearchParams(window.location.search);
  let q=$state(initial.get('q')||''), group=$state(initial.get('group')||''), from=$state(initial.get('from')||''), to=$state(initial.get('to')||''), sort=$state(initial.get('sort')||'newest');
  let by=$state('none'), page=$state(0), items=$state([]), total=$state(0), facets=$state({groups:[],total:0,ready:0});
- let loading=$state(true), error=$state(''), mounted=$state(false), selected=$state(null), imageIndex=$state(0), about=$state(false), filtersOpen=$state(false);
+ let loading=$state(true), error=$state(''), mounted=$state(false), selected=$state(null), imageIndex=$state(0), landscape=$state(false), about=$state(false), filtersOpen=$state(false);
  let loadingMore=$state(false), moreError=$state('');
  let online=$state(null);
  let view=$state(initial.get('view')==='table'?'table':'cards'), guide=$state(false), guideHidden=$state(false);
@@ -73,11 +73,13 @@
  }
  function reset(){q='';group='';from='';to='';sort='newest';}
  function chooseGroup(name){group=name;}
- function open(set,index=0){selected=set;imageIndex=index;}
+ function open(set,index=0){selected=set;imageIndex=index;landscape=false;}
  function close(){selected=null;about=false;}
+ function moveImage(direction){imageIndex=(imageIndex+direction+selected.images.length)%selected.images.length;landscape=false;}
+ function imageLoaded(event){landscape=event.currentTarget.naturalWidth>event.currentTarget.naturalHeight;}
  function showGuide(){close();guideHidden=!shouldShowGuide();guide=true;}
  function closeGuide(hidden){saveGuidePreference(hidden);guideHidden=hidden;guide=false;}
- function keydown(e){if(e.key==='Escape')close();if(selected?.images.length>1&&e.key==='ArrowRight')imageIndex=(imageIndex+1)%selected.images.length;if(selected?.images.length>1&&e.key==='ArrowLeft')imageIndex=(imageIndex-1+selected.images.length)%selected.images.length;}
+ function keydown(e){if(e.key==='Escape')close();if(selected?.images.length>1&&e.key==='ArrowRight')moveImage(1);if(selected?.images.length>1&&e.key==='ArrowLeft')moveImage(-1);}
  function modal(node){node.showModal();return {destroy(){node.close();}};}
 </script>
 
@@ -141,9 +143,9 @@
  <footer><a class="brand" href="/">BIAS<span class="brand-dot">®</span></a><p>A little archive. A lot of love.</p><span>K-POP IMAGE ARCHIVE <Asterisk size={15}/></span></footer>
 </main>
 
-{#if selected||about}<div class="modal-backdrop" role="presentation" onclick={close}></div><dialog use:modal oncancel={close} class:about={about} aria-label={about?'About the archive':selected.title}><button class="modal-close" aria-label="Close dialog" onclick={close}><X size={20}/></button>
+{#if selected||about}<div class="modal-backdrop" role="presentation" onclick={close}></div><dialog use:modal oncancel={close} class:about={about} class:landscape={landscape&&!about} aria-label={about?'About the archive':selected.title}><button class="modal-close" aria-label="Close dialog" onclick={close}><X size={20}/></button>
  {#if about}<div class="about-content"><span class="brand-mark"><Asterisk size={25}/></span><h2>Moments worth<br/><em>keeping.</em></h2><p>BIAS brings your K-pop collection together. Browse image sets by artist and date, and open each set for its source and preview.</p><p>The starting collection comes from the supplied Google Sheet. Previews are extracted from public example posts and stored in the archive. Some posts are missing or deleted; their records remain available.</p><a href="https://docs.google.com/spreadsheets/d/1z45mKRtLvTZth8b-uhqkMyjzxVtHI8b7YVcySQVeEkg/edit?gid=0" target="_blank" rel="noreferrer">View the source sheet <ArrowUpRight size={16}/></a></div>
- {:else}<div class="detail-image">{#if selected.images.length}<img src={selected.images[imageIndex].url} alt={selected.title}/>{#if selected.images.length>1}<div class="detail-pagination"><button aria-label="Previous image" onclick={()=>imageIndex=(imageIndex-1+selected.images.length)%selected.images.length}><ChevronLeft size={18}/></button><span>{imageIndex+1} / {selected.images.length}</span><button aria-label="Next image" onclick={()=>imageIndex=(imageIndex+1)%selected.images.length}><ChevronRight size={18}/></button></div>{/if}{:else}<div class="no-image"><ImageIcon size={40} strokeWidth={1}/><span>PREVIEW UNAVAILABLE</span><small>{selected.imageState==='missing'?'No example link in the source sheet.':'The original preview could not be retrieved.'}</small></div>{/if}</div><div class="detail-copy"><div class="eyebrow">{selected.group}</div><h2>{selected.title}</h2><dl><div><dt>Date of set</dt><dd>{displayDate(selected.date)}</dd></div><div><dt>Source</dt><dd><span class="source-badge" class:unlisted={!selected.source.trim()} style={`--shop-hue: ${sourceHue(selected.source)??0}`}>{selected.source||'Unlisted'}</span></dd></div><div><dt>Preview images</dt><dd>{selected.images.length}</dd></div></dl>{#if selected.notes}<p class="notes">{selected.notes}</p>{/if}{#if selected.importWarning}<p class="detail-warning">{selected.importWarning}</p>{/if}{#if selected.example.startsWith('https://')}<a class="source-link" href={selected.example} target="_blank" rel="noreferrer">Open example post <ArrowUpRight size={16}/></a>{:else if selected.example}<p class="notes">Source note: {selected.example}</p>{/if}<span class="detail-id">ARCHIVE / {String(selected.id).padStart(4,'0')}</span></div>{/if}
+ {:else}<div class="detail-image">{#if selected.images.length}<img src={selected.images[imageIndex].url} alt={selected.title} onload={imageLoaded}/>{#if selected.images.length>1}<div class="detail-pagination"><button aria-label="Previous image" onclick={()=>moveImage(-1)}><ChevronLeft size={18}/></button><span>{imageIndex+1} / {selected.images.length}</span><button aria-label="Next image" onclick={()=>moveImage(1)}><ChevronRight size={18}/></button></div>{/if}{:else}<div class="no-image"><ImageIcon size={40} strokeWidth={1}/><span>PREVIEW UNAVAILABLE</span><small>{selected.imageState==='missing'?'No example link in the source sheet.':'The original preview could not be retrieved.'}</small></div>{/if}</div><div class="detail-copy"><div class="eyebrow">{selected.group}</div><h2>{selected.title}</h2><dl><div><dt>Date of set</dt><dd>{displayDate(selected.date)}</dd></div><div><dt>Source</dt><dd><span class="source-badge" class:unlisted={!selected.source.trim()} style={`--shop-hue: ${sourceHue(selected.source)??0}`}>{selected.source||'Unlisted'}</span></dd></div><div><dt>Preview images</dt><dd>{selected.images.length}</dd></div></dl>{#if selected.notes}<p class="notes">{selected.notes}</p>{/if}{#if selected.importWarning}<p class="detail-warning">{selected.importWarning}</p>{/if}{#if selected.example.startsWith('https://')}<a class="source-link" href={selected.example} target="_blank" rel="noreferrer">Open example post <ArrowUpRight size={16}/></a>{:else if selected.example}<p class="notes">Source note: {selected.example}</p>{/if}<span class="detail-id">ARCHIVE / {String(selected.id).padStart(4,'0')}</span></div>{/if}
 </dialog>{/if}
 
 {#if guide}<QuickGuide hidden={guideHidden} onclose={closeGuide}/>{/if}

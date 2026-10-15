@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { previewSheet, commitSheet, extractSets } from '../backoffice/src/sheet-scan.js';
+import { previewSheet, commitSheet, extractSets, reloadSets } from '../backoffice/src/sheet-scan.js';
 
 test('confirm imports the reviewed CSV before fetching only new/changed sets, targeting five images', async () => {
  const calls=[];
@@ -47,3 +47,26 @@ test('import failure does not start extraction', async () => {
 });
 
 test('preview only requests the dry-run endpoint and keeps images by default',async()=>{const paths=[];const preview=await previewSheet(async (path,options)=>{paths.push(path);assert.equal(JSON.parse(options.body).imagePolicy,'keep');return {report:{created:1},csv:'reviewed',sheetUrl:'sheet',imagePolicy:'keep'};},'sheet');assert.deepEqual(paths,['/admin/import/preview']);assert.equal(preview.csv,'reviewed');});
+
+test('page reload touches only supplied rows and continues after an unavailable source',async()=>{
+ const paths=[],updated=[];
+ const batch=await reloadSets(async path=>{
+  paths.push(path);
+  if(path.includes('/8/'))throw new Error('No image source');
+  return {id:7,images:[{},{}],imageError:''};
+ },[{id:7,title:'First'},{id:8,title:'Second'}],{onSet:set=>updated.push(set.id)});
+ assert.deepEqual(paths,['/admin/sets/7/reload-images','/admin/sets/8/reload-images']);
+ assert.deepEqual(updated,[7]);
+ assert.equal(batch.reloaded,1);assert.equal(batch.failed,1);assert.equal(batch.done,2);
+});
+
+test('page reload stops on provider pause before touching the remaining rows',async()=>{
+ const paths=[];
+ const batch=await reloadSets(async path=>{
+  paths.push(path);
+  throw Object.assign(new Error('source HTTP 429'),{pausedUntil:'2099-01-01T00:00:00Z'});
+ },[{id:7,title:'First'},{id:8,title:'Second'}]);
+ assert.deepEqual(paths,['/admin/sets/7/reload-images']);
+ assert.equal(batch.done,1);assert.equal(batch.stopped,true);
+ assert.equal(batch.pause.pausedUntil,'2099-01-01T00:00:00Z');
+});
