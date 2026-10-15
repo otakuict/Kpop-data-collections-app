@@ -16,8 +16,8 @@ const adminJWTHeader = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9" // {"alg":"HS256",
 type adminClaims struct {
 	Subject  string `json:"sub"`
 	Audience string `json:"aud"`
-	Issued  int64  `json:"iat"`
-	Expires int64  `json:"exp"`
+	Issued   int64  `json:"iat"`
+	Expires  int64  `json:"exp"`
 }
 
 func adminBearer(header string) string {

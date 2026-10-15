@@ -27,7 +27,9 @@ func TestPresenceCountsBrowsersAndExpiresIdleVisitors(t *testing.T) {
 		if response.Code != http.StatusOK || response.Header().Get("Cache-Control") != "no-store" {
 			t.Fatalf("presence response: %d %s", response.Code, response.Body.String())
 		}
-		var result struct{ Online int `json:"online"` }
+		var result struct {
+			Online int `json:"online"`
+		}
 		if err := json.Unmarshal(response.Body.Bytes(), &result); err != nil {
 			t.Fatal(err)
 		}
