@@ -20,6 +20,70 @@ var ErrSourceChanged = errors.New("example URL changed during extraction; retry 
 
 type Store struct{ db *sql.DB }
 
+const newRibbonLimit = 10
+
+// expireOldNewRibbons keeps the New flag only on the ten most recently
+// inserted sets. It also clears flags left by older versions of the app.
+func expireOldNewRibbons(ctx context.Context, tx *sql.Tx) error {
+	var cutoff SetID
+	err := tx.QueryRowContext(ctx, "SELECT id FROM sets ORDER BY id DESC LIMIT 1 OFFSET ?", newRibbonLimit-1).Scan(&cutoff)
+	if err == sql.ErrNoRows {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	rows, err := tx.QueryContext(ctx, "SELECT id,style FROM sets WHERE id<?", cutoff)
+	if err != nil {
+		return err
+	}
+	type expiredStyle struct {
+		id    SetID
+		style string
+	}
+	updates := []expiredStyle{}
+	for rows.Next() {
+		var id SetID
+		var encoded string
+		if err = rows.Scan(&id, &encoded); err != nil {
+			break
+		}
+		var style map[string]json.RawMessage
+		if err = json.Unmarshal([]byte(encoded), &style); err != nil {
+			break
+		}
+		var isNew bool
+		if raw := style["new"]; len(raw) != 0 {
+			if err = json.Unmarshal(raw, &isNew); err != nil {
+				break
+			}
+		}
+		if !isNew {
+			continue
+		}
+		style["new"] = json.RawMessage("false")
+		var updated []byte
+		updated, err = json.Marshal(style)
+		if err != nil {
+			break
+		}
+		updates = append(updates, expiredStyle{id, string(updated)})
+	}
+	if err == nil {
+		err = rows.Err()
+	}
+	rows.Close()
+	if err != nil {
+		return err
+	}
+	for _, update := range updates {
+		if _, err := tx.ExecContext(ctx, "UPDATE sets SET style=? WHERE id=?", update.style, update.id); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func Open(path string) (*Store, error) {
 	db, err := sql.Open("sqlite3", path+"?_foreign_keys=on&_busy_timeout=5000&_journal_mode=WAL")
 	if err != nil {
@@ -72,6 +136,18 @@ func Open(path string) (*Store, error) {
 		err = db.QueryRow(`PRAGMA user_version`).Scan(&version)
 		if err == nil && version < 3 {
 			_, err = db.Exec(`PRAGMA user_version=3`)
+		}
+	}
+	if err == nil {
+		var tx *sql.Tx
+		tx, err = db.Begin()
+		if err == nil {
+			err = expireOldNewRibbons(context.Background(), tx)
+			if err == nil {
+				err = tx.Commit()
+			} else {
+				_ = tx.Rollback()
+			}
 		}
 	}
 	if err != nil {
@@ -181,6 +257,9 @@ func (s *Store) importSheet(ctx context.Context, drafts []SetDraft, preview bool
 	}
 	if preview {
 		return report, nil
+	}
+	if err = expireOldNewRibbons(ctx, tx); err != nil {
+		return report, err
 	}
 	return report, tx.Commit()
 }
@@ -320,8 +399,13 @@ func (s *Store) SaveStyled(ctx context.Context, id SetID, d SetDraft, style *Set
 	} else if id == 0 {
 		styleJSON = `{"new":true}`
 	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return Set{}, err
+	}
+	defer tx.Rollback()
 	if id == 0 {
-		r, err := s.db.ExecContext(ctx, `INSERT INTO sets(title,group_name,date,source,example,notes,style) VALUES(?,?,?,?,?,?,?)`, d.Title, d.Group, d.Date, d.Source, d.Example, d.Notes, styleJSON)
+		r, err := tx.ExecContext(ctx, `INSERT INTO sets(title,group_name,date,source,example,notes,style) VALUES(?,?,?,?,?,?,?)`, d.Title, d.Group, d.Date, d.Source, d.Example, d.Notes, styleJSON)
 		if err != nil {
 			return Set{}, err
 		}
@@ -329,28 +413,27 @@ func (s *Store) SaveStyled(ctx context.Context, id SetID, d SetDraft, style *Set
 		if err != nil {
 			return Set{}, err
 		}
-		return s.Get(ctx, SetID(n))
-	}
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return Set{}, err
-	}
-	defer tx.Rollback()
-	var oldExample string
-	if err = tx.QueryRowContext(ctx, "SELECT example FROM sets WHERE id=?", id).Scan(&oldExample); err != nil {
-		return Set{}, err
-	}
-	_, err = tx.ExecContext(ctx, "UPDATE sets SET title=?,group_name=?,date=?,source=?,example=?,notes=?,style=COALESCE(?,style) WHERE id=?", d.Title, d.Group, d.Date, d.Source, d.Example, d.Notes, styleJSON, id)
-	if err != nil {
-		return Set{}, err
-	}
-	if oldExample != d.Example {
-		if _, err = tx.ExecContext(ctx, "DELETE FROM images WHERE set_id=?", id); err != nil {
+		id = SetID(n)
+	} else {
+		var oldExample string
+		if err = tx.QueryRowContext(ctx, "SELECT example FROM sets WHERE id=?", id).Scan(&oldExample); err != nil {
 			return Set{}, err
 		}
-		if _, err = tx.ExecContext(ctx, "UPDATE sets SET image_state='pending',image_error='' WHERE id=?", id); err != nil {
+		_, err = tx.ExecContext(ctx, "UPDATE sets SET title=?,group_name=?,date=?,source=?,example=?,notes=?,style=COALESCE(?,style) WHERE id=?", d.Title, d.Group, d.Date, d.Source, d.Example, d.Notes, styleJSON, id)
+		if err != nil {
 			return Set{}, err
 		}
+		if oldExample != d.Example {
+			if _, err = tx.ExecContext(ctx, "DELETE FROM images WHERE set_id=?", id); err != nil {
+				return Set{}, err
+			}
+			if _, err = tx.ExecContext(ctx, "UPDATE sets SET image_state='pending',image_error='' WHERE id=?", id); err != nil {
+				return Set{}, err
+			}
+		}
+	}
+	if err = expireOldNewRibbons(ctx, tx); err != nil {
+		return Set{}, err
 	}
 	if err = tx.Commit(); err != nil {
 		return Set{}, err

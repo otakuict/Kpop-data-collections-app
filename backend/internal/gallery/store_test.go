@@ -3,10 +3,115 @@ package gallery
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"path/filepath"
 	"strings"
 	"testing"
 )
+
+func TestNewRibbonFollowsTenMostRecentlyAddedSets(t *testing.T) {
+	s, err := Open(filepath.Join(t.TempDir(), "ribbons.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	ctx := context.Background()
+	var first Set
+	for i := 0; i < newRibbonLimit; i++ {
+		set, err := s.Save(ctx, 0, SetDraft{Title: fmt.Sprintf("Set %d", i), Group: "IVE", Date: "2026-10-01"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if i == 0 {
+			first = set
+		}
+	}
+	first, err = s.Get(ctx, first.ID)
+	if err != nil || !first.Style.New {
+		t.Fatalf("tenth most recent should still be New: %#v, %v", first.Style, err)
+	}
+	backdated, err := s.Save(ctx, 0, SetDraft{Title: "Backdated addition", Group: "IVE", Date: "2020-01-01"})
+	if err != nil || !backdated.Style.New {
+		t.Fatalf("newly added backdated set should be New: %#v, %v", backdated.Style, err)
+	}
+	first, err = s.Get(ctx, first.ID)
+	if err != nil || first.Style.New {
+		t.Fatalf("eleventh most recent kept New ribbon: %#v, %v", first.Style, err)
+	}
+	first, err = s.SaveStyled(ctx, first.ID, SetDraft{Title: first.Title, Group: first.Group, Date: first.Date}, &SetStyle{New: true, Wishlist: true})
+	if err != nil || first.Style.New || !first.Style.Wishlist {
+		t.Fatalf("manually rechecked old New ribbon was not cleared: %#v, %v", first.Style, err)
+	}
+	page, err := s.List(ctx, Filter{Page: 1, Limit: 20})
+	if err != nil {
+		t.Fatal(err)
+	}
+	foundBackdated := false
+	for _, set := range page.Items {
+		if set.ID == backdated.ID {
+			foundBackdated = true
+			if !set.Style.New {
+				t.Fatal("creation-order ribbon was lost because the set sorts by an older date")
+			}
+		}
+	}
+	if !foundBackdated {
+		t.Fatal("backdated set was not in the result page")
+	}
+	for i := 0; i < newRibbonLimit; i++ {
+		if _, err := s.Save(ctx, 0, SetDraft{Title: fmt.Sprintf("Later %d", i), Group: "IVE"}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	backdated, err = s.Get(ctx, backdated.ID)
+	if err != nil || backdated.Style.New {
+		t.Fatalf("backdated addition kept its ribbon after ten newer additions: %#v, %v", backdated.Style, err)
+	}
+}
+
+func TestNewRibbonExpiresForBulkImportAndLegacyFlags(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "ribbons.sqlite")
+	s, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	drafts := make([]SetDraft, newRibbonLimit+1)
+	for i := range drafts {
+		drafts[i] = SetDraft{Title: fmt.Sprintf("Imported %d", i), Group: "aespa", ImportKey: fmt.Sprintf("sheet:%d", i)}
+	}
+	if _, err = s.PreviewImport(ctx, drafts); err != nil {
+		t.Fatal(err)
+	}
+	if report, err := s.Import(ctx, drafts); err != nil || report.Created != len(drafts) {
+		t.Fatalf("bulk import: %#v, %v", report, err)
+	}
+	first, err := s.Get(ctx, 1)
+	if err != nil || first.Style.New {
+		t.Fatalf("bulk import left eleventh ribbon: %#v, %v", first.Style, err)
+	}
+	latest, err := s.Get(ctx, SetID(len(drafts)))
+	if err != nil || !latest.Style.New {
+		t.Fatalf("bulk import did not mark latest set New: %#v, %v", latest.Style, err)
+	}
+	if _, err = s.db.ExecContext(ctx, `UPDATE sets SET style='{"new":true,"custom":{"keep":1}}' WHERE id=?`, first.ID); err != nil {
+		t.Fatal(err)
+	}
+	s.Close()
+	s, err = Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	first, err = s.Get(ctx, first.ID)
+	if err != nil || first.Style.New {
+		t.Fatalf("old persisted ribbon survived reopening: %#v, %v", first.Style, err)
+	}
+	var encoded string
+	if err = s.db.QueryRowContext(ctx, "SELECT style FROM sets WHERE id=?", first.ID).Scan(&encoded); err != nil || !strings.Contains(encoded, `"custom":{"keep":1}`) {
+		t.Fatalf("unrelated style data was lost: %q, %v", encoded, err)
+	}
+}
 
 func TestSetStyleMigrationAndImportPreservesEdits(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "legacy.sqlite")
