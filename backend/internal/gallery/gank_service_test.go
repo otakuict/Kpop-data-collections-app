@@ -87,7 +87,7 @@ func TestGankServiceOldListingImportsGallery(t *testing.T) {
 	if err != nil || x.ImageState != "ready" || len(x.Images) != 2 || len(requested) != 3 {
 		t.Fatalf("service extraction: state=%s images=%d requests=%#v err=%v", x.ImageState, len(x.Images), requested, err)
 	}
-	if requested[0] != strings.TrimSuffix(oldAPI, "/old") || requested[1] != "https://lh3.googleusercontent.com/one" {
+	if requested[0] != strings.TrimSuffix(oldAPI, "/old") || requested[1] != "https://lh3.googleusercontent.com/one=s1024" {
 		t.Fatalf("unexpected requests: %#v", requested)
 	}
 }

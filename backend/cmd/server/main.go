@@ -31,6 +31,8 @@ func main() {
 	target := flag.Int("image-target", gallery.MinSetImages, "image count target for extraction (2–5)")
 	cachedPage := flag.String("cache-page", "", "cache a previously downloaded HTML page without network requests")
 	backup := flag.String("backup", "", "export a consistent SQLite snapshot and exit")
+	refreshImage := flag.Int64("refresh-image", 0, "re-fetch one stored image by ID from its source and exit")
+	refreshSmallGoogle := flag.Bool("refresh-small-google-images", false, "re-fetch stored Google previews below 1024 pixels and exit")
 	grantGank := flag.Int("grant-gank-requests", 0, "grant 1–60 additional Gank requests for the current local budget window and exit")
 	pageURL := flag.String("page-url", "", "source URL for -cache-page")
 	flag.Parse()
@@ -70,6 +72,29 @@ func main() {
 			log.Fatal(err)
 		}
 		log.Print("SQLite snapshot exported")
+		return
+	}
+	if *refreshImage != 0 {
+		if *refreshImage < 0 {
+			log.Fatal("-refresh-image must be a positive image ID")
+		}
+		if err := gallery.RefreshImage(ctx, store, gallery.ImageID(*refreshImage)); err != nil {
+			log.Fatal(err)
+		}
+		log.Printf("Image %d refreshed from its public source", *refreshImage)
+		return
+	}
+	if *refreshSmallGoogle {
+		ids, err := gallery.LowResolutionGoogleImages(ctx, store)
+		if err != nil {
+			log.Fatal(err)
+		}
+		for i, id := range ids {
+			if err := gallery.RefreshImage(ctx, store, id); err != nil {
+				log.Fatalf("refreshed %d/%d images; image %d failed: %v", i, len(ids), id, err)
+			}
+			log.Printf("Refreshed image %d (%d/%d)", id, i+1, len(ids))
+		}
 		return
 	}
 	if *cachedPage != "" {

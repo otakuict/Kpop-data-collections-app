@@ -1,18 +1,19 @@
-function importOptions(sheetUrl, csvFile) {
- if (!csvFile) return {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sheetUrl})};
+function importOptions(sheetUrl, csvFile, imagePolicy='keep') {
+ if (!csvFile) return {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sheetUrl,imagePolicy})};
  const body=new FormData();
  body.append('sheetUrl',sheetUrl);
+ body.append('imagePolicy',imagePolicy);
  body.append('csv',csvFile);
  return {method:'POST',body};
 }
 
-export function previewSheet(api, sheetUrl, csvFile) {
- return api('/admin/import/preview',importOptions(sheetUrl,csvFile));
+export function previewSheet(api, sheetUrl, csvFile, imagePolicy='keep') {
+ return api('/admin/import/preview',importOptions(sheetUrl,csvFile,imagePolicy));
 }
 
 export async function commitSheet(api, preview, options={}) {
  const csv=new File([preview.csv],'reviewed-sheet.csv',{type:'text/csv'});
- const report=await api('/admin/import',importOptions(preview.sheetUrl,csv));
+ const report=await api('/admin/import',importOptions(preview.sheetUrl,csv,preview.imagePolicy||'keep'));
  options.onImport?.(report);
  const batch=await extractSets(api,report.scanCandidates,{...options,target:5});
  return {report,batch};

@@ -121,10 +121,13 @@ func TestImportPreviewHTTPDoesNotWriteAndReturnsExactCSV(t *testing.T) {
 	token := "test-operator-token-at-least-24-chars"
 	router := Router(s, token)
 	csv := "Date,Name,GROUP,Example\n260915,Reviewed,aespa,post deleted\n"
-	call := func(path string, authorized bool) *httptest.ResponseRecorder {
+	call := func(path string, authorized bool, policy string) *httptest.ResponseRecorder {
 		var body bytes.Buffer
 		writer := multipart.NewWriter(&body)
 		writer.WriteField("sheetUrl", DefaultSheetURL)
+		if policy != "" {
+			writer.WriteField("imagePolicy", policy)
+		}
 		part, _ := writer.CreateFormFile("csv", "source.csv")
 		part.Write([]byte(csv))
 		writer.Close()
@@ -137,23 +140,27 @@ func TestImportPreviewHTTPDoesNotWriteAndReturnsExactCSV(t *testing.T) {
 		router.ServeHTTP(response, req)
 		return response
 	}
-	if w := call("/api/admin/import/preview", false); w.Code != 401 {
+	if w := call("/api/admin/import/preview", false, ""); w.Code != 401 {
 		t.Fatal("unauthorized preview accepted")
 	}
-	w := call("/api/admin/import/preview", true)
+	w := call("/api/admin/import/preview", true, "replace")
 	var preview struct {
-		Report   ImportReport `json:"report"`
-		CSV      string       `json:"csv"`
-		SheetURL string       `json:"sheetUrl"`
+		Report      ImportReport `json:"report"`
+		CSV         string       `json:"csv"`
+		SheetURL    string       `json:"sheetUrl"`
+		ImagePolicy string       `json:"imagePolicy"`
 	}
-	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &preview) != nil || preview.Report.Created != 1 || preview.CSV != csv || preview.SheetURL != DefaultSheetURL {
+	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &preview) != nil || preview.Report.Created != 1 || preview.CSV != csv || preview.SheetURL != DefaultSheetURL || preview.ImagePolicy != "replace" {
 		t.Fatalf("preview response %d %s", w.Code, w.Body.String())
+	}
+	if w := call("/api/admin/import/preview", true, "invalid"); w.Code != 400 {
+		t.Fatalf("invalid image policy accepted: %d %s", w.Code, w.Body.String())
 	}
 	p, _ := s.List(context.Background(), Filter{Page: 1, Limit: 24})
 	if p.Total != 0 {
 		t.Fatal("preview persisted rows")
 	}
-	if w := call("/api/admin/import", true); w.Code != 200 {
+	if w := call("/api/admin/import", true, "replace"); w.Code != 200 {
 		t.Fatalf("commit failed %s", w.Body.String())
 	}
 	p, _ = s.List(context.Background(), Filter{Page: 1, Limit: 24})

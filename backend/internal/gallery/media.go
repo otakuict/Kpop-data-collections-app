@@ -3,8 +3,12 @@ package gallery
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"crypto/tls"
+	"database/sql"
+	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"image"
 	_ "image/gif"
@@ -26,6 +30,10 @@ import (
 )
 
 const MaxImageBytes = 12 << 20
+const maxOriginalJPEGBytes = 1 << 20
+
+var ErrNoImageSource = errors.New("no public image source to reload; upload replacement images")
+var ErrImageFetch = errors.New("image source could not be fetched")
 
 type Raster struct {
 	expectedExample *string
@@ -322,6 +330,12 @@ func NormalizeImage(b []byte, source string) (Raster, error) {
 	if err != nil {
 		return Raster{}, err
 	}
+	// A small public JPEG that already fits the gallery loses detail with every
+	// additional JPEG encode. Keep its original bytes when no rotation is needed.
+	if format == "jpeg" && source != "" && len(b) <= maxOriginalJPEGBytes &&
+		config.Width <= 1200 && config.Height <= 1200 && jpegOrientation(b) == 1 {
+		return Raster{Bytes: b, MIME: "image/jpeg", SourceURL: source}, nil
+	}
 	w, h := config.Width, config.Height
 	if w > 1200 || h > 1200 {
 		if w >= h {
@@ -345,10 +359,92 @@ func NormalizeImage(b []byte, source string) (Raster, error) {
 		img = orientImage(img, jpegOrientation(b))
 	}
 	var out bytes.Buffer
-	if err = jpeg.Encode(&out, img, &jpeg.Options{Quality: 82}); err != nil {
+	if err = jpeg.Encode(&out, img, &jpeg.Options{Quality: 90}); err != nil {
 		return Raster{}, err
 	}
 	return Raster{Bytes: out.Bytes(), MIME: "image/jpeg", SourceURL: source}, nil
+}
+
+// RefreshImage replaces one stored preview from its public source while keeping
+// its ID and source URL. The updated hash changes the URL returned to clients.
+func RefreshImage(ctx context.Context, store *Store, id ImageID) error {
+	var source, example string
+	err := store.db.QueryRowContext(ctx, `SELECT images.source_url,sets.example FROM images JOIN sets ON sets.id=images.set_id WHERE images.id=?`, id).Scan(&source, &example)
+	if err != nil {
+		return err
+	}
+	if source == "" {
+		return fmt.Errorf("image %d has no public source URL", id)
+	}
+	b, _, err := fetchStored(ctx, store, source, MaxImageBytes)
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrImageFetch, err)
+	}
+	raster, err := NormalizeImage(b, source)
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrImageFetch, err)
+	}
+	sum := sha256.Sum256(raster.Bytes)
+	result, err := store.db.ExecContext(ctx, `UPDATE images SET bytes=?,mime=?,hash=? WHERE id=? AND source_url=? AND EXISTS (SELECT 1 FROM sets WHERE sets.id=images.set_id AND sets.example=?)`, raster.Bytes, raster.MIME, hex.EncodeToString(sum[:]), id, source, example)
+	if err != nil {
+		return err
+	}
+	if count, err := result.RowsAffected(); err != nil || count == 0 {
+		if err != nil {
+			return err
+		}
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
+// ReloadSetImages refreshes existing public previews, then fills free slots
+// from the example URL. Uploaded images have no remote source to re-fetch.
+func ReloadSetImages(ctx context.Context, store *Store, id SetID) (Set, error) {
+	set, err := store.Get(ctx, id)
+	if err != nil {
+		return set, err
+	}
+	reloaded := false
+	for _, img := range set.Images {
+		if img.SourceURL == "" {
+			continue
+		}
+		if err := RefreshImage(ctx, store, img.ID); err != nil {
+			return set, err
+		}
+		reloaded = true
+	}
+	if len(set.Images) < MaxSetImages && strings.HasPrefix(set.Example, "https://") {
+		return ExtractTo(ctx, store, id, MaxSetImages)
+	}
+	if !reloaded {
+		return set, ErrNoImageSource
+	}
+	return store.Get(ctx, id)
+}
+
+// LowResolutionGoogleImages finds legacy previews fetched without an explicit
+// size. Read the IDs before refreshing: Store uses one SQLite connection.
+func LowResolutionGoogleImages(ctx context.Context, store *Store) ([]ImageID, error) {
+	rows, err := store.db.QueryContext(ctx, `SELECT id,bytes FROM images WHERE source_url LIKE 'https://lh3.googleusercontent.com/%' ORDER BY id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	ids := []ImageID{}
+	for rows.Next() {
+		var id ImageID
+		var b []byte
+		if err := rows.Scan(&id, &b); err != nil {
+			return nil, err
+		}
+		config, _, err := image.DecodeConfig(bytes.NewReader(b))
+		if err == nil && max(config.Width, config.Height) < 1024 {
+			ids = append(ids, id)
+		}
+	}
+	return ids, rows.Err()
 }
 
 func Extract(ctx context.Context, store *Store, id SetID) (Set, error) {

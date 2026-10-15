@@ -33,6 +33,14 @@ func Router(store *Store, token string) *gin.Engine {
 			code = 400
 			message = err.Error()
 		}
+		if errors.Is(err, ErrNoImageSource) {
+			code = 400
+			message = err.Error()
+		}
+		if errors.Is(err, ErrImageFetch) {
+			code = 502
+			message = err.Error()
+		}
 		var paused *RemotePausedError
 		if errors.As(err, &paused) {
 			code = 429
@@ -199,6 +207,18 @@ func Router(store *Store, token string) *gin.Engine {
 		}
 		c.JSON(200, x)
 	})
+	admin.POST("/sets/:id/reload-images", func(c *gin.Context) {
+		id, ok := parseID(c)
+		if !ok {
+			return
+		}
+		x, err := ReloadSetImages(c.Request.Context(), store, id)
+		if err != nil {
+			fail(c, err)
+			return
+		}
+		c.JSON(200, x)
+	})
 	admin.POST("/sets/:id/images", func(c *gin.Context) {
 		id, ok := parseID(c)
 		if !ok {
@@ -279,6 +299,7 @@ func Router(store *Store, token string) *gin.Engine {
 			var sheetURL string
 			var b []byte
 			var source string
+			var imagePolicy ImageImportPolicy
 			var err error
 			if strings.HasPrefix(c.GetHeader("Content-Type"), "multipart/form-data") {
 				if err = c.Request.ParseMultipartForm(1 << 20); err != nil {
@@ -287,6 +308,7 @@ func Router(store *Store, token string) *gin.Engine {
 				}
 				defer c.Request.MultipartForm.RemoveAll()
 				sheetURL = c.PostForm("sheetUrl")
+				imagePolicy = ImageImportPolicy(c.PostForm("imagePolicy"))
 				if sheetURL == "" {
 					sheetURL = DefaultSheetURL
 				}
@@ -304,7 +326,8 @@ func Router(store *Store, token string) *gin.Engine {
 				file.Close()
 			} else {
 				var request struct {
-					SheetURL string `json:"sheetUrl"`
+					SheetURL    string            `json:"sheetUrl"`
+					ImagePolicy ImageImportPolicy `json:"imagePolicy"`
 				}
 				c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 64<<10)
 				if err = c.ShouldBindJSON(&request); err != nil {
@@ -312,6 +335,7 @@ func Router(store *Store, token string) *gin.Engine {
 					return
 				}
 				sheetURL = request.SheetURL
+				imagePolicy = request.ImagePolicy
 				var remote string
 				remote, source, err = SheetURL(sheetURL)
 				if err == nil {
@@ -320,6 +344,13 @@ func Router(store *Store, token string) *gin.Engine {
 			}
 			if err != nil {
 				c.JSON(400, gin.H{"error": fmt.Sprintf("Sheet import failed: %v", err)})
+				return
+			}
+			if imagePolicy == "" {
+				imagePolicy = KeepExistingImages
+			}
+			if !imagePolicy.valid() {
+				c.JSON(400, gin.H{"error": "image policy must be keep or replace"})
 				return
 			}
 			if len(b) > 5<<20 {
@@ -333,16 +364,16 @@ func Router(store *Store, token string) *gin.Engine {
 			}
 			var report ImportReport
 			if preview {
-				report, err = store.PreviewImport(c.Request.Context(), drafts)
+				report, err = store.PreviewImportWithImagePolicy(c.Request.Context(), drafts, imagePolicy)
 			} else {
-				report, err = store.Import(c.Request.Context(), drafts)
+				report, err = store.ImportWithImagePolicy(c.Request.Context(), drafts, imagePolicy)
 			}
 			if err != nil {
 				fail(c, err)
 				return
 			}
 			if preview {
-				c.JSON(200, gin.H{"report": report, "csv": string(b), "sheetUrl": sheetURL})
+				c.JSON(200, gin.H{"report": report, "csv": string(b), "sheetUrl": sheetURL, "imagePolicy": imagePolicy})
 				return
 			}
 			c.JSON(200, report)

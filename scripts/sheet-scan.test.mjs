@@ -9,9 +9,9 @@ test('confirm imports the reviewed CSV before fetching only new/changed sets, ta
   if(path==='/admin/import')return {created:2,updated:165,scanCandidates:[166,167],candidates:[1,166,167]};
   return {id:Number(path.split('/')[3]),title:'New',images:[{},{},{}],imageState:'ready',imageError:''};
  };
- const result=await commitSheet(api,{sheetUrl:'https://docs.google.com/spreadsheets/d/example',csv:'Date,Name,GROUP\n0,New,IVE\n'},{});
+ const result=await commitSheet(api,{sheetUrl:'https://docs.google.com/spreadsheets/d/example',csv:'Date,Name,GROUP\n0,New,IVE\n',imagePolicy:'replace'},{});
  assert.deepEqual(calls.map(c=>c[0]),['/admin/import','/admin/sets/166/extract?target=5','/admin/sets/167/extract?target=5']);
- assert.equal(calls[0][1].body.get('sheetUrl'),'https://docs.google.com/spreadsheets/d/example');assert.equal(await calls[0][1].body.get('csv').text(),'Date,Name,GROUP\n0,New,IVE\n');
+ assert.equal(calls[0][1].body.get('sheetUrl'),'https://docs.google.com/spreadsheets/d/example');assert.equal(calls[0][1].body.get('imagePolicy'),'replace');assert.equal(await calls[0][1].body.get('csv').text(),'Date,Name,GROUP\n0,New,IVE\n');
  assert.equal(result.batch.ready,2);assert.deepEqual(result.batch.remaining,[]);
 });
 
@@ -46,4 +46,4 @@ test('import failure does not start extraction', async () => {
  assert.equal(calls,1);
 });
 
-test('preview only requests the dry-run endpoint and never imports or extracts',async()=>{const paths=[];const preview=await previewSheet(async path=>{paths.push(path);return {report:{created:1},csv:'reviewed',sheetUrl:'sheet'};},'sheet');assert.deepEqual(paths,['/admin/import/preview']);assert.equal(preview.csv,'reviewed');});
+test('preview only requests the dry-run endpoint and keeps images by default',async()=>{const paths=[];const preview=await previewSheet(async (path,options)=>{paths.push(path);assert.equal(JSON.parse(options.body).imagePolicy,'keep');return {report:{created:1},csv:'reviewed',sheetUrl:'sheet',imagePolicy:'keep'};},'sheet');assert.deepEqual(paths,['/admin/import/preview']);assert.equal(preview.csv,'reviewed');});

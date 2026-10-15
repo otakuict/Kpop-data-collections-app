@@ -120,13 +120,55 @@ func TestImportRepeatsWithoutDuplicatesAndChangedExampleInvalidatesImage(t *test
 		t.Fatalf("filter/images %#v %v", p, err)
 	}
 	drafts[0].Example = "https://example.com/b"
-	r, err = s.Import(ctx, drafts)
+	r, err = s.ImportWithImagePolicy(ctx, drafts, ReplaceChangedImages)
 	if err != nil {
 		t.Fatal(err)
 	}
 	p, _ = s.List(ctx, Filter{Group: "aespa", Page: 1, Limit: 24})
 	if len(p.Items[0].Images) != 0 || p.Items[0].ImageState != "pending" {
 		t.Fatal("stale image survived changed example")
+	}
+}
+func TestImportKeepsImagesWhenExampleChangesByDefault(t *testing.T) {
+	s, err := Open(filepath.Join(t.TempDir(), "keep-images.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	ctx := context.Background()
+	drafts, err := ParseSheet(strings.NewReader("ID,Date,Name,GROUP,Example\nold,260915,Old,aespa,https://example.com/old\n"), "sheet:test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	first, err := s.Import(ctx, drafts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := first.ScanCandidates[0]
+	if err := s.AddImages(ctx, id, []Raster{{Bytes: []byte("first"), MIME: "image/jpeg"}, {Bytes: []byte("second"), MIME: "image/jpeg"}}); err != nil {
+		t.Fatal(err)
+	}
+	before, err := s.Get(ctx, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	drafts[0].Title = "Updated"
+	drafts[0].Example = "https://example.com/new"
+	preview, err := s.PreviewImport(ctx, drafts)
+	if err != nil || len(preview.ScanCandidates) != 0 {
+		t.Fatalf("keep preview: %#v, %v", preview, err)
+	}
+	replacePreview, err := s.PreviewImportWithImagePolicy(ctx, drafts, ReplaceChangedImages)
+	if err != nil || len(replacePreview.ScanCandidates) != 1 || replacePreview.ScanCandidates[0] != id {
+		t.Fatalf("replace preview: %#v, %v", replacePreview, err)
+	}
+	result, err := s.Import(ctx, drafts)
+	if err != nil || len(result.ScanCandidates) != 0 {
+		t.Fatalf("keep import: %#v, %v", result, err)
+	}
+	after, err := s.Get(ctx, id)
+	if err != nil || after.Title != "Updated" || after.Example != drafts[0].Example || after.ImageState != "ready" || len(after.Images) != 2 || after.Images[0].ID != before.Images[0].ID || after.Images[1].ID != before.Images[1].ID {
+		t.Fatalf("existing images were not preserved: %#v, %v", after, err)
 	}
 }
 func TestImportRollbackAndSearchLiteralWildcard(t *testing.T) {
@@ -179,7 +221,7 @@ func TestSheetScanQueuesOnlyNewOrChangedPublicExamples(t *testing.T) {
 	}
 	drafts[0].Example = "https://example.com/changed"
 	drafts = append(drafts, SetDraft{Title: "New", Group: "IVE", ImportKey: "new", Example: "https://example.com/new"})
-	changed, err := s.Import(ctx, drafts)
+	changed, err := s.ImportWithImagePolicy(ctx, drafts, ReplaceChangedImages)
 	if err != nil || changed.Created != 1 || len(changed.ScanCandidates) != 2 || changed.ScanCandidates[0] != id {
 		t.Fatalf("changed/new queue: %#v %v", changed, err)
 	}
@@ -209,7 +251,7 @@ func TestPreviewImportRollsBackMetadataImagesAndNewRecords(t *testing.T) {
 	drafts[0].Title = "Renamed"
 	drafts[0].Example = "https://example.com/new"
 	drafts = append(drafts, SetDraft{Title: "New", Group: "IVE", ImportKey: "new", Example: "https://example.com/new-post"})
-	preview, err := s.PreviewImport(ctx, drafts)
+	preview, err := s.PreviewImportWithImagePolicy(ctx, drafts, ReplaceChangedImages)
 	if err != nil || preview.Created != 1 || preview.Changed != 1 || len(preview.Changes) != 2 {
 		t.Fatalf("preview %#v %v", preview, err)
 	}
@@ -220,7 +262,7 @@ func TestPreviewImportRollsBackMetadataImagesAndNewRecords(t *testing.T) {
 	if all.Total != 1 || all.Items[0].Title != "Old" || len(all.Items[0].Images) != 1 {
 		t.Fatalf("preview wrote to database: %#v", all)
 	}
-	committed, err := s.Import(ctx, drafts)
+	committed, err := s.ImportWithImagePolicy(ctx, drafts, ReplaceChangedImages)
 	if err != nil || committed.Created != preview.Created || committed.Changed != preview.Changed {
 		t.Fatalf("commit differs: %#v %v", committed, err)
 	}

@@ -83,15 +83,35 @@ func Open(path string) (*Store, error) {
 func (s *Store) Close() error { return s.db.Close() }
 
 func (s *Store) Import(ctx context.Context, drafts []SetDraft) (ImportReport, error) {
-	return s.importSheet(ctx, drafts, false)
+	return s.ImportWithImagePolicy(ctx, drafts, KeepExistingImages)
 }
 
 func (s *Store) PreviewImport(ctx context.Context, drafts []SetDraft) (ImportReport, error) {
-	return s.importSheet(ctx, drafts, true)
+	return s.PreviewImportWithImagePolicy(ctx, drafts, KeepExistingImages)
 }
 
-func (s *Store) importSheet(ctx context.Context, drafts []SetDraft, preview bool) (ImportReport, error) {
+type ImageImportPolicy string
+
+const (
+	KeepExistingImages   ImageImportPolicy = "keep"
+	ReplaceChangedImages ImageImportPolicy = "replace"
+)
+
+func (p ImageImportPolicy) valid() bool { return p == KeepExistingImages || p == ReplaceChangedImages }
+
+func (s *Store) ImportWithImagePolicy(ctx context.Context, drafts []SetDraft, policy ImageImportPolicy) (ImportReport, error) {
+	return s.importSheet(ctx, drafts, false, policy)
+}
+
+func (s *Store) PreviewImportWithImagePolicy(ctx context.Context, drafts []SetDraft, policy ImageImportPolicy) (ImportReport, error) {
+	return s.importSheet(ctx, drafts, true, policy)
+}
+
+func (s *Store) importSheet(ctx context.Context, drafts []SetDraft, preview bool, policy ImageImportPolicy) (ImportReport, error) {
 	report := ImportReport{Total: len(drafts), Candidates: []SetID{}, ScanCandidates: []SetID{}, Changes: []ImportChange{}}
+	if !policy.valid() {
+		return report, fmt.Errorf("image policy must be keep or replace")
+	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return report, err
@@ -108,6 +128,7 @@ func (s *Store) importSheet(ctx context.Context, drafts []SetDraft, preview bool
 		}
 		id := old.ID
 		isNew := err == sql.ErrNoRows
+		oldImageCount := 0
 		if isNew {
 			result, e := tx.ExecContext(ctx, `INSERT INTO sets(title,group_name,date,source,example,notes,raw_date,raw_cells,import_key,import_warning,origin,style) VALUES(?,?,?,?,?,?,?,?,?,?,'sheet',?)`, d.Title, d.Group, d.Date, d.Source, d.Example, d.Notes, d.RawDate, d.RawCells, d.ImportKey, d.ImportWarning, `{"new":true}`)
 			if e != nil {
@@ -134,15 +155,20 @@ func (s *Store) importSheet(ctx context.Context, drafts []SetDraft, preview bool
 				report.Unchanged++
 			}
 			if old.Example != d.Example {
-				if _, err = tx.ExecContext(ctx, "DELETE FROM images WHERE set_id=?", id); err != nil {
+				if err = tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM images WHERE set_id=?", id).Scan(&oldImageCount); err != nil {
 					return report, err
 				}
-				if _, err = tx.ExecContext(ctx, "UPDATE sets SET image_state='pending',image_error='' WHERE id=?", id); err != nil {
-					return report, err
+				if policy == ReplaceChangedImages {
+					if _, err = tx.ExecContext(ctx, "DELETE FROM images WHERE set_id=?", id); err != nil {
+						return report, err
+					}
+					if _, err = tx.ExecContext(ctx, "UPDATE sets SET image_state='pending',image_error='' WHERE id=?", id); err != nil {
+						return report, err
+					}
 				}
 			}
 		}
-		if (isNew || old.Example != d.Example) && strings.HasPrefix(d.Example, "https://") {
+		if (isNew || (old.Example != d.Example && (policy == ReplaceChangedImages || oldImageCount == 0))) && strings.HasPrefix(d.Example, "https://") {
 			report.ScanCandidates = append(report.ScanCandidates, id)
 		}
 		var count int

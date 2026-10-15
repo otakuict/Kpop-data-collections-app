@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -270,8 +271,21 @@ func (t *remoteTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 	return nil, &RemotePausedError{host, until, reason}
 }
-func fetchStored(ctx context.Context, store *Store, raw string, max int64) ([]byte, string, error) {
+func imageRequestURL(raw string) (*url.URL, error) {
 	u, err := ParseRemoteURL(raw)
+	if err != nil {
+		return nil, err
+	}
+	// Unsized Google image URLs can resolve to a small preview. Request the
+	// same 1024-pixel variant shown on the source page instead.
+	if u.Hostname() == "lh3.googleusercontent.com" && !googleImageSuffix.MatchString(u.Path) {
+		u.Path += "=s1024"
+		u.RawPath = ""
+	}
+	return u, nil
+}
+func fetchStored(ctx context.Context, store *Store, raw string, max int64) ([]byte, string, error) {
+	u, err := imageRequestURL(raw)
 	if err != nil {
 		return nil, "", err
 	}

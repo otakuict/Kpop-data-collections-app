@@ -43,7 +43,7 @@ Gallery ใช้ธีม dark blueและตัวกรองขนาด 1
 
 ป้าย group บนการ์ดใช้ขนาด 12px (11px บนจอแคบ) เท่าป้าย shop พร้อมพื้นหลังน้ำเงิน ตัวอักษรสว่าง และขึ้นบรรทัดใหม่เมื่อชื่อยาว ป้าย source/shop บนการ์ดและหน้ารายละเอียดขยายขนาดพร้อมสีพื้นหลังประจำร้าน (ชื่อร้านเดิมใช้สีเดิม รวม alias `datacoffeeshop (?)`) การ์ดบน desktop ลอยขึ้น เอียงตามเมาส์ และมีแสง sheen โดยคืนตำแหน่งเมื่อออกจากการ์ด การลาก carousel จะพักการเอียงทันที; touchscreen และ reduced motion แสดงการ์ดนิ่ง
 
-Back-office เพิ่มและแก้ไข set ด้วยมือ, แสดง `set_id` ในตารางและ editor, อัปโหลด JPEG/PNG/GIF/WebP ให้แต่ละชุดมี 2–5 รูปที่ไม่ซ้ำกัน (ไม่เกิน 15 MiB/รูป), import Google Sheet ที่อ่านได้โดยไม่ต้อง sign in หรือ CSV export และสั่ง extract/retry preview ที่ยังขาดได้ รูปจะตรวจชนิดและจำนวน pixel แล้วปรับขนาดไม่เกิน 1200 pixels ต่อด้านก่อนเก็บเป็น JPEG ใน SQLite
+Back-office เพิ่มและแก้ไข set ด้วยมือ, แสดง `set_id` ในตารางและ editor, อัปโหลด JPEG/PNG/GIF/WebP ให้แต่ละชุดมี 2–5 รูปที่ไม่ซ้ำกัน (ไม่เกิน 15 MiB/รูป), import Google Sheet ที่อ่านได้โดยไม่ต้อง sign in หรือ CSV export และสั่ง extract/retry preview ที่ยังขาดได้ รูปจะตรวจชนิดและจำนวน pixel แล้วปรับขนาดไม่เกิน 1200 pixels ต่อด้านก่อนเก็บใน SQLite; JPEG จาก public source ที่มีขนาดไม่เกิน 1 MiB และไม่ต้องหมุนจะเก็บต้นฉบับไว้เพื่อรักษาคุณภาพ รูปอื่นเข้ารหัสเป็น JPEG คุณภาพ 90
 
 ชุดที่นำเข้าหรือชุดเดิมซึ่งยังมี 0–1 รูปจะคง metadata ไว้และแสดง `needs 2+` จนเติมรูปได้ครบ API จำกัดสูงสุด 5 รูปต่อชุดทั้งจาก upload และ extraction การอัปโหลดที่ทำให้เกิน 5 หรือยังมีไม่ถึง 2 รูปจะยกเลิกทั้ง batch โดยตรวจจาก hash ของรูปจริง
 
@@ -56,9 +56,9 @@ set-001,260915,260915 Karina,aespa,kdatastudio,https://ganknow.com/post/5ddbab87
 
 `ID` ไม่บังคับ แต่ช่วยให้เปลี่ยนชื่อ/กลุ่ม/วันที่แล้วอัปเดต record เดิมได้ ถ้าไม่มี ID ใช้ source sheet + กลุ่ม + วันที่ดิบ + ชื่อเป็น identity พร้อม occurrence สำหรับแถวซ้ำ วันที่รองรับ YYMMDD หรือ YYYY-MM-DD; blank/0 เป็น unknown และวันที่ผิดจะมี warning ทุกคอลัมน์ต้นฉบับถูกเก็บไว้
 
-กด **Scan Google Sheet & import** จากหน้าหลัก back-office หรือเลือก CSV ใน Import & previews เพื่อแสดง modal ผลสแกนก่อนบันทึก: ชุดใหม่, metadata ที่เปลี่ยนพร้อมค่าก่อน/หลัง, จำนวนแถวเดิม และจำนวนชุดที่จะดึงรูป กด Cancel จะไม่เปลี่ยนข้อมูล กด **OK — Update** จะนำเข้า CSV snapshot ที่ตรวจไว้ แล้วดึงสูงสุด 5 รูปเฉพาะชุดใหม่หรือ Example ที่เปลี่ยน ไม่ต้องกด Extract เพิ่ม เปิดแท็บนี้ไว้ระหว่างดึง; ถ้า Stop หรือพบ cooldown จะมีปุ่ม Continue imported previews สำหรับรายการที่เหลือในแท็บนี้
+กด **Scan Google Sheet & import** จากหน้าหลัก back-office หรือเลือก CSV ใน Import & previews เพื่อแสดง modal ผลสแกนก่อนบันทึก: ชุดใหม่, metadata ที่เปลี่ยนพร้อมค่าก่อน/หลัง, จำนวนแถวเดิม และจำนวนชุดที่จะดึงรูป เลือก **Keep existing images** (ค่าเริ่มต้น) เพื่อเก็บรูปเก่าเมื่อ Example เปลี่ยน หรือ **Replace from new Example** เพื่อลบรูปเก่าและดึงใหม่; preview จะคำนวณจำนวนชุดที่จะดึงใหม่ตามตัวเลือก กด Cancel จะไม่เปลี่ยนข้อมูล กด **OK — Update** จะนำเข้า CSV snapshot ที่ตรวจไว้และดึงรูปตามตัวเลือก เปิดแท็บนี้ไว้ระหว่างดึง; ถ้า Stop หรือพบ cooldown จะมีปุ่ม Continue imported previews สำหรับรายการที่เหลือในแท็บนี้
 
-Import ซ้ำไม่เพิ่ม record ซ้ำใน identity เดิม อัปเดต metadata ของแถวที่ตรงกันและคง manual records ไว้ ไม่ลบ record ที่หายไปจาก Sheet เปลี่ยน Example แล้วล้าง preview เดิมเพื่อไม่แสดงรูปผิดชุด การแก้ record ที่มาจาก Sheet ด้วยมืออาจถูก import ครั้งถัดไปเขียนทับ; ใช้ Sheet เป็นต้นฉบับสำหรับ record นั้น
+Import ซ้ำไม่เพิ่ม record ซ้ำใน identity เดิม อัปเดต metadata ของแถวที่ตรงกันและคง manual records ไว้ ไม่ลบ record ที่หายไปจาก Sheet ค่าเริ่มต้นเก็บรูปเดิมไว้แม้ Example เปลี่ยน; ตัวเลือก Replace จะลบรูปเดิมทันที แล้วพยายามดึงจาก Example ใหม่ หากดึงไม่สำเร็จรูปเก่าจะไม่กลับมา การแก้ record ที่มาจาก Sheet ด้วยมืออาจถูก import ครั้งถัดไปเขียนทับ; ใช้ Sheet เป็นต้นฉบับสำหรับ record นั้น
 
 ## ข้อมูลเริ่มต้น
 
@@ -81,6 +81,9 @@ python3 scripts/verify-seed.py
 ```
 
 Seed copy เกิดเฉพาะตอนยังไม่มี runtime database; refresh seed ไม่เขียนทับ volume ของระบบที่ใช้งานอยู่ ให้ import ผ่าน back-office เพื่ออัปเดต runtime data
+
+หลัง deploy backend ใหม่ รูปที่เก็บไว้ก่อนหน้านี้ยังเป็นไฟล์เดิม รีเฟรชรูปเดียวจาก public source โดยรักษา image ID และเปลี่ยน cache URL ตาม hash ใหม่: `cd backend && go run ./cmd/server -db ../data/gallery.sqlite -refresh-image 660` (ใช้ path ของ runtime database จริง; คำสั่งนี้ส่ง request ไปยัง source และเคารพ rate limit/cooldown)
+สำหรับรูป Google เดิมที่ยังเล็กกว่า 1024 pixels ใช้ `-refresh-small-google-images` กับ runtime database เดียวกันเพื่อรีเฟรชทั้งชุด คำสั่งหยุดเมื่อ source ตอบ cooldown/rate limit; รันซ้ำหลังหมด cooldown ได้ เพราะรูปที่รีเฟรชเป็น 1024 pixels แล้วจะถูกข้าม
 
 ## ดึงรูปเพิ่มและ Gank rate limit
 
@@ -134,6 +137,7 @@ docs/design/              สอง design candidates, cross-judge และแ�
 | `POST /api/admin/sets` / `PUT /api/admin/sets/:id` | เพิ่ม/แก้ไข metadata JSON |
 | `POST /api/admin/sets/:id/images` | Multipart field `images` |
 | `POST /api/admin/sets/:id/extract` | Extract images up to 5 (`?target=2` for bulk filling) |
+| `POST /api/admin/sets/:id/reload-images` | Re-fetch stored public images even when the set is full; fill open slots from the example URL |
 | `POST /api/admin/import/preview` | JSON `sheetUrl` หรือ multipart CSV; dry-run report + exact CSV snapshot, ไม่บันทึกข้อมูล |
 | `POST /api/admin/import` | JSON `sheetUrl` หรือ multipart `csv` + `sheetUrl` |
 
@@ -168,7 +172,7 @@ npm run build
 python3 scripts/verify-seed.py
 ```
 
-Tests ตรวจ source fidelity/unknown dates/duplicate import/transaction rollback, image invalidation, safe URL/IP policy, admin auth, image upload+SQLite readback, gallery grouping และ timezone-independent dates
+Tests ตรวจ source fidelity/unknown dates/duplicate import/transaction rollback, ตัวเลือก keep/replace สำหรับรูปเดิม, safe URL/IP policy, admin auth, image upload+SQLite readback, gallery grouping และ timezone-independent dates
 
 Browser acceptance ใช้ Compose อีก project เพื่อไม่แก้ข้อมูลจริง:
 
