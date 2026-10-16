@@ -5,8 +5,10 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"image"
 	"io"
 	"log"
+	"mime/multipart"
 	"net/http"
 	"strconv"
 	"strings"
@@ -16,6 +18,12 @@ import (
 )
 
 const MaxUploadImageBytes = 15 << 20
+const maxUploadImagePixels = 12_000_000
+const maxUploadBatchPixels = 12_000_000
+
+// A decoded image can be much larger than its uploaded bytes. Keep separate
+// manual uploads from decoding large images at the same time.
+var imageUploadSlot = make(chan struct{}, 1)
 
 func Router(store *Store, token string) *gin.Engine {
 	r := gin.New()
@@ -231,6 +239,12 @@ func Router(store *Store, token string) *gin.Engine {
 			fail(c, err)
 			return
 		}
+		select {
+		case imageUploadSlot <- struct{}{}:
+			defer func() { <-imageUploadSlot }()
+		case <-c.Request.Context().Done():
+			return
+		}
 		if err := c.Request.ParseMultipartForm(2 << 20); err != nil {
 			c.JSON(400, gin.H{"error": "invalid or oversized image upload"})
 			return
@@ -241,12 +255,12 @@ func Router(store *Store, token string) *gin.Engine {
 			c.JSON(400, gin.H{"error": "choose up to 5 image files; each set needs 2–5 distinct images"})
 			return
 		}
+		if err := validateUploadFiles(files); err != nil {
+			c.JSON(400, gin.H{"error": err.Error()})
+			return
+		}
 		rasters := []Raster{}
 		for _, f := range files {
-			if f.Size > MaxUploadImageBytes {
-				c.JSON(400, gin.H{"error": "each image must be at most 15 MiB"})
-				return
-			}
 			reader, err := f.Open()
 			if err != nil {
 				c.JSON(400, gin.H{"error": "cannot read uploaded file"})
@@ -258,7 +272,7 @@ func Router(store *Store, token string) *gin.Engine {
 				c.JSON(400, gin.H{"error": "cannot read uploaded image"})
 				return
 			}
-			r, err := NormalizeImage(b, "")
+			r, err := normalizeImage(b, "", maxUploadImagePixels)
 			if err != nil {
 				c.JSON(400, gin.H{"error": err.Error()})
 				return
@@ -386,6 +400,33 @@ func Router(store *Store, token string) *gin.Engine {
 	admin.POST("/import", importSheet(false))
 	return r
 }
+
+func validateUploadFiles(files []*multipart.FileHeader) error {
+	var totalPixels int64
+	for _, file := range files {
+		if file.Size > MaxUploadImageBytes {
+			return fmt.Errorf("each image must be at most 15 MiB")
+		}
+		reader, err := file.Open()
+		if err != nil {
+			return fmt.Errorf("cannot read uploaded file")
+		}
+		config, format, decodeErr := image.DecodeConfig(reader)
+		reader.Close()
+		if decodeErr != nil || (format != "jpeg" && format != "png" && format != "gif" && format != "webp") {
+			return fmt.Errorf("not a supported JPEG, PNG, GIF or WebP image")
+		}
+		if config.Width <= 0 || config.Height <= 0 || int64(config.Width) > maxUploadImagePixels/int64(config.Height) {
+			return fmt.Errorf("each image must be at most 12 megapixels")
+		}
+		totalPixels += int64(config.Width) * int64(config.Height)
+		if totalPixels > maxUploadBatchPixels {
+			return fmt.Errorf("combined upload must be at most 12 megapixels; use the back office to resize images")
+		}
+	}
+	return nil
+}
+
 func parseID(c *gin.Context) (SetID, bool) {
 	n, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil || n <= 0 {

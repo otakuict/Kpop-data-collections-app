@@ -31,6 +31,7 @@ import (
 
 const MaxImageBytes = 12 << 20
 const maxOriginalJPEGBytes = 1 << 20
+const maxImagePixels = 40_000_000
 
 var ErrNoImageSource = errors.New("no public image source to reload; upload replacement images")
 var ErrImageFetch = errors.New("image source could not be fetched")
@@ -322,12 +323,16 @@ func gankGooglePostImages(root *html.Node, postID string, socialURLs map[string]
 }
 
 func NormalizeImage(b []byte, source string) (Raster, error) {
+	return normalizeImage(b, source, maxImagePixels)
+}
+
+func normalizeImage(b []byte, source string, pixelLimit int64) (Raster, error) {
 	config, format, err := image.DecodeConfig(bytes.NewReader(b))
 	if err != nil {
 		return Raster{}, fmt.Errorf("not a supported JPEG, PNG, GIF or WebP image")
 	}
-	if config.Width <= 0 || config.Height <= 0 || int64(config.Width)*int64(config.Height) > 40_000_000 {
-		return Raster{}, fmt.Errorf("image exceeds 40 megapixels")
+	if config.Width <= 0 || config.Height <= 0 || int64(config.Width) > pixelLimit/int64(config.Height) {
+		return Raster{}, fmt.Errorf("image exceeds %d megapixels", pixelLimit/1_000_000)
 	}
 	if format != "jpeg" && format != "png" && format != "gif" && format != "webp" {
 		return Raster{}, fmt.Errorf("unsupported raster format")

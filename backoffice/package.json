@@ -10,8 +10,9 @@
     "check": "svelte-check --fail-on-warnings"
   },
   "dependencies": {
-    "svelte": "^5.39.0",
-    "@lucide/svelte": "^0.577.0"
+    "@lucide/svelte": "^0.577.0",
+    "image-resize-compress": "^4.1.0",
+    "svelte": "^5.39.0"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^6.2.0",

@@ -94,6 +94,33 @@ func TestAdminAuthManualUploadAndFilterFlow(t *testing.T) {
 	}
 }
 
+func TestUploadPreflightRejectsFiveLargeImages(t *testing.T) {
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	for i := 0; i < 5; i++ {
+		part, err := writer.CreateFormFile("images", "photo.png")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := part.Write(pngHeader(1800, 1400)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest("POST", "/api/admin/sets/1/images", &body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	if err := req.ParseMultipartForm(2 << 20); err != nil {
+		t.Fatal(err)
+	}
+	defer req.MultipartForm.RemoveAll()
+	err := validateUploadFiles(req.MultipartForm.File["images"])
+	if err == nil || !strings.Contains(err.Error(), "combined upload") {
+		t.Fatalf("five large images were not rejected before decoding: %v", err)
+	}
+}
+
 func TestSSRFAddressPolicyAndSheetNormalization(t *testing.T) {
 	for _, ip := range []string{"127.0.0.1", "169.254.169.254", "10.0.0.1", "172.16.0.1", "192.168.1.1", "100.64.0.1", "::1", "::ffff:127.0.0.1", "fc00::1", "fe80::1", "0.0.0.0", "198.18.0.1", "2001:db8::1"} {
 		if publicAddress(net.ParseIP(ip)) {

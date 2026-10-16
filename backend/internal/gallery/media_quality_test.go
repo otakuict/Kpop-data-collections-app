@@ -3,15 +3,41 @@ package gallery
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"errors"
+	"hash/crc32"
 	"image"
 	"image/color"
 	"image/jpeg"
 	"io"
 	"net/http"
 	"path/filepath"
+	"strings"
 	"testing"
 )
+
+func pngHeader(width, height uint32) []byte {
+	var header bytes.Buffer
+	header.Write([]byte{137, 80, 78, 71, 13, 10, 26, 10})
+	binary.Write(&header, binary.BigEndian, uint32(13))
+	header.WriteString("IHDR")
+	ihdr := make([]byte, 13)
+	binary.BigEndian.PutUint32(ihdr[:4], width)
+	binary.BigEndian.PutUint32(ihdr[4:8], height)
+	ihdr[8], ihdr[9] = 8, 2
+	header.Write(ihdr)
+	binary.Write(&header, binary.BigEndian, crc32.ChecksumIEEE(append([]byte("IHDR"), ihdr...)))
+	return header.Bytes()
+}
+
+func TestManualUploadRejectsLargeDimensionsBeforeDecode(t *testing.T) {
+	// DecodeConfig needs only a PNG signature and IHDR, so this avoids
+	// allocating a giant test image while checking the decode guard.
+	_, err := normalizeImage(pngHeader(4000, 3250), "", maxUploadImagePixels)
+	if err == nil || !strings.Contains(err.Error(), "12 megapixels") {
+		t.Fatalf("large upload was not rejected before decoding: %v", err)
+	}
+}
 
 func qualityTestJPEG(t *testing.T, c color.RGBA) []byte {
 	t.Helper()
