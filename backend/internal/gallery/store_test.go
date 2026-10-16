@@ -131,11 +131,11 @@ func TestSetStyleMigrationAndImportPreservesEdits(t *testing.T) {
 	defer s.Close()
 	ctx := context.Background()
 	existing, err := s.Get(ctx, 1)
-	if err != nil || existing.Style.New || existing.Style.Wishlist || existing.Style.Color != "" {
+	if err != nil || existing.Style.New || existing.Style.Wishlist || existing.Style.NoTrade || existing.Style.Selective || existing.Style.Color != "" {
 		t.Fatalf("legacy style: %#v, %v", existing.Style, err)
 	}
-	created, err := s.SaveStyled(ctx, 0, SetDraft{Title: "New set", Group: "aespa"}, &SetStyle{New: true, Wishlist: true, Color: "#AABBCC"})
-	if err != nil || !created.Style.New || !created.Style.Wishlist || created.Style.Color != "#aabbcc" {
+	created, err := s.SaveStyled(ctx, 0, SetDraft{Title: "New set", Group: "aespa"}, &SetStyle{New: true, Wishlist: true, NoTrade: true, Selective: true, Color: "#AABBCC"})
+	if err != nil || !created.Style.New || !created.Style.Wishlist || !created.Style.NoTrade || !created.Style.Selective || created.Style.Color != "#aabbcc" {
 		t.Fatalf("created style: %#v, %v", created.Style, err)
 	}
 	_, err = s.Save(ctx, created.ID, SetDraft{Title: "Renamed", Group: "aespa"})
@@ -143,7 +143,7 @@ func TestSetStyleMigrationAndImportPreservesEdits(t *testing.T) {
 		t.Fatal(err)
 	}
 	created, err = s.Get(ctx, created.ID)
-	if err != nil || !created.Style.Wishlist || created.Style.Color != "#aabbcc" {
+	if err != nil || !created.Style.Wishlist || !created.Style.NoTrade || !created.Style.Selective || created.Style.Color != "#aabbcc" {
 		t.Fatalf("metadata edit lost style: %#v, %v", created.Style, err)
 	}
 	if _, err = s.SaveStyled(ctx, created.ID, SetDraft{Title: "Bad", Group: "aespa"}, &SetStyle{Color: "red"}); err == nil {
@@ -158,7 +158,7 @@ func TestSetStyleMigrationAndImportPreservesEdits(t *testing.T) {
 	if err != nil || !imported.Style.New {
 		t.Fatalf("new import style: %#v, %v", imported.Style, err)
 	}
-	_, err = s.SaveStyled(ctx, imported.ID, SetDraft{Title: imported.Title, Group: imported.Group}, &SetStyle{Wishlist: true})
+	_, err = s.SaveStyled(ctx, imported.ID, SetDraft{Title: imported.Title, Group: imported.Group}, &SetStyle{Wishlist: true, NoTrade: true, Selective: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -167,7 +167,7 @@ func TestSetStyleMigrationAndImportPreservesEdits(t *testing.T) {
 		t.Fatal(err)
 	}
 	imported, err = s.Get(ctx, imported.ID)
-	if err != nil || imported.Style.New || !imported.Style.Wishlist {
+	if err != nil || imported.Style.New || !imported.Style.Wishlist || !imported.Style.NoTrade || !imported.Style.Selective {
 		t.Fatalf("reimport replaced card style: %#v, %v", imported.Style, err)
 	}
 }

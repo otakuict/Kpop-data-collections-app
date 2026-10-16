@@ -30,6 +30,9 @@ dialog::backdrop{background:#00000066;backdrop-filter:blur(3px)}
 .corner-ribbon{position:absolute;z-index:4;top:22px;width:104px;padding:5px 0;text-align:center;text-transform:uppercase;letter-spacing:.8px;font-size:9px;font-weight:750;line-height:1.2;color:#fff;box-shadow:0 2px 7px #0009;pointer-events:none}
 .ribbon-wishlist{left:-26px;transform:rotate(-45deg);background:#268455}
 .ribbon-new{right:-26px;transform:rotate(45deg);background:#c83f49}
+.ribbon-no-trade{left:-26px;transform:rotate(-45deg);background:#8053b8}
+.ribbon-selective{right:-26px;transform:rotate(45deg);background:#f2c94c;color:#241c06}
+.ribbon-wishlist~.ribbon-no-trade,.ribbon-new~.ribbon-selective{top:55px}
 .gallery-card::after{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:radial-gradient(circle 220px at var(--sheen-x,50%) var(--sheen-y,50%),#d9efff66,transparent 80%);opacity:0;transition:opacity .25s}
 .gallery-card.is-floating{border-color:#496c90;box-shadow:0 20px 35px #0007,0 0 20px #5fd2ef0d}
 .gallery-card.custom-color.is-floating{border-color:var(--card-color)}

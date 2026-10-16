@@ -33,9 +33,11 @@ type Image struct {
 
 // SetStyle is stored as JSON so card presentation can grow without new columns.
 type SetStyle struct {
-	Color    string `json:"color"`
-	Wishlist bool   `json:"wishlist"`
-	New      bool   `json:"new"`
+	Color     string `json:"color"`
+	Wishlist  bool   `json:"wishlist"`
+	New       bool   `json:"new"`
+	NoTrade   bool   `json:"noTrade"`
+	Selective bool   `json:"selective"`
 }
 
 func (s *SetStyle) Validate() error {
