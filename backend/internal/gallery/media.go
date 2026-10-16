@@ -134,13 +134,19 @@ func Fetch(ctx context.Context, raw string, max int64) ([]byte, string, error) {
 	if err := waitForHost(ctx, u.Hostname()); err != nil {
 		return nil, "", err
 	}
-	req, err := http.NewRequestWithContext(ctx, "GET", u.String(), nil)
+	req, err := http.NewRequestWithContext(ensureRequestID(ctx), "GET", u.String(), nil)
 	if err != nil {
 		return nil, "", err
 	}
 	req.Header.Set("User-Agent", "BiasArchive/1.0 public-preview-ingestion")
 	req.Header.Set("Accept", "text/html,image/*,text/csv")
-	response, err := fetchClient.Do(req)
+	client := *fetchClient
+	base := client.Transport
+	if base == nil {
+		base = http.DefaultTransport
+	}
+	client.Transport = &loggingTransport{base: base}
+	response, err := client.Do(req)
 	if err != nil {
 		return nil, "", err
 	}

@@ -197,7 +197,7 @@ func fetchStored(ctx context.Context, store *Store, raw string, max int64) ([]by
 	if err != nil {
 		return nil, "", err
 	}
-	req, err := http.NewRequestWithContext(ctx, "GET", u.String(), nil)
+	req, err := http.NewRequestWithContext(ensureRequestID(ctx), "GET", u.String(), nil)
 	if err != nil {
 		return nil, "", err
 	}
@@ -208,7 +208,7 @@ func fetchStored(ctx context.Context, store *Store, raw string, max int64) ([]by
 	if base == nil {
 		base = http.DefaultTransport
 	}
-	client.Transport = &remoteTransport{base: base, store: store}
+	client.Transport = &loggingTransport{base: &remoteTransport{base: base, store: store}}
 	// Timeout includes the shared schedule wait and all redirects.
 	client.Timeout = 90 * time.Second
 	response, err := client.Do(req)

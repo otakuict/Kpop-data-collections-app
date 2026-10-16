@@ -31,6 +31,8 @@ docker compose -f compose.build.yaml up -d --build
 
 API เป็นผู้เขียน SQLite เพียง service เดียว ข้อมูลอยู่ใน named volume `gallery-data` และคงอยู่หลัง restart/rebuild ใช้ `docker compose down` เพื่อหยุดโดยเก็บข้อมูลไว้
 
+ตรวจปัญหา HTTP จาก log ของ backend ด้วย `docker compose logs -f backend` (release ใช้ `docker compose -f compose.release.yaml logs -f backend`) แต่ละคำขอขาเข้ามี `http.in.request` และ `http.in.response` พร้อม `X-Request-ID`, method, route, status และเวลา; คำขอไปยังแหล่งข้อมูลภายนอกมี `http.out.request`, `http.out.response` หรือ `http.out.error` โดยใช้ ID เดียวกันเมื่อเริ่มจาก API ส่วน `http.handler.error` แสดงสาเหตุของข้อผิดพลาดจาก handler Log ไม่บันทึก query string, headers หรือ body
+
 ## Gallery และ back-office
 
 Gallery ใช้ธีม dark blueและตัวกรองขนาด 12–16px อ่านข้อมูลจาก API และรองรับค้นหาชื่อ/กลุ่ม/source, filter กลุ่มและช่วงวันที่, เรียงล่าสุด/เก่าสุด/ชื่อ, group ตามศิลปินหรือวันที่, lazy load ทีละ 24 ชุดเมื่อเลื่อนใกล้ท้ายรายการ (ไม่มีปุ่มเปลี่ยนหน้า), carousel บนแต่ละ card (แถบกึ่งกลางด้านล่างรูป กดค้างแล้วลากซ้าย/ขวาด้วยเมาส์หรือ touch; รองรับ ArrowLeft/ArrowRight และ Home/End เมื่อ focus ที่แถบ) และ dialog รายละเอียดพร้อมรูปและลิงก์ example post Filter อยู่ใน URL เพื่อแชร์มุมมองได้

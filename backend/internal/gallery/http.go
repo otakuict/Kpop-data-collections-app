@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -19,6 +20,7 @@ const MaxUploadImageBytes = 15 << 20
 func Router(store *Store, token string) *gin.Engine {
 	r := gin.New()
 	presence := newPresenceTracker()
+	r.Use(httpRequestLogger())
 	r.Use(gin.Recovery())
 	r.SetTrustedProxies(nil)
 	r.Use(func(c *gin.Context) {
@@ -57,6 +59,7 @@ func Router(store *Store, token string) *gin.Engine {
 			code = 404
 			message = "Set or image not found"
 		}
+		log.Printf("http.handler.error id=%s status=%d error=%q", requestID(c.Request.Context()), code, logError(err))
 		c.JSON(code, gin.H{"error": message})
 	}
 	r.GET("/api/health", func(c *gin.Context) {
