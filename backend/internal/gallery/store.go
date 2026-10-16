@@ -98,12 +98,14 @@ func Open(path string) (*Store, error) {
  CREATE INDEX IF NOT EXISTS images_set ON images(set_id,id);
  CREATE TABLE IF NOT EXISTS remote_limits (host TEXT PRIMARY KEY, next_at INTEGER NOT NULL DEFAULT 0, paused_until INTEGER NOT NULL DEFAULT 0, reason TEXT NOT NULL DEFAULT '');
  CREATE TABLE IF NOT EXISTS remote_leases (host TEXT PRIMARY KEY, until INTEGER NOT NULL);
- CREATE TABLE IF NOT EXISTS remote_requests (host TEXT NOT NULL, at INTEGER NOT NULL);
- CREATE TABLE IF NOT EXISTS remote_budgets (host TEXT PRIMARY KEY, max_requests INTEGER NOT NULL, until INTEGER NOT NULL);
- CREATE INDEX IF NOT EXISTS remote_requests_host_time ON remote_requests(host,at);
  CREATE TABLE IF NOT EXISTS page_cache (url TEXT PRIMARY KEY, bytes BLOB NOT NULL, mime TEXT NOT NULL, fetched_at INTEGER NOT NULL);
  `)
 	if err != nil {
+		db.Close()
+		return nil, err
+	}
+	// Existing databases may retain a pause imposed by the former local daily budget.
+	if _, err = db.Exec(`UPDATE remote_limits SET paused_until=0,reason='' WHERE host='ganknow.com' AND reason LIKE 'local daily request budget reached (%'`); err != nil {
 		db.Close()
 		return nil, err
 	}

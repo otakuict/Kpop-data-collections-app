@@ -33,7 +33,6 @@ func main() {
 	backup := flag.String("backup", "", "export a consistent SQLite snapshot and exit")
 	refreshImage := flag.Int64("refresh-image", 0, "re-fetch one stored image by ID from its source and exit")
 	refreshSmallGoogle := flag.Bool("refresh-small-google-images", false, "re-fetch stored Google previews below 1024 pixels and exit")
-	grantGank := flag.Int("grant-gank-requests", 0, "grant 1–60 additional Gank requests for the current local budget window and exit")
 	pageURL := flag.String("page-url", "", "source URL for -cache-page")
 	flag.Parse()
 	if *target < gallery.MinSetImages || *target > gallery.MaxSetImages {
@@ -56,17 +55,6 @@ func main() {
 	defer store.Close()
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	if *grantGank != 0 {
-		if err := store.GrantGankRequests(ctx, *grantGank); err != nil {
-			log.Fatal(err)
-		}
-		status, err := store.IngestionStatus(ctx)
-		if err != nil {
-			log.Fatal(err)
-		}
-		log.Printf("Gank local budget: %d/%d requests remaining; source cooldown and pacing preserved", status.RequestsRemaining, status.DailyRequests)
-		return
-	}
 	if *backup != "" {
 		if err = store.Backup(ctx, *backup); err != nil {
 			log.Fatal(err)

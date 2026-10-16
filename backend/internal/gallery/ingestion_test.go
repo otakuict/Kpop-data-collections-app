@@ -102,43 +102,46 @@ func TestDocumentCacheAvoidsSecondNetworkRequest(t *testing.T) {
 	}
 }
 
-func TestDailyGankBudgetStopsRequestsAcrossSubdomains(t *testing.T) {
-	s, err := Open(filepath.Join(t.TempDir(), "budget.sqlite"))
+func TestGankRequestsHaveNoLocalDailyCap(t *testing.T) {
+	s, err := Open(filepath.Join(t.TempDir(), "uncapped.sqlite"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer s.Close()
 	now := time.Now().Truncate(time.Millisecond)
 	ctx := context.Background()
-	for range 60 {
-		if _, err := s.db.Exec("INSERT INTO remote_requests(host,at) VALUES('ganknow.com',?)", now.Add(-time.Hour).UnixMilli()); err != nil {
+	for i := range 65 {
+		at := now.Add(time.Duration(i) * (GankInterval + time.Second))
+		if wait, err := s.reserveRemote(ctx, remoteKey("media.ganknow.com"), at, GankInterval); err != nil || wait != 0 {
+			t.Fatalf("request %d: wait=%v error=%v", i+1, wait, err)
+		}
+		if err := s.releaseRemote(ctx, "ganknow.com", at); err != nil {
 			t.Fatal(err)
 		}
 	}
-	_, err = s.reserveRemote(ctx, remoteKey("media.ganknow.com"), now, GankInterval)
-	var paused *RemotePausedError
-	if !errors.As(err, &paused) || !strings.Contains(paused.Reason, "daily") {
-		t.Fatalf("daily budget bypassed: %v", err)
-	}
 }
 
-func TestAdditionalGankBudgetPreservesHistoryAndStopsAfterSixtyMoreRequests(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "extra-budget.sqlite")
+func TestOldLocalBudgetPauseClearedWithoutClearingProviderPause(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "old-budget.sqlite")
 	s, err := Open(path)
 	if err != nil {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
-	now := time.Now().Truncate(time.Millisecond)
-	for range GankDailyRequests {
-		if _, err := s.db.Exec("INSERT INTO remote_requests(host,at) VALUES('ganknow.com',?)", now.Add(-time.Hour).UnixMilli()); err != nil {
-			t.Fatal(err)
-		}
+	until := time.Now().Add(time.Hour)
+	if err := s.pauseRemote(ctx, "ganknow.com", until, "local daily request budget reached (60 per 24 hours)"); err != nil {
+		t.Fatal(err)
 	}
-	if _, err := s.reserveRemote(ctx, "ganknow.com", now, GankInterval); !isRemotePaused(err) {
-		t.Fatalf("initial budget should be paused: %v", err)
+	s.Close()
+	s, err = Open(path)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if err := s.GrantGankRequests(ctx, 60); err != nil {
+	status, err := s.IngestionStatus(ctx)
+	if err != nil || status.PausedUntil != "" {
+		t.Fatalf("old local pause remained: %#v %v", status, err)
+	}
+	if err := s.pauseRemote(ctx, "ganknow.com", until, "source HTTP 429"); err != nil {
 		t.Fatal(err)
 	}
 	s.Close()
@@ -147,81 +150,8 @@ func TestAdditionalGankBudgetPreservesHistoryAndStopsAfterSixtyMoreRequests(t *t
 		t.Fatal(err)
 	}
 	defer s.Close()
-	status, err := s.IngestionStatus(ctx)
-	if err != nil || status.DailyRequests != 120 || status.RequestsRemaining != 60 || status.PausedUntil != "" {
-		t.Fatalf("grant lost across restart: %#v %v", status, err)
-	}
-	for i := range 60 {
-		at := now.Add(time.Duration(i) * 21 * time.Second)
-		if wait, err := s.reserveRemote(ctx, remoteKey("media.ganknow.com"), at, GankInterval); err != nil || wait != 0 {
-			t.Fatalf("additional request %d: %v %v", i+1, wait, err)
-		}
-		if err := s.releaseRemote(ctx, "ganknow.com", at); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if _, err := s.reserveRemote(ctx, "ganknow.com", now.Add(time.Hour), GankInterval); !isRemotePaused(err) {
-		t.Fatalf("request beyond the additional sixty allowed: %v", err)
-	}
-	var count int
-	if err := s.db.QueryRow("SELECT count(*) FROM remote_requests WHERE host='ganknow.com'").Scan(&count); err != nil || count != 120 {
-		t.Fatalf("request history changed: %d %v", count, err)
-	}
-	status, err = s.IngestionStatus(ctx)
-	if err != nil || status.RequestsRemaining != 0 {
-		t.Fatalf("exhausted grant: %#v %v", status, err)
-	}
-	if _, err := s.db.Exec("UPDATE remote_budgets SET until=?", now.Add(-time.Second).UnixMilli()); err != nil {
-		t.Fatal(err)
-	}
-	status, err = s.IngestionStatus(ctx)
-	if err != nil || status.DailyRequests != GankDailyRequests {
-		t.Fatalf("temporary grant did not expire: %#v %v", status, err)
-	}
-}
-
-func TestAdditionalGankBudgetCannotClearProviderCooldown(t *testing.T) {
-	s, err := Open(filepath.Join(t.TempDir(), "provider-budget.sqlite"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer s.Close()
-	ctx := context.Background()
-	if err := s.pauseRemote(ctx, "ganknow.com", time.Now().Add(time.Hour), "source HTTP 429"); err != nil {
-		t.Fatal(err)
-	}
-	if err := s.GrantGankRequests(ctx, 60); !isRemotePaused(err) {
-		t.Fatalf("provider cooldown cleared: %v", err)
-	}
-	for _, extra := range []int{0, 61} {
-		if err := s.GrantGankRequests(ctx, extra); err == nil {
-			t.Fatalf("invalid grant accepted: %d", extra)
-		}
-	}
-}
-
-func TestExpiredGankGrantWaitsForEnoughRequestsToLeaveBaseWindow(t *testing.T) {
-	s, err := Open(filepath.Join(t.TempDir(), "expired-grant.sqlite"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer s.Close()
-	now := time.Now().Truncate(time.Millisecond)
-	for _, at := range []time.Time{now.Add(-23 * time.Hour), now.Add(-time.Hour)} {
-		for range 60 {
-			if _, err := s.db.Exec("INSERT INTO remote_requests(host,at) VALUES('ganknow.com',?)", at.UnixMilli()); err != nil {
-				t.Fatal(err)
-			}
-		}
-	}
-	if _, err := s.db.Exec("INSERT INTO remote_budgets(host,max_requests,until) VALUES('ganknow.com',120,?)", now.Add(-time.Second).UnixMilli()); err != nil {
-		t.Fatal(err)
-	}
-	_, err = s.reserveRemote(context.Background(), "ganknow.com", now, GankInterval)
-	var paused *RemotePausedError
-	want := now.Add(23 * time.Hour)
-	if !errors.As(err, &paused) || !paused.Until.Equal(want) {
-		t.Fatalf("expired grant should wait until %s: %v", want, err)
+	if _, err := s.reserveRemote(ctx, "ganknow.com", time.Now(), GankInterval); !isRemotePaused(err) {
+		t.Fatalf("provider pause was cleared: %v", err)
 	}
 }
 

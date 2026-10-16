@@ -14,65 +14,8 @@ import (
 	"time"
 )
 
-const GankDailyRequests = 60
 const GankInterval = 20 * time.Second
 const PageCacheTTL = 7 * 24 * time.Hour
-
-const localBudgetReason = "local daily request budget reached ("
-
-func gankBudget(ctx context.Context, db interface {
-	QueryRowContext(context.Context, string, ...any) *sql.Row
-}, now time.Time) (int, error) {
-	var limit int
-	err := db.QueryRowContext(ctx, "SELECT max_requests FROM remote_budgets WHERE host='ganknow.com' AND until>?", now.UnixMilli()).Scan(&limit)
-	if err == sql.ErrNoRows {
-		return GankDailyRequests, nil
-	}
-	return max(GankDailyRequests, limit), err
-}
-
-func (s *Store) GrantGankRequests(ctx context.Context, extra int) error {
-	if extra < 1 || extra > 60 {
-		return fmt.Errorf("additional Gank requests must be 1–60")
-	}
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-	now := time.Now()
-	var paused int64
-	var reason string
-	err = tx.QueryRowContext(ctx, "SELECT paused_until,reason FROM remote_limits WHERE host='ganknow.com'").Scan(&paused, &reason)
-	if err != nil && err != sql.ErrNoRows {
-		return err
-	}
-	if paused > now.UnixMilli() && !strings.HasPrefix(reason, localBudgetReason) {
-		return &RemotePausedError{"ganknow.com", time.UnixMilli(paused), reason}
-	}
-	limit, err := gankBudget(ctx, tx, now)
-	if err != nil {
-		return err
-	}
-	var count int
-	var first int64
-	if err := tx.QueryRowContext(ctx, "SELECT count(*),COALESCE(min(at),0) FROM remote_requests WHERE host='ganknow.com' AND at>?", now.Add(-24*time.Hour).UnixMilli()).Scan(&count, &first); err != nil {
-		return err
-	}
-	until := now.Add(24 * time.Hour)
-	if first != 0 {
-		until = time.UnixMilli(first).Add(24 * time.Hour)
-	}
-	if _, err := tx.ExecContext(ctx, "INSERT INTO remote_budgets(host,max_requests,until) VALUES('ganknow.com',?,?) ON CONFLICT(host) DO UPDATE SET max_requests=excluded.max_requests,until=excluded.until", max(limit, count)+extra, until.UnixMilli()); err != nil {
-		return err
-	}
-	if strings.HasPrefix(reason, localBudgetReason) {
-		if _, err := tx.ExecContext(ctx, "UPDATE remote_limits SET paused_until=0,reason='' WHERE host='ganknow.com'"); err != nil {
-			return err
-		}
-	}
-	return tx.Commit()
-}
 
 type RemotePausedError struct {
 	Host   string
@@ -120,41 +63,6 @@ func (s *Store) reserveRemote(ctx context.Context, host string, now time.Time, i
 			return time.UnixMilli(leaseUntil).Sub(now), nil
 		}
 		if _, err = tx.ExecContext(ctx, "INSERT INTO remote_leases(host,until) VALUES(?,?) ON CONFLICT(host) DO UPDATE SET until=excluded.until", host, now.Add(95*time.Second).UnixMilli()); err != nil {
-			return 0, err
-		}
-		cutoff := now.Add(-24 * time.Hour).UnixMilli()
-		if _, err = tx.ExecContext(ctx, "DELETE FROM remote_requests WHERE host=? AND at<=?", host, cutoff); err != nil {
-			return 0, err
-		}
-		var count int
-		var first int64
-		if err = tx.QueryRowContext(ctx, "SELECT count(*),COALESCE(min(at),0) FROM remote_requests WHERE host=?", host).Scan(&count, &first); err != nil {
-			return 0, err
-		}
-		budget, err := gankBudget(ctx, tx, now)
-		if err != nil {
-			return 0, err
-		}
-		if count >= budget {
-			if count > budget {
-				if err := tx.QueryRowContext(ctx, "SELECT at FROM remote_requests WHERE host=? ORDER BY at LIMIT 1 OFFSET ?", host, count-budget).Scan(&first); err != nil {
-					return 0, err
-				}
-			}
-			until := time.UnixMilli(first).Add(24 * time.Hour)
-			reason := fmt.Sprintf("%s%d per 24 hours)", localBudgetReason, budget)
-			if _, err = tx.ExecContext(ctx, "UPDATE remote_limits SET paused_until=?,reason=? WHERE host=?", until.UnixMilli(), reason, host); err != nil {
-				return 0, err
-			}
-			if _, err = tx.ExecContext(ctx, "DELETE FROM remote_leases WHERE host=?", host); err != nil {
-				return 0, err
-			}
-			if err = tx.Commit(); err != nil {
-				return 0, err
-			}
-			return 0, &RemotePausedError{host, until, reason}
-		}
-		if _, err = tx.ExecContext(ctx, "INSERT INTO remote_requests(host,at) VALUES(?,?)", host, now.UnixMilli()); err != nil {
 			return 0, err
 		}
 	}
@@ -351,29 +259,17 @@ func (s *Store) CachePage(ctx context.Context, raw string, b []byte, mime string
 }
 
 type IngestionStatus struct {
-	IntervalSeconds   int    `json:"intervalSeconds"`
-	DailyRequests     int    `json:"dailyRequests"`
-	RequestsRemaining int    `json:"requestsRemaining"`
-	MinImages         int    `json:"minImages"`
-	MaxImages         int    `json:"maxImages"`
-	PausedUntil       string `json:"pausedUntil"`
-	Reason            string `json:"reason"`
+	IntervalSeconds int    `json:"intervalSeconds"`
+	MinImages       int    `json:"minImages"`
+	MaxImages       int    `json:"maxImages"`
+	PausedUntil     string `json:"pausedUntil"`
+	Reason          string `json:"reason"`
 }
 
 func (s *Store) IngestionStatus(ctx context.Context) (IngestionStatus, error) {
-	result := IngestionStatus{IntervalSeconds: int(GankInterval / time.Second), DailyRequests: GankDailyRequests, MinImages: MinSetImages, MaxImages: MaxSetImages}
-	budget, err := gankBudget(ctx, s.db, time.Now())
-	if err != nil {
-		return result, err
-	}
-	result.DailyRequests = budget
-	var count int
-	if err := s.db.QueryRowContext(ctx, "SELECT count(*) FROM remote_requests WHERE host='ganknow.com' AND at>?", time.Now().Add(-24*time.Hour).UnixMilli()).Scan(&count); err != nil {
-		return result, err
-	}
-	result.RequestsRemaining = max(0, budget-count)
+	result := IngestionStatus{IntervalSeconds: int(GankInterval / time.Second), MinImages: MinSetImages, MaxImages: MaxSetImages}
 	var until int64
-	err = s.db.QueryRowContext(ctx, "SELECT paused_until,reason FROM remote_limits WHERE host='ganknow.com'").Scan(&until, &result.Reason)
+	err := s.db.QueryRowContext(ctx, "SELECT paused_until,reason FROM remote_limits WHERE host='ganknow.com'").Scan(&until, &result.Reason)
 	if err == sql.ErrNoRows {
 		return result, nil
 	}

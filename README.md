@@ -96,21 +96,13 @@ node scripts/fill-images.mjs --set-id=1 --target=5
 ./scripts/export-seed.sh
 ```
 
-ตัวดึงทำคำขอ Gank ทีละคำขอและเว้นอย่างน้อย 20 วินาทีหลังคำขอก่อนหน้าจบ โดย `ganknow.com` และทุก subdomain ใช้งบเดียวกัน จำกัดฝั่งแอป 60 คำขอต่อช่วง 24 ชั่วโมง ใช้ SQLite เก็บเวลารอ, lease, request count และ cooldown จึงไม่ reset เมื่อ Air/Docker restart นี่เป็นค่าที่แอปเลือกอย่างระมัดระวัง ไม่ใช่ quota ที่ Gank ประกาศ และไม่รับประกันว่าจะไม่ถูกบล็อก
-
-เมื่อผู้ดูแลต้องการเพิ่มงบชั่วคราว ใช้ CLI เพิ่มครั้งละ 1–60 คำขอโดยเก็บประวัติเดิมไว้ เช่น stack แบบ development:
-
-```sh
-docker compose exec -T backend go run ./cmd/server -db /data/gallery.sqlite -grant-gank-requests=60
-```
-
-งบเพิ่มเก็บใน SQLite และหมดอายุเมื่อคำขอแรกในช่วง 24 ชั่วโมงปัจจุบันเริ่มพ้นช่วงนั้น จากนั้นกลับไปใช้งบปกติ 60 คำขอ การเพิ่มงบล้างได้เฉพาะช่วงพักที่เกิดจากงบของแอปเอง; หากต้นทางตอบ 429/403 หรือ challenge และยังอยู่ในช่วงพัก CLI จะปฏิเสธการเพิ่มงบ ระยะห่าง 20 วินาทีและ lease ยังคงเดิม `GET /api/admin/ingestion` แสดงงบรวมและคำขอที่เหลือจริง
+ตัวดึงทำคำขอ Gank ทีละคำขอและเว้นอย่างน้อย 20 วินาทีหลังคำขอก่อนหน้าจบ โดย `ganknow.com` และทุก subdomain ใช้ช่วงรอร่วมกัน แอปไม่มีเพดานคำขอต่อวันแล้ว แต่ยังใช้ SQLite เก็บเวลารอ, lease และ cooldown จึงไม่ reset เมื่อ Air/Docker restart ฐานข้อมูลเดิมจะล้างเฉพาะช่วงพักที่เกิดจากเพดานของแอปเองเมื่อเปิด backend ใหม่
 
 เมื่อเจอ HTTP 429 จะพักอย่างน้อย 1 ชั่วโมง; HTTP 403 หรือ Cloudflare challenge จะพักอย่างน้อย 24 ชั่วโมง ถ้า `Retry-After` นานกว่านั้นจะใช้เวลาของ source ทั้ง back-office และ CLI หยุด batch ทันที ไม่ retry อัตโนมัติขณะพัก พฤติกรรม `Retry-After` อ้างอิง [Cloudflare HTTP 429 documentation](https://developers.cloudflare.com/support/troubleshooting/http-status-codes/4xx-client-error/error-429/)
 
 HTML ของโพสต์ cache ไว้ 7 วัน และไม่ดาวน์โหลด URL รูปที่มีอยู่แล้วในชุด การ browse รูปทั้งหมดอ่านจาก SQLite จึงไม่สร้าง traffic ไป Gank หากโพสต์ไม่มีรูปสาธารณะครบ 2 รูป ต้องเติมด้วย upload หรือเปลี่ยน example link ใน back-office
 
-`GET /api/admin/ingestion` แสดง policy, งบคำขอที่เหลือและเวลาพัก `scripts/refresh-seed.sh` รักษารูปเดิมและอัปเดต metadata เท่านั้น การดึงรูปใหม่ต้องผ่าน API เพื่อใช้นโยบาย rate limit ของ volume เดิม Script เขียนรายงานเริ่มต้นที่ `/tmp/bias-image-fill-report.json`; ใช้ `--report=<path>` เปลี่ยนตำแหน่งได้
+`GET /api/admin/ingestion` แสดงช่วงห่างระหว่างคำขอและเวลาพัก `scripts/refresh-seed.sh` รักษารูปเดิมและอัปเดต metadata เท่านั้น การดึงรูปใหม่ต้องผ่าน API เพื่อใช้นโยบายการเว้นระยะและ cooldown ของ volume เดิม Script เขียนรายงานเริ่มต้นที่ `/tmp/bias-image-fill-report.json`; ใช้ `--report=<path>` เปลี่ยนตำแหน่งได้
 
 ## โครงสร้างและ API
 
