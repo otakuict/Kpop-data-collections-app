@@ -84,6 +84,7 @@ jobs:
         env:
           DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
           ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+          GOOGLE_SHEETS_SERVICE_ACCOUNT_B64: ${{ secrets.GOOGLE_SHEETS_SERVICE_ACCOUNT_B64 }}
           DEPLOY_PROJECT_NAME: ${{ vars.DEPLOY_PROJECT_NAME }}
           GALLERY_PORT: ${{ vars.GALLERY_PORT }}
           BACKOFFICE_PORT: ${{ vars.BACKOFFICE_PORT }}

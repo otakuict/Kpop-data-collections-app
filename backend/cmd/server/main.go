@@ -112,7 +112,7 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Print("Google Sheet writeback enabled for imported sets")
+		log.Print("Google Sheet writeback enabled")
 	}
 	server := &http.Server{Addr: env("LISTEN_ADDR", ":8080"), Handler: gallery.RouterWithSheetSync(store, token, sheetSync), ReadHeaderTimeout: 10 * time.Second, ReadTimeout: 120 * time.Second, WriteTimeout: 5 * time.Minute, IdleTimeout: 60 * time.Second}
 	go func() {
