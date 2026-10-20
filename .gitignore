@@ -4,6 +4,7 @@ backoffice/dist/
 .env
 .env.*
 !.env.example
+.secrets/
 *.sqlite-wal
 *.sqlite-shm
 data/gallery.sqlite*

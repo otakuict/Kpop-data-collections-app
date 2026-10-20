@@ -59,11 +59,13 @@ func (s *SetStyle) Validate() error {
 type Set struct {
 	ID SetID `json:"id"`
 	SetDraft
-	Style      SetStyle `json:"style"`
-	Origin     string   `json:"origin"`
-	ImageState string   `json:"imageState"`
-	ImageError string   `json:"imageError"`
-	Images     []Image  `json:"images"`
+	SheetSynced bool     `json:"sheetSynced,omitempty"`
+	SheetRow    int      `json:"sheetRow,omitempty"`
+	Style       SetStyle `json:"style"`
+	Origin      string   `json:"origin"`
+	ImageState  string   `json:"imageState"`
+	ImageError  string   `json:"imageError"`
+	Images      []Image  `json:"images"`
 }
 
 type Filter struct {
@@ -82,6 +84,7 @@ type Facet struct {
 }
 type Facets struct {
 	Groups   []Facet `json:"groups"`
+	Sources  []Facet `json:"sources"`
 	Total    int     `json:"total"`
 	Ready    int     `json:"ready"`
 	Complete int     `json:"complete"`

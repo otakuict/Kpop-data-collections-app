@@ -26,6 +26,10 @@ const maxUploadBatchPixels = 12_000_000
 var imageUploadSlot = make(chan struct{}, 1)
 
 func Router(store *Store, token string) *gin.Engine {
+	return RouterWithSheetSync(store, token, nil)
+}
+
+func RouterWithSheetSync(store *Store, token string, sheetSync *SheetSync) *gin.Engine {
 	r := gin.New()
 	presence := newPresenceTracker()
 	r.Use(httpRequestLogger())
@@ -61,6 +65,14 @@ func Router(store *Store, token string) *gin.Engine {
 		}
 		if errors.Is(err, ErrSourceChanged) {
 			code = 409
+			message = err.Error()
+		}
+		if errors.Is(err, ErrSheetConflict) {
+			code = 409
+			message = err.Error()
+		}
+		if errors.Is(err, ErrSheetUnavailable) {
+			code = 502
 			message = err.Error()
 		}
 		if err == sql.ErrNoRows {
@@ -165,16 +177,30 @@ func Router(store *Store, token string) *gin.Engine {
 		}
 		c.JSON(200, status)
 	})
-	admin.GET("/status", func(c *gin.Context) { c.JSON(200, gin.H{"authenticated": true}) })
+	admin.GET("/status", func(c *gin.Context) { c.JSON(200, gin.H{"authenticated": true, "sheetSyncEnabled": sheetSync != nil}) })
 	save := func(c *gin.Context, id SetID) {
 		var payload struct {
 			SetDraft
-			Style *SetStyle `json:"style"`
+			Style   *SetStyle `json:"style"`
+			SetDate string    `json:"setDate"`
+			Name    string    `json:"name"`
 		}
 		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 64<<10)
 		if err := c.ShouldBindJSON(&payload); err != nil {
 			c.JSON(400, gin.H{"error": "invalid metadata JSON"})
 			return
+		}
+		var setDate time.Time
+		if id == 0 && (payload.SetDate != "" || payload.Name != "") {
+			var parseErr error
+			setDate, parseErr = time.Parse("2006-01-02", payload.SetDate)
+			if parseErr != nil || strings.TrimSpace(payload.Name) == "" || setDate.Year() < 2000 || setDate.Year() > 2099 {
+				c.JSON(400, gin.H{"error": "set date and name are required; set date must be YYYY-MM-DD"})
+				return
+			}
+			payload.Title = setDate.Format("060102") + " " + strings.TrimSpace(payload.Name)
+			bangkok := time.FixedZone("Asia/Bangkok", 7*60*60)
+			payload.Date = time.Now().In(bangkok).Format("2006-01-02")
 		}
 		if err := payload.SetDraft.Validate(); err != nil {
 			c.JSON(400, gin.H{"error": err.Error()})
@@ -185,12 +211,65 @@ func Router(store *Store, token string) *gin.Engine {
 				c.JSON(400, gin.H{"error": err.Error()})
 				return
 			}
+			var ribbons []string
+			if payload.Style.Wishlist {
+				ribbons = append(ribbons, "Wish list")
+			}
+			if payload.Style.New {
+				ribbons = append(ribbons, "New")
+			}
+			if payload.Style.NoTrade {
+				ribbons = append(ribbons, "No trade")
+			}
+			if payload.Style.Selective {
+				ribbons = append(ribbons, "Selective")
+			}
+			if len(ribbons) > 0 {
+				payload.Notes = strings.Join(ribbons, "; ")
+			}
+		}
+		synced := false
+		sheetRow := 0
+		var err error
+		if id == 0 && sheetSync != nil && !setDate.IsZero() {
+			payload.SetDraft, sheetRow, err = sheetSync.InsertNew(c.Request.Context(), store, payload.SetDraft, setDate)
+			if err != nil {
+				fail(c, err)
+				return
+			}
+			synced = true
+		}
+		if id != 0 && sheetSync != nil {
+			old, lookupErr := store.Get(c.Request.Context(), id)
+			if lookupErr != nil {
+				fail(c, lookupErr)
+				return
+			}
+			if old.Origin == "sheet" {
+				key, keyErr := store.ImportKey(c.Request.Context(), id)
+				if keyErr != nil {
+					fail(c, keyErr)
+					return
+				}
+				payload.SetDraft, synced, err = sheetSync.UpdateExisting(c.Request.Context(), store, old, payload.SetDraft, key)
+				if err != nil {
+					fail(c, err)
+					return
+				}
+			}
 		}
 		x, err := store.SaveStyled(c.Request.Context(), id, payload.SetDraft, payload.Style)
 		if err != nil {
+			if synced {
+				log.Printf("http.sheet_sync.local_save_failed id=%s set=%d error=%q", requestID(c.Request.Context()), id, logError(err))
+				c.JSON(500, gin.H{"error": "Google Sheet updated, but the app save failed. Import the Sheet to reconcile before retrying."})
+				return
+			}
 			fail(c, err)
 			return
 		}
+		x.SheetSynced = synced
+		x.SheetRow = sheetRow
 		c.JSON(200, x)
 	}
 	admin.POST("/sets", func(c *gin.Context) { save(c, 0) })

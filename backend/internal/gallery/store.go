@@ -361,7 +361,7 @@ func (s *Store) List(ctx context.Context, f Filter) (Page, error) {
 	return p, nil
 }
 func (s *Store) Facets(ctx context.Context) (Facets, error) {
-	f := Facets{Groups: []Facet{}}
+	f := Facets{Groups: []Facet{}, Sources: []Facet{}}
 	err := s.db.QueryRowContext(ctx, "SELECT COUNT(*),COALESCE(SUM(EXISTS(SELECT 1 FROM images WHERE set_id=sets.id)),0),COALESCE(SUM((SELECT COUNT(*) FROM images WHERE set_id=sets.id) BETWEEN 2 AND 5),0),COALESCE(MIN(NULLIF(date,'')),''),COALESCE(MAX(date),'') FROM sets").Scan(&f.Total, &f.Ready, &f.Complete, &f.From, &f.To)
 	if err != nil {
 		return f, err
@@ -378,10 +378,53 @@ func (s *Store) Facets(ctx context.Context) (Facets, error) {
 		}
 		f.Groups = append(f.Groups, x)
 	}
-	return f, rows.Err()
+	if err := rows.Err(); err != nil {
+		return f, err
+	}
+	if err := rows.Close(); err != nil {
+		return f, err
+	}
+	sources, err := s.db.QueryContext(ctx, "SELECT source,COUNT(*) FROM sets WHERE TRIM(source)<>'' GROUP BY source ORDER BY source COLLATE NOCASE")
+	if err != nil {
+		return f, err
+	}
+	defer sources.Close()
+	for sources.Next() {
+		var x Facet
+		if err := sources.Scan(&x.Name, &x.Count); err != nil {
+			return f, err
+		}
+		f.Sources = append(f.Sources, x)
+	}
+	return f, sources.Err()
 }
 func (s *Store) Save(ctx context.Context, id SetID, d SetDraft) (Set, error) {
 	return s.SaveStyled(ctx, id, d, nil)
+}
+
+func (s *Store) ImportKey(ctx context.Context, id SetID) (string, error) {
+	var key sql.NullString
+	err := s.db.QueryRowContext(ctx, "SELECT import_key FROM sets WHERE id=?", id).Scan(&key)
+	return key.String, err
+}
+
+func (s *Store) CheckImportKey(ctx context.Context, id SetID, key string) error {
+	var other SetID
+	err := s.db.QueryRowContext(ctx, "SELECT id FROM sets WHERE import_key=? AND id<>?", key, id).Scan(&other)
+	if err == sql.ErrNoRows {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	return fmt.Errorf("sheet row identity would overlap set #%d", other)
+}
+
+func nullableImportKey(key string) any {
+	if key == "" {
+		return nil
+	}
+	return key
 }
 
 func (s *Store) SaveStyled(ctx context.Context, id SetID, d SetDraft, style *SetStyle) (Set, error) {
@@ -407,7 +450,11 @@ func (s *Store) SaveStyled(ctx context.Context, id SetID, d SetDraft, style *Set
 	}
 	defer tx.Rollback()
 	if id == 0 {
-		r, err := tx.ExecContext(ctx, `INSERT INTO sets(title,group_name,date,source,example,notes,style) VALUES(?,?,?,?,?,?,?)`, d.Title, d.Group, d.Date, d.Source, d.Example, d.Notes, styleJSON)
+		origin := "manual"
+		if d.ImportKey != "" {
+			origin = "sheet"
+		}
+		r, err := tx.ExecContext(ctx, `INSERT INTO sets(title,group_name,date,source,example,notes,raw_date,raw_cells,import_key,import_warning,origin,style) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`, d.Title, d.Group, d.Date, d.Source, d.Example, d.Notes, d.RawDate, d.RawCells, nullableImportKey(d.ImportKey), d.ImportWarning, origin, styleJSON)
 		if err != nil {
 			return Set{}, err
 		}
@@ -421,7 +468,14 @@ func (s *Store) SaveStyled(ctx context.Context, id SetID, d SetDraft, style *Set
 		if err = tx.QueryRowContext(ctx, "SELECT example FROM sets WHERE id=?", id).Scan(&oldExample); err != nil {
 			return Set{}, err
 		}
-		_, err = tx.ExecContext(ctx, "UPDATE sets SET title=?,group_name=?,date=?,source=?,example=?,notes=?,style=COALESCE(?,style) WHERE id=?", d.Title, d.Group, d.Date, d.Source, d.Example, d.Notes, styleJSON, id)
+		synced := d.ImportKey != ""
+		_, err = tx.ExecContext(ctx, `UPDATE sets SET title=?,group_name=?,date=?,source=?,example=?,notes=?,style=COALESCE(?,style),
+			raw_date=CASE WHEN ? THEN ? ELSE raw_date END,
+			raw_cells=CASE WHEN ? THEN ? ELSE raw_cells END,
+			import_key=CASE WHEN ? THEN ? ELSE import_key END,
+			import_warning=CASE WHEN ? THEN ? ELSE import_warning END WHERE id=?`,
+			d.Title, d.Group, d.Date, d.Source, d.Example, d.Notes, styleJSON,
+			synced, d.RawDate, synced, d.RawCells, synced, d.ImportKey, synced, d.ImportWarning, id)
 		if err != nil {
 			return Set{}, err
 		}

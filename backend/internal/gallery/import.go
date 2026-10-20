@@ -12,6 +12,23 @@ import (
 )
 
 func ParseSheet(reader io.Reader, source string) ([]SetDraft, error) {
+	parsed, err := parseSheetRows(reader, source)
+	if err != nil {
+		return nil, err
+	}
+	sets := make([]SetDraft, 0, len(parsed))
+	for _, row := range parsed {
+		sets = append(sets, row.Draft)
+	}
+	return sets, nil
+}
+
+type parsedSheetRow struct {
+	Draft  SetDraft
+	Number int // One-based row number in the source spreadsheet.
+}
+
+func parseSheetRows(reader io.Reader, source string) ([]parsedSheetRow, error) {
 	csvReader := csv.NewReader(reader)
 	csvReader.FieldsPerRecord = -1
 	rows, err := csvReader.ReadAll()
@@ -37,9 +54,9 @@ func ParseSheet(reader io.Reader, source string) ([]SetDraft, error) {
 	if header < 0 {
 		return nil, fmt.Errorf("template needs Date, Name and GROUP columns")
 	}
-	sets := []SetDraft{}
+	sets := []parsedSheetRow{}
 	occurrences := map[string]int{}
-	for _, row := range rows[header+1:] {
+	for rowIndex, row := range rows[header+1:] {
 		if strings.TrimSpace(strings.Join(row, "")) == "" {
 			continue
 		}
@@ -76,7 +93,7 @@ func ParseSheet(reader io.Reader, source string) ([]SetDraft, error) {
 		occurrences[identity]++
 		sum := sha256.Sum256([]byte(fmt.Sprintf("%s\x00%d", identity, occurrences[identity])))
 		d.ImportKey = hex.EncodeToString(sum[:])
-		sets = append(sets, d)
+		sets = append(sets, parsedSheetRow{Draft: d, Number: header + rowIndex + 2})
 	}
 	if len(sets) == 0 {
 		return nil, fmt.Errorf("template contains no data rows")

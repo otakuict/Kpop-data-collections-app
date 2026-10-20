@@ -9,6 +9,7 @@ node_modules
 **/dist
 .env
 .env.*
+.secrets
 *.sqlite-wal
 *.sqlite-shm
 data/gallery.sqlite*
