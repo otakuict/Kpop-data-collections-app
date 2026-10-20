@@ -37,8 +37,8 @@ test('gallery filters real seed records, groups dates, opens details, and handle
 test('back-office rejects unauthorized writes and adds a real uploaded preview visible in gallery',async({page},testInfo)=>{
  const rejected=await page.request.post(`${office}/api/admin/sets`,{data:{title:'Unauthorized',group:'TEST'}});expect(rejected.status()).toBe(401);
  await signIn(page);await page.getByRole('button',{name:'Add image set'}).click();
- const title=`E2E moment ${testInfo.project.name} ${Date.now()}`;
- await page.getByLabel('Set title').fill(title);await page.getByLabel('Group / artist').fill('TEST ARCHIVE');await page.getByLabel('Date of set').fill('2026-10-06');await page.getByLabel('Source', {exact:true}).fill('Browser acceptance test');
+ const name=`E2E moment ${testInfo.project.name} ${Date.now()}`,title=`261006 ${name}`;
+ await page.getByLabel('Set date').fill('2026-10-06');await page.getByLabel('Name',{exact:true}).fill(name);await page.getByLabel('Group / artist').fill('TEST ARCHIVE');await page.getByLabel('Source', {exact:true}).fill('Browser acceptance test');
  const preview=await page.request.get(`${office}/api/images/1`);expect(preview.ok()).toBeTruthy();
  const second=await page.request.get(`${office}/api/images/2`);expect(second.ok()).toBeTruthy();
  await page.getByLabel('Preview images',{exact:true}).setInputFiles([{name:'preview.jpg',mimeType:'image/jpeg',buffer:await preview.body()},{name:'second.jpg',mimeType:'image/jpeg',buffer:await second.body()}]);
