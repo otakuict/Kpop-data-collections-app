@@ -31,25 +31,6 @@ exec 9>"$lock_dir/$project.deploy.lock"
 flock -w 600 9
 
 compose=(docker compose --env-file /dev/null -p "$project" -f "$repo_root/compose.release.yaml")
-sheet_key_file="${GOOGLE_SHEETS_HOST_KEY_FILE:-$lock_dir/$project.google-sheets.json}"
-if [[ -n "${GOOGLE_SHEETS_SERVICE_ACCOUNT_B64:-}" && "$service" == backend ]]; then
-  [[ "$sheet_key_file" == /* ]] || { echo 'Google Sheets key path must be absolute' >&2; exit 1; }
-  key_tmp="$(mktemp "$(dirname "$sheet_key_file")/$project.google-sheets.XXXXXX")"
-  # The backend container runs as UID 10001. Its bind mount needs read access;
-  # the private host directory prevents other host users from reaching the file.
-  chmod 644 "$key_tmp"
-  if ! printf '%s' "$GOOGLE_SHEETS_SERVICE_ACCOUNT_B64" | base64 --decode > "$key_tmp"; then
-    rm -f "$key_tmp"
-    echo 'Google Sheets secret is not valid base64' >&2
-    exit 1
-  fi
-  mv -f "$key_tmp" "$sheet_key_file"
-  unset GOOGLE_SHEETS_SERVICE_ACCOUNT_B64
-fi
-if [[ -f "$sheet_key_file" ]]; then
-  export GOOGLE_SHEETS_HOST_KEY_FILE="$sheet_key_file"
-  compose+=(-f "$repo_root/compose.sheet-sync.yaml")
-fi
 if [[ "$service" != backend ]]; then
   backend_id="$("${compose[@]}" ps --status running -q backend)"
   if [[ -z "$backend_id" ]] || [[ "$(docker inspect --format '{{.State.Health.Status}}' "$backend_id")" != healthy ]]; then

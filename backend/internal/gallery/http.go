@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -31,6 +32,9 @@ func Router(store *Store, token string) *gin.Engine {
 
 func RouterWithSheetSync(store *Store, token string, sheetSync *SheetSync) *gin.Engine {
 	r := gin.New()
+	var sheetSyncActive atomic.Bool
+	var sheetSyncRestartRequired atomic.Bool
+	sheetSyncActive.Store(sheetSync != nil)
 	presence := newPresenceTracker()
 	r.Use(httpRequestLogger())
 	r.Use(gin.Recovery())
@@ -177,7 +181,40 @@ func RouterWithSheetSync(store *Store, token string, sheetSync *SheetSync) *gin.
 		}
 		c.JSON(200, status)
 	})
-	admin.GET("/status", func(c *gin.Context) { c.JSON(200, gin.H{"authenticated": true, "sheetSyncEnabled": sheetSync != nil}) })
+	admin.GET("/status", func(c *gin.Context) {
+		configured, err := store.HasSheetCredentials(c.Request.Context())
+		if err != nil {
+			fail(c, err)
+			return
+		}
+		enabled := sheetSyncActive.Load()
+		c.JSON(200, gin.H{"authenticated": true, "sheetSyncEnabled": enabled, "sheetSyncConfigured": configured, "sheetSyncRestartRequired": sheetSyncRestartRequired.Load()})
+	})
+	admin.POST("/sheet-credentials", func(c *gin.Context) {
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 80<<10)
+		file, _, err := c.Request.FormFile("credentials")
+		if err != nil {
+			c.JSON(400, gin.H{"error": "choose a service account JSON file smaller than 64 KB"})
+			return
+		}
+		defer file.Close()
+		credentials, err := io.ReadAll(io.LimitReader(file, (64<<10)+1))
+		if err != nil || len(credentials) == 0 || len(credentials) > 64<<10 {
+			c.JSON(400, gin.H{"error": "service account JSON must be smaller than 64 KB"})
+			return
+		}
+		if _, err := NewSheetSyncFromJSON(credentials, DefaultSheetURL); err != nil {
+			c.JSON(400, gin.H{"error": "invalid Google service account JSON key"})
+			return
+		}
+		if err := store.SaveSheetCredentials(c.Request.Context(), token, credentials); err != nil {
+			fail(c, err)
+			return
+		}
+		sheetSyncActive.Store(false)
+		sheetSyncRestartRequired.Store(true)
+		c.JSON(200, gin.H{"configured": true, "restartRequired": true})
+	})
 	save := func(c *gin.Context, id SetID) {
 		var payload struct {
 			SetDraft
@@ -231,7 +268,7 @@ func RouterWithSheetSync(store *Store, token string, sheetSync *SheetSync) *gin.
 		synced := false
 		sheetRow := 0
 		var err error
-		if id == 0 && sheetSync != nil && !setDate.IsZero() {
+		if id == 0 && sheetSyncActive.Load() && !setDate.IsZero() {
 			payload.SetDraft, sheetRow, err = sheetSync.InsertNew(c.Request.Context(), store, payload.SetDraft, setDate)
 			if err != nil {
 				fail(c, err)
@@ -239,7 +276,7 @@ func RouterWithSheetSync(store *Store, token string, sheetSync *SheetSync) *gin.
 			}
 			synced = true
 		}
-		if id != 0 && sheetSync != nil {
+		if id != 0 && sheetSyncActive.Load() {
 			old, lookupErr := store.Get(c.Request.Context(), id)
 			if lookupErr != nil {
 				fail(c, lookupErr)

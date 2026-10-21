@@ -8,7 +8,6 @@ services:
       ADMIN_TOKEN: ${ADMIN_TOKEN:?Set administrator token}
       DATABASE_PATH: /data/gallery.sqlite
       SEED_DATABASE: /seed/seed.sqlite
-      GOOGLE_SHEETS_CREDENTIALS_FILE: ${GOOGLE_SHEETS_CREDENTIALS_FILE:-}
       GOOGLE_SHEETS_URL: ${GOOGLE_SHEETS_URL:-}
     volumes:
       - gallery-data:/data

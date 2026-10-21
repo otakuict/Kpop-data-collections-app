@@ -1,9 +1,0 @@
-# Add this overlay to a local or release Compose command to enable Sheet writes.
-# Set GOOGLE_SHEETS_HOST_KEY_FILE to a protected absolute path for deployments.
-services:
-  backend:
-    environment:
-      GOOGLE_SHEETS_CREDENTIALS_FILE: /run/secrets/google-sheets.json
-      GOOGLE_SHEETS_URL: ${GOOGLE_SHEETS_URL:-https://docs.google.com/spreadsheets/d/1z45mKRtLvTZth8b-uhqkMyjzxVtHI8b7YVcySQVeEkg/edit?gid=0}
-    volumes:
-      - ${GOOGLE_SHEETS_HOST_KEY_FILE:-./.secrets/google-sheets.json}:/run/secrets/google-sheets.json:ro

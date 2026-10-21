@@ -17,7 +17,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -44,7 +43,7 @@ type SheetSync struct {
 	tokenExpires  time.Time
 }
 
-func NewSheetSync(credentialsPath, sheetURL string) (*SheetSync, error) {
+func NewSheetSyncFromJSON(data []byte, sheetURL string) (*SheetSync, error) {
 	_, source, err := SheetURL(sheetURL)
 	if err != nil {
 		return nil, err
@@ -53,10 +52,6 @@ func NewSheetSync(credentialsPath, sheetURL string) (*SheetSync, error) {
 	gid, err := strconv.ParseInt(parts[2], 10, 64)
 	if err != nil {
 		return nil, err
-	}
-	data, err := os.ReadFile(credentialsPath)
-	if err != nil {
-		return nil, fmt.Errorf("read Google Sheets credentials: %w", err)
 	}
 	var credentials struct {
 		Type        string `json:"type"`

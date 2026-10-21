@@ -107,12 +107,18 @@ func main() {
 		log.Fatal("ADMIN_TOKEN must contain at least 24 characters")
 	}
 	var sheetSync *gallery.SheetSync
-	if credentials := os.Getenv("GOOGLE_SHEETS_CREDENTIALS_FILE"); credentials != "" {
-		sheetSync, err = gallery.NewSheetSync(credentials, env("GOOGLE_SHEETS_URL", gallery.DefaultSheetURL))
-		if err != nil {
-			log.Fatal(err)
+	if configured, checkErr := store.HasSheetCredentials(ctx); checkErr != nil {
+		log.Fatal(checkErr)
+	} else if configured {
+		credentials, loadErr := store.LoadSheetCredentials(ctx, token)
+		if loadErr == nil {
+			sheetSync, loadErr = gallery.NewSheetSyncFromJSON(credentials, env("GOOGLE_SHEETS_URL", gallery.DefaultSheetURL))
 		}
-		log.Print("Google Sheet writeback enabled")
+		if loadErr != nil {
+			log.Printf("Google Sheet writeback disabled: %v", loadErr)
+		} else {
+			log.Print("Google Sheet writeback enabled")
+		}
 	}
 	server := &http.Server{Addr: env("LISTEN_ADDR", ":8080"), Handler: gallery.RouterWithSheetSync(store, token, sheetSync), ReadHeaderTimeout: 10 * time.Second, ReadTimeout: 120 * time.Second, WriteTimeout: 5 * time.Minute, IdleTimeout: 60 * time.Second}
 	go func() {

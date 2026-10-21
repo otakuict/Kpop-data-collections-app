@@ -89,3 +89,4 @@ dialog{background:var(--surface);border:1px solid #314d6b;box-shadow:0 24px 110p
 .select-set-cell{padding-right:0}
 .select-set-cell input{width:17px;height:17px;margin:0;accent-color:var(--accent);cursor:pointer}
 .select-set-cell input:disabled{cursor:default}
+.sheet-credentials{margin-bottom:24px}.sheet-credentials form{max-width:440px}.sheet-credentials .primary{margin-top:12px}

@@ -99,6 +99,7 @@ func Open(path string) (*Store, error) {
  CREATE TABLE IF NOT EXISTS remote_limits (host TEXT PRIMARY KEY, next_at INTEGER NOT NULL DEFAULT 0, paused_until INTEGER NOT NULL DEFAULT 0, reason TEXT NOT NULL DEFAULT '');
  CREATE TABLE IF NOT EXISTS remote_leases (host TEXT PRIMARY KEY, until INTEGER NOT NULL);
  CREATE TABLE IF NOT EXISTS page_cache (url TEXT PRIMARY KEY, bytes BLOB NOT NULL, mime TEXT NOT NULL, fetched_at INTEGER NOT NULL);
+ CREATE TABLE IF NOT EXISTS sheet_credentials (id INTEGER PRIMARY KEY CHECK(id=1), nonce BLOB NOT NULL, ciphertext BLOB NOT NULL, updated_at TEXT NOT NULL);
  `)
 	if err != nil {
 		db.Close()

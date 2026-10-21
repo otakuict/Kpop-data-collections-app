@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, writeFileSync, mkdirSync, rmSync, existsSync, statSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -22,8 +22,6 @@ fs.appendFileSync(process.env.CALLS_FILE, JSON.stringify({args, tags: {
  backend: process.env.BACKEND_IMAGE_TAG,
  frontend: process.env.FRONTEND_IMAGE_TAG,
  backoffice: process.env.BACKOFFICE_IMAGE_TAG,
- sheetKeyPath: process.env.GOOGLE_SHEETS_HOST_KEY_FILE,
- secretStillInEnv: !!process.env.GOOGLE_SHEETS_SERVICE_ACCOUNT_B64,
 }}) + '\\n');
 if (args.includes('ps') && args.includes('-q')) console.log(process.env.NO_BACKEND ? '' : 'test-backend');
 if (args.includes('inspect')) console.log('healthy');
@@ -49,13 +47,8 @@ if (args.includes('up') && process.env.FAIL_UP) process.exit(43);
     try { return readFileSync(callsFile, 'utf8').trim().split('\n').map(JSON.parse); }
     catch (error) { if (error.code === 'ENOENT') return []; throw error; }
   })();
-  const keyFile = join(directory, '.local', 'state', 'bias-archive', 'otakuict-data-gallery.google-sheets.json');
-  const keyExists = existsSync(keyFile);
-  const keyMode = keyExists ? statSync(keyFile).mode & 0o777 : null;
-  const keyDirMode = keyExists ? statSync(join(directory, '.local', 'state', 'bias-archive')).mode & 0o777 : null;
-  const keyContents = keyExists ? readFileSync(keyFile, 'utf8') : null;
   rmSync(directory, { recursive: true, force: true });
-  return { ...result, calls, keyExists, keyMode, keyDirMode, keyContents };
+  return { ...result, calls };
 }
 
 for (const service of ['backend', 'frontend', 'backoffice']) {
@@ -85,28 +78,6 @@ test('a failed pull stops before any container is changed', () => {
   const result = deploy(['backend', sha], { FAIL_PULL: '1' });
   assert.equal(result.status, 42);
   assert.ok(!result.calls.some(call => call.args.includes('up')));
-});
-
-test('backend deploy persists the GitHub Sheet secret and uses the sync overlay', () => {
-  const credential = '{"type":"service_account","client_email":"test@example.com"}';
-  const result = deploy(['backend', sha], { GOOGLE_SHEETS_SERVICE_ACCOUNT_B64: Buffer.from(credential).toString('base64') });
-  assert.equal(result.status, 0, result.stderr);
-  assert.equal(result.keyContents, credential);
-  assert.equal(result.keyMode, 0o644);
-  assert.equal(result.keyDirMode, 0o700);
-  for (const call of result.calls) {
-    assert.ok(call.args.includes(join(root, 'compose.sheet-sync.yaml')));
-    assert.equal(call.tags.secretStillInEnv, false);
-    assert.ok(call.tags.sheetKeyPath?.endsWith('otakuict-data-gallery.google-sheets.json'));
-  }
-  assert.ok(!`${result.stdout}${result.stderr}`.includes(credential));
-});
-
-test('invalid Sheet secret stops before Docker', () => {
-  const result = deploy(['backend', sha], { GOOGLE_SHEETS_SERVICE_ACCOUNT_B64: 'not-base64!' });
-  assert.notEqual(result.status, 0);
-  assert.equal(result.calls.length, 0);
-  assert.equal(result.keyExists, false);
 });
 
 test('failed health wait fails deployment and an existing project keeps its own volume', () => {
@@ -161,9 +132,9 @@ test('each published service deploys through exactly one selected mode', () => {
   }
 });
 
-test('only the backend production deployment receives the Sheet secret', () => {
+test('deployment does not pass Google credentials through CI', () => {
   const backend = readFileSync(join(root, '.github/workflows/backend.yml'), 'utf8');
-  assert.ok(backend.includes('GOOGLE_SHEETS_SERVICE_ACCOUNT_B64: ${{ secrets.GOOGLE_SHEETS_SERVICE_ACCOUNT_B64 }}'));
+  assert.ok(!backend.includes('GOOGLE_SHEETS_SERVICE_ACCOUNT_B64'));
   for (const service of ['frontend', 'backoffice']) {
     const workflow = readFileSync(join(root, `.github/workflows/${service}.yml`), 'utf8');
     assert.ok(!workflow.includes('GOOGLE_SHEETS_SERVICE_ACCOUNT_B64'));
