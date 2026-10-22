@@ -29,7 +29,7 @@ func testServiceAccountJSON(t *testing.T) []byte {
 	credentials, err := json.Marshal(map[string]string{
 		"type": "service_account", "client_email": "test@example.com",
 		"private_key": string(pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: encoded})),
-		"token_uri": "https://oauth2.googleapis.com/token",
+		"token_uri":   "https://oauth2.googleapis.com/token",
 	})
 	if err != nil {
 		t.Fatal(err)
