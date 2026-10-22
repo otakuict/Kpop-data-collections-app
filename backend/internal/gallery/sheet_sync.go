@@ -9,7 +9,6 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
-	"encoding/csv"
 	"encoding/json"
 	"encoding/pem"
 	"errors"
@@ -211,12 +210,8 @@ func (s *SheetSync) rows(ctx context.Context, title string) ([][]string, error) 
 }
 
 func parseLiveRows(rows [][]string, source string) ([]parsedSheetRow, error) {
-	var csvData bytes.Buffer
-	writer := csv.NewWriter(&csvData)
-	if err := writer.WriteAll(rows); err != nil {
-		return nil, err
-	}
-	return parseSheetRows(&csvData, source)
+	// Keep blank entries so Number remains the physical Google Sheet row.
+	return parseRows(rows, source)
 }
 
 func rawSheetCells(raw string) (header, cells []string, err error) {

@@ -238,3 +238,57 @@ func TestSheetSyncInsertNewUsesSetDateOrderAndSheetColumns(t *testing.T) {
 		})
 	}
 }
+
+func TestSheetSyncInsertNewKeepsPhysicalRowsWithBlankLines(t *testing.T) {
+	ctx := context.Background()
+	store, err := Open(filepath.Join(t.TempDir(), "insert.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	_, source, _ := SheetURL(DefaultSheetURL)
+	live := [][]string{
+		{"banner"},
+		{}, // Blank row before the header must still count as a Sheet row.
+		{"view mode"},
+		{"Date", "Name", "GROUP", "Source", "anything", "Example", "REMARK"},
+		{"261021", "261018 Leeseo", "IVE", "Studio A", "", "https://example.com/a", ""},
+		{"261021", "261018 Leeseo", "IVE", "Studio B", "", "https://example.com/b", ""},
+		{"261019", "261004 Rei", "IVE", "Studio C", "", "https://example.com/c", ""},
+		{}, // A second blank row must not shift later Sheet row numbers either.
+		{"261019", "261004 Sana", "TWICE", "Studio D", "", "https://example.com/d", ""},
+	}
+	parsed, err := parseLiveRows(live, source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if parsed[0].Number != 5 || parsed[3].Number != 9 {
+		t.Fatalf("physical row numbers: first=%d last=%d", parsed[0].Number, parsed[3].Number)
+	}
+	var batch map[string]any
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case strings.HasSuffix(r.URL.Path, ":batchUpdate"):
+			if err := json.NewDecoder(r.Body).Decode(&batch); err != nil {
+				t.Error(err)
+			}
+			w.Write([]byte(`{}`))
+		case strings.Contains(r.URL.Path, "/values/"):
+			json.NewEncoder(w).Encode(map[string]any{"values": live})
+		default:
+			json.NewEncoder(w).Encode(map[string]any{"sheets": []any{map[string]any{"properties": map[string]any{"sheetId": 0, "title": "Collection"}}}})
+		}
+	}))
+	defer server.Close()
+	syncer := &SheetSync{spreadsheetID: "test", gid: 0, source: source, client: server.Client(), apiBase: server.URL, token: "test-token", tokenExpires: time.Now().Add(time.Hour)}
+	setDate, _ := time.Parse("2006-01-02", "2026-10-18")
+	draft := SetDraft{Title: "261018 Leeseo", Group: "IVE", Date: "2026-10-22", Source: "Studio New", Example: "https://example.com/new"}
+	inserted, row, err := syncer.InsertNew(ctx, store, draft, setDate)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if row != 7 || inserted.ImportKey == "" || batch == nil {
+		t.Fatalf("row=%d, key=%q, batch=%v", row, inserted.ImportKey, batch)
+	}
+}

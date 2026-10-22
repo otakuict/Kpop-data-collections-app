@@ -35,6 +35,10 @@ func parseSheetRows(reader io.Reader, source string) ([]parsedSheetRow, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid CSV: %w", err)
 	}
+	return parseRows(rows, source)
+}
+
+func parseRows(rows [][]string, source string) ([]parsedSheetRow, error) {
 	header := -1
 	columns := map[string]int{}
 	for i, row := range rows {
