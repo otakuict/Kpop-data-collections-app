@@ -255,19 +255,6 @@ func sheetDate(date, oldRaw string) string {
 	return date
 }
 
-func titleSetDate(title string) (time.Time, bool) {
-	if len(title) < 6 {
-		return time.Time{}, false
-	}
-	for _, digit := range title[:6] {
-		if digit < '0' || digit > '9' {
-			return time.Time{}, false
-		}
-	}
-	date, err := time.Parse("060102", title[:6])
-	return date, err == nil && date.Year() >= 2000
-}
-
 // InsertNew adds a row within the existing group ordered by the date in Name.
 // The Sheet Date column records the Bangkok date when the set was added.
 func (s *SheetSync) InsertNew(ctx context.Context, store *Store, requested SetDraft, setDate time.Time) (SetDraft, int, error) {

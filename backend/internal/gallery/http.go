@@ -235,7 +235,7 @@ func RouterWithSheetSync(store *Store, token string, sheetSync *SheetSync) *gin.
 				c.JSON(400, gin.H{"error": "set date and name are required; set date must be YYYY-MM-DD"})
 				return
 			}
-			payload.Title = setDate.Format("060102") + " " + strings.TrimSpace(payload.Name)
+			payload.Title, setDate = buildSetTitle(setDate, payload.Name)
 			bangkok := time.FixedZone("Asia/Bangkok", 7*60*60)
 			payload.Date = time.Now().In(bangkok).Format("2006-01-02")
 		}
@@ -248,22 +248,7 @@ func RouterWithSheetSync(store *Store, token string, sheetSync *SheetSync) *gin.
 				c.JSON(400, gin.H{"error": err.Error()})
 				return
 			}
-			var ribbons []string
-			if payload.Style.Wishlist {
-				ribbons = append(ribbons, "Wish list")
-			}
-			if payload.Style.New {
-				ribbons = append(ribbons, "New")
-			}
-			if payload.Style.NoTrade {
-				ribbons = append(ribbons, "No trade")
-			}
-			if payload.Style.Selective {
-				ribbons = append(ribbons, "Selective")
-			}
-			if len(ribbons) > 0 {
-				payload.Notes = strings.Join(ribbons, "; ")
-			}
+			payload.Notes = notesForBackofficeSave(payload.Style, payload.Notes)
 		}
 		synced := false
 		sheetRow := 0
