@@ -1,4 +1,7 @@
 const { test, expect } = require('@playwright/test');
+test.beforeEach(async ({ page }) => {
+ await page.addInitScript(() => localStorage.setItem('bias.analytics-consent.v1', JSON.stringify({choice:'rejected',expiresAt:Date.now()+180*86400000})));
+});
 
 async function dismissGuide(page, hide = true) {
  await page.getByRole('checkbox', { name: /Don't show it again/ }).setChecked(hide);

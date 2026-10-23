@@ -136,6 +136,9 @@ docs/design/              สอง design candidates, cross-judge และแ�
 | `GET /api/facets` | กลุ่มและจำนวนชุด/preview |
 | `GET /api/images/:id` | JPEG BLOB จาก SQLite |
 | `GET /api/health` | Readiness ของ API + database |
+| `POST /api/presence` | Consented heartbeat; requires `X-Gallery-Analytics-Consent: accepted`; otherwise clears the cookie and returns `204` without tracking |
+| `DELETE /api/presence` | Clear the visitor cookie after rejection or expiry; returns `204` |
+| `GET /api/admin/analytics?days=30` | Private usage dashboard: online, unique browsers, visits, observed duration, daily UTC totals and countries; `days` accepts 7, 30 or 90 |
 | `GET /api/admin/ingestion` | Gank policy, remaining budget and cooldown |
 | `POST /api/admin/session` | แลก `ADMIN_TOKEN` เป็น JWT อายุ 24 ชั่วโมง |
 | `GET /api/admin/status` | ตรวจ bearer token หรือ JWT |
@@ -149,11 +152,27 @@ docs/design/              สอง design candidates, cross-judge และแ�
 
 Admin endpoints ใช้ `Authorization: Bearer <JWT>` จาก back-office หรือ `Authorization: Bearer <ADMIN_TOKEN>` สำหรับการเรียก API โดยตรง Server ปฏิเสธ admin token ที่สั้นกว่า 24 ตัวอักษร Remote fetch รับเฉพาะ public HTTPS, ตรวจ DNS/IP และ redirect, ปฏิเสธ private/loopback/link-local/reserved addresses, จำกัดขนาด/เวลา/MIME/pixel Gallery และ back-office proxy `/api` ผ่าน Vite ในโหมดพัฒนาและ nginx ใน production จึงใช้ same-origin requests
 
+## Usage dashboard
+
+Sign in to the back office and choose **Usage dashboard** in the sidebar. The dashboard shows gallery usage and refreshes every 20 seconds while visible. Sidebar links also open Image sets and Import & previews; `#dashboard` opens the dashboard directly and survives refresh.
+
+The gallery sends its heartbeat every 20 seconds while visible **only after analytics consent**. Each consenting browser is identified by a random, HttpOnly, SameSite cookie, shared by tabs. People means unique browser cookies in the selected period, not verified individuals. The cookie remains a browser-session cookie: closing the browser or clearing cookies can count the same person again. A gap of 60 seconds starts a new visit. Approximate duration is the time from the first to the last heartbeat in a visit; it excludes the offline timeout and longer idle gaps. A single-heartbeat visit has zero observed seconds. Daily buckets use UTC; a visit spanning midnight contributes to each day it overlaps, so daily counts need not sum to the period's unique count. Time is clipped to the selected range.
+
+The initial banner offers equally prominent Accept analytics and Reject analytics buttons. Browsing works without acceptance. **Cookie settings** in the footer opens the privacy notice and lets visitors change their decision. The choice is saved in localStorage for 180 days, shared across tabs; unknown, expired or malformed preferences keep analytics off. With blocked storage, an explicit choice applies to the current page only. Withdrawal stops heartbeats and clears the visitor cookie; the online count can retain the last accepted heartbeat until its 60-second timeout. Counts cover consenting browsers only. The backend rejects heartbeats without the acceptance header, including requests from older gallery builds. Deploy the frontend and backend together.
+
+Visits are stored in the existing SQLite volume and survive backend restarts. Records older than 90 days since the last heartbeat are deleted when a consented heartbeat is recorded or the dashboard is read. Prior consented visits remain after withdrawal until that retention cleanup. Backups and hosting request logs have separate retention policies. History begins after this feature is installed; older online counts cannot be recovered. Back-office activity does not send gallery heartbeats. No visitor IP addresses are stored and no external geolocation requests are made. `scripts/export-seed.sh` removes usage history from the exported seed; the running database keeps its history.
+
+Country is optional and approximate. For an origin restricted to Cloudflare traffic, enable [Cloudflare IP Geolocation](https://developers.cloudflare.com/network/ip-geolocation/) and set `GALLERY_COUNTRY_HEADER=CF-IPCountry` on the backend (`.env` for Compose). Another trusted proxy may provide its own two-letter country header. The proxy must overwrite the header and prevent direct origin requests from supplying it. Header trust is disabled by default. Missing, invalid and unknown codes appear as **Unknown**; local development usually has no country data. Country is recorded when a visit starts; a returning browser can appear in more than one country's unique count. The charts use [Chart.js](https://www.chartjs.org/docs/latest/), bundled locally with the back office.
+
 ## Local development โดยไม่ใช้ Docker
 
-ต้องมี Node 24+, Go 1.25+ และ C compiler สำหรับ SQLite CGO
+ต้องมี Node 24.22.1 ขึ้นไปในสาย 24.x, Go 1.25+ และ C compiler สำหรับ SQLite CGO
+
+`.nvmrc`, CI และ Docker ใช้ Node 24.22.1 ซึ่งแก้ช่องโหว่ใน [October 2026 security release](https://nodejs.org/en/blog/vulnerability/october-2026-security-releases) แล้ว Production images ใช้ nginx และ Go; Node ใช้เฉพาะ development, build, scripts และ tests หากมี development containers เดิม ให้ใช้ `docker compose pull frontend backoffice && docker compose up -d --no-deps frontend backoffice` เพื่อเปลี่ยน runtime
 
 ```sh
+nvm install
+nvm use
 npm ci
 ./scripts/init-local.sh
 # อ่าน ADMIN_TOKEN จาก .env แล้ว export ให้ process นี้

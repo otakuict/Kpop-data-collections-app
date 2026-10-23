@@ -3,6 +3,8 @@
  import CardCarousel from './CardCarousel.svelte';
  import GalleryTable from './GalleryTable.svelte';
  import QuickGuide from './QuickGuide.svelte';
+ import AnalyticsConsent from './AnalyticsConsent.svelte';
+ import { consentKey, readAnalyticsConsent, saveAnalyticsConsent } from './analytics-consent.js';
  import { shouldShowGuide, saveGuidePreference } from './guide-preference.js';
  import { sourceHue } from './source-colors.js';
  import { floatingCard } from './floating-card.js';
@@ -14,6 +16,8 @@
  let loading=$state(true), error=$state(''), mounted=$state(false), selected=$state(null), imageIndex=$state(0), landscape=$state(false), about=$state(false), filtersOpen=$state(false);
  let loadingMore=$state(false), moreError=$state('');
  let online=$state(null);
+ let consentChoice=$state(null), consentPanel=$state();
+ let preferencePersisted=false, presenceRequest, cookieRemoval=Promise.resolve();
  let view=$state(initial.get('view')==='table'?'table':'cards'), guide=$state(false), guideHidden=$state(false);
  let activeRequest, timer, queryVersion=0;
  const sections=$derived(groupSets(items,by));
@@ -48,22 +52,47 @@
   const query=queryString({q,group,ribbon,from,to,sort,view:view==='table'?'table':''});
   if(mounted)window.history.replaceState(null,'',`${window.location.pathname}${query?`?${query}`:''}${window.location.hash}`);
  });
- onMount(()=>{
-  guideHidden=!shouldShowGuide();guide=!guideHidden;mounted=true;
-  json('/api/facets').then(result=>facets=result).catch(()=>{});
+ function clearVisitorCookie(){cookieRemoval=cookieRemoval.then(()=>fetch('/api/presence',{method:'DELETE',cache:'no-store',keepalive:true})).catch(()=>{});}
+ function syncConsent(){
+  consentChoice=readAnalyticsConsent();preferencePersisted=consentChoice!==null;
+  if(consentChoice!=='accepted'){presenceRequest?.abort();online=null;clearVisitorCookie();}
+ }
+ function chooseConsent(choice){
+  saveAnalyticsConsent(choice);consentChoice=choice;preferencePersisted=readAnalyticsConsent()===choice;
+  if(choice!=='accepted'){presenceRequest?.abort();online=null;clearVisitorCookie();}
+ }
+ function showCookieSettings(){close();guide=false;consentPanel.openSettings();}
+ $effect(()=>{
+  if(!mounted||consentChoice!=='accepted')return;
+  const controller=new AbortController();presenceRequest=controller;
+  let pending=false;
   async function heartbeat(){
-   if(document.hidden)return;
+   if(document.hidden||pending)return;
+   if(preferencePersisted&&readAnalyticsConsent()!=='accepted'){syncConsent();return;}
+   pending=true;
    try{
-    const response=await fetch('/api/presence',{method:'POST',cache:'no-store'});
+    await cookieRemoval;
+    if(controller.signal.aborted||document.hidden)return;
+    const response=await fetch('/api/presence',{method:'POST',cache:'no-store',headers:{'X-Gallery-Analytics-Consent':'accepted'},signal:controller.signal});
     if(!response.ok)throw new Error('Presence unavailable');
-    online=(await response.json()).online;
-   }catch{online=null;}
+    const result=await response.json();
+    if(!controller.signal.aborted)online=result.online;
+   }catch(e){if(e.name!=='AbortError')online=null;}
+   finally{pending=false;}
   }
   function visible(){if(!document.hidden)heartbeat();}
   heartbeat();
   const interval=setInterval(heartbeat,20000);
   document.addEventListener('visibilitychange',visible);
-  return()=>{activeRequest?.abort();clearInterval(interval);document.removeEventListener('visibilitychange',visible);};
+  return()=>{controller.abort();clearInterval(interval);document.removeEventListener('visibilitychange',visible);};
+ });
+ onMount(()=>{
+  syncConsent();guideHidden=!shouldShowGuide();guide=!guideHidden;mounted=true;
+  json('/api/facets').then(result=>facets=result).catch(()=>{});
+  function changed(event){if(event.key===null||event.key===consentKey)syncConsent();}
+  function reconnected(){if(consentChoice!=='accepted')clearVisitorCookie();}
+  window.addEventListener('storage',changed);window.addEventListener('online',reconnected);
+  return()=>{activeRequest?.abort();window.removeEventListener('storage',changed);window.removeEventListener('online',reconnected);};
  });
  function loadMore(){if(!loading&&!loadingMore&&!error&&!moreError&&items.length<total)load({q,group,ribbon,from,to,sort},page+1);}
  function infiniteScroll(node){
@@ -92,13 +121,13 @@
  <a class="office-link" href={backoffice} target="_blank" rel="noreferrer">Back office <ArrowUpRight size={15}/></a>
 </header>
 
-<main>
+<main class:consent-pending={consentChoice===null}>
  <section class="hero" aria-label="Archive introduction">
   <div class="hero-copy"><div class="eyebrow"><span class="tiny-dot"></span> THE K-POP IMAGE ARCHIVE <span class="edition">VOL. 001</span></div>
    <h1>OTAKU ICETEA.<br/><em>Collection.</em><span class="headline-star">✳</span></h1>
    <p>Every stage. Every era. A little closer.<br/>Explore a growing collection of K-pop image sets.</p>
    <a href="#collection" class="explore-link">Explore the archive <ArrowRight size={18}/></a>
-   <div class="hero-stats"><div><strong>{facets.total || '—'}</strong><span>IMAGE SETS</span></div><div><strong>{facets.groups.length || '—'}</strong><span>GROUPS & ARTISTS</span></div><div class="online-stat" role="status" aria-label={online===null?'Online count unavailable':`${online} visitors online now`}><strong><span class="online-dot" class:offline={online===null}></span>{online ?? '—'}</strong><span>ONLINE NOW</span></div></div>
+   <div class="hero-stats"><div><strong>{facets.total || '—'}</strong><span>IMAGE SETS</span></div><div><strong>{facets.groups.length || '—'}</strong><span>GROUPS & ARTISTS</span></div><div class="online-stat" role="status" aria-label={consentChoice!=='accepted'?'Online count requires analytics consent':online===null?'Online count unavailable':`${online} consenting visitors online now`}><strong><span class="online-dot" class:offline={online===null}></span>{online ?? '—'}</strong><span>ONLINE NOW</span></div></div>
   </div>
   <section class="hero-contact" aria-label="Contact">
    <div class="eyebrow small">LET'S CONNECT</div><h2>Contact<span>.</span></h2>
@@ -140,7 +169,7 @@
    {/if}
   </div>
  </section>
- <footer><a class="brand" href="/">BIAS<span class="brand-dot">®</span></a><p>A little archive. A lot of love.</p><span>K-POP IMAGE ARCHIVE <Asterisk size={15}/></span></footer>
+ <footer><a class="brand" href="/">BIAS<span class="brand-dot">®</span></a><p>A little archive. A lot of love.</p><button class="cookie-settings-link" onclick={showCookieSettings}>Cookie settings</button><span>K-POP IMAGE ARCHIVE <Asterisk size={15}/></span></footer>
 </main>
 
 {#if selected||about}<div class="modal-backdrop" role="presentation" onclick={close}></div><dialog use:modal oncancel={close} class:about={about} class:landscape={landscape&&!about} aria-label={about?'About the archive':selected.title}><button class="modal-close" aria-label="Close dialog" onclick={close}><X size={20}/></button>
@@ -149,3 +178,4 @@
 </dialog>{/if}
 
 {#if guide}<QuickGuide hidden={guideHidden} onclose={closeGuide}/>{/if}
+<AnalyticsConsent bind:this={consentPanel} choice={consentChoice} onchange={chooseConsent}/>

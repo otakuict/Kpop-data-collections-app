@@ -100,6 +100,9 @@ func Open(path string) (*Store, error) {
  CREATE TABLE IF NOT EXISTS remote_leases (host TEXT PRIMARY KEY, until INTEGER NOT NULL);
  CREATE TABLE IF NOT EXISTS page_cache (url TEXT PRIMARY KEY, bytes BLOB NOT NULL, mime TEXT NOT NULL, fetched_at INTEGER NOT NULL);
  CREATE TABLE IF NOT EXISTS sheet_credentials (id INTEGER PRIMARY KEY CHECK(id=1), nonce BLOB NOT NULL, ciphertext BLOB NOT NULL, updated_at TEXT NOT NULL);
+ CREATE TABLE IF NOT EXISTS usage_visits (id INTEGER PRIMARY KEY, visitor_id TEXT NOT NULL, country TEXT NOT NULL DEFAULT '', started_at INTEGER NOT NULL, last_seen INTEGER NOT NULL);
+ CREATE INDEX IF NOT EXISTS usage_visits_visitor ON usage_visits(visitor_id, last_seen DESC);
+ CREATE INDEX IF NOT EXISTS usage_visits_seen ON usage_visits(last_seen);
  `)
 	if err != nil {
 		db.Close()

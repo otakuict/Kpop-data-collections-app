@@ -9,6 +9,7 @@ services:
       ADMIN_TOKEN: ${ADMIN_TOKEN:?Run scripts/init-local.sh first}
       DATABASE_PATH: /data/gallery.sqlite
       SEED_DATABASE: /seed/seed.sqlite
+      GALLERY_COUNTRY_HEADER: ${GALLERY_COUNTRY_HEADER:-}
       GIN_MODE: debug
     ports:
       - "127.0.0.1:${API_PORT:-8080}:8080"
@@ -27,7 +28,7 @@ services:
     restart: unless-stopped
     stop_grace_period: 15s
   frontend:
-    image: node:24-alpine
+    image: node:24.22.1-alpine
     working_dir: /app
     command: ["sh", "-c", "npm ci --workspace frontend --include-workspace-root && exec npm run dev --workspace frontend -- --port 80 --strictPort"]
     environment:
@@ -50,7 +51,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
   backoffice:
-    image: node:24-alpine
+    image: node:24.22.1-alpine
     working_dir: /app
     command: ["sh", "-c", "npm ci --workspace backoffice --include-workspace-root && exec npm run dev --workspace backoffice -- --port 80 --strictPort"]
     environment:

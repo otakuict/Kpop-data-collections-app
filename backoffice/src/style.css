@@ -93,3 +93,18 @@ dialog{background:var(--surface);border:1px solid #314d6b;box-shadow:0 24px 110p
 .select-set-cell input{width:17px;height:17px;margin:0;accent-color:var(--accent);cursor:pointer}
 .select-set-cell input:disabled{cursor:default}
 .sheet-credentials{margin-bottom:24px}.sheet-credentials form{max-width:440px}.sheet-credentials .primary{margin-top:12px}
+
+.office-layout{display:grid;grid-template-columns:210px minmax(0,1fr);max-width:1800px;margin:auto;min-height:calc(100vh - 86px)}
+.office-sidebar{border-right:1px solid var(--line);padding:35px 18px;display:flex;flex-direction:column;position:sticky;top:0;align-self:start;height:calc(100vh - 86px)}
+.sidebar-label{font-size:8px;letter-spacing:1.5px;color:#7d98b4;margin:7px 12px 22px}
+.office-sidebar nav{display:flex;flex-direction:column;gap:8px}
+.office-sidebar nav a{display:flex;align-items:center;gap:11px;min-height:46px;padding:12px;border:1px solid transparent;border-radius:7px;color:#9db3cb;font-size:12px}
+.office-sidebar nav a:hover{background:#14263b;color:#d2edfb}
+.office-sidebar nav a.active{background:#16364a;color:#8de2f5;border-color:#2b526b}
+.sidebar-note{margin-top:auto;padding:28px 12px 10px;border-top:1px solid var(--line);color:#5a88a4}
+.sidebar-note p{font-family:Georgia,serif;font-style:italic;line-height:1.7;font-size:14px;color:#91a9c2}
+.office-layout .workspace{width:100%;min-width:0;padding:39px 32px 0}
+@media(min-width:1500px){.office-layout .workspace{padding-left:48px;padding-right:48px}}
+@media(max-width:1100px){.office-layout{grid-template-columns:180px minmax(0,1fr)}.office-sidebar{padding-left:12px;padding-right:12px}.office-sidebar nav a{font-size:11px;gap:9px;padding:10px}.office-layout .workspace{padding-left:22px;padding-right:22px}.heading-actions{flex-wrap:wrap;justify-content:flex-end}}
+@media(max-width:760px){.office-layout{display:block;min-height:calc(100vh - 72px)}.office-sidebar{height:auto;position:static;padding:12px 4%;border-right:0;border-bottom:1px solid var(--line)}.sidebar-label,.sidebar-note{display:none}.office-sidebar nav{flex-direction:row;gap:6px}.office-sidebar nav a{flex:1;justify-content:center;gap:7px;min-height:44px;font-size:11px;padding:9px 6px}.office-layout .workspace{padding:27px 5% 0}}
+@media(max-width:400px){.office-sidebar nav a{flex-direction:column;gap:5px;font-size:10px}}

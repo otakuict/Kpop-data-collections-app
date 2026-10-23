@@ -10,6 +10,7 @@ import (
 	"log"
 	"mime/multipart"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -35,7 +36,8 @@ func RouterWithSheetSync(store *Store, token string, sheetSync *SheetSync) *gin.
 	var sheetSyncActive atomic.Bool
 	var sheetSyncRestartRequired atomic.Bool
 	sheetSyncActive.Store(sheetSync != nil)
-	presence := newPresenceTracker()
+	presence := newPresenceTracker(store)
+	presence.countryHeader = os.Getenv("GALLERY_COUNTRY_HEADER")
 	r.Use(httpRequestLogger())
 	r.Use(gin.Recovery())
 	r.SetTrustedProxies(nil)
@@ -94,6 +96,7 @@ func RouterWithSheetSync(store *Store, token string, sheetSync *SheetSync) *gin.
 		c.JSON(200, gin.H{"status": "ok"})
 	})
 	r.POST("/api/presence", presence.heartbeat)
+	r.DELETE("/api/presence", withdrawPresence)
 	r.GET("/api/facets", func(c *gin.Context) {
 		f, err := store.Facets(c.Request.Context())
 		if err != nil {
@@ -178,6 +181,19 @@ func RouterWithSheetSync(store *Store, token string, sheetSync *SheetSync) *gin.
 		c.Header("Cache-Control", "no-store")
 		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 80<<20)
 		c.Next()
+	})
+	admin.GET("/analytics", func(c *gin.Context) {
+		days, err := strconv.Atoi(c.DefaultQuery("days", "30"))
+		if err != nil || (days != 7 && days != 30 && days != 90) {
+			c.JSON(400, gin.H{"error": "days must be 7, 30, or 90"})
+			return
+		}
+		report, err := store.Usage(c.Request.Context(), time.Now(), days)
+		if err != nil {
+			fail(c, err)
+			return
+		}
+		c.JSON(200, report)
 	})
 	admin.GET("/ingestion", func(c *gin.Context) {
 		status, err := store.IngestionStatus(c.Request.Context())

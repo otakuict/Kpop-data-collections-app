@@ -77,4 +77,8 @@ dialog::backdrop{background:#00000066;backdrop-filter:blur(3px)}
 .online-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#46d98a;box-shadow:0 0 0 3px #46d98a24,0 0 12px #46d98a77;flex-shrink:0}
 .online-dot.offline{background:#637587;box-shadow:none}
 @media(max-width:560px){.hero-stats .online-stat strong{gap:6px}.online-dot{width:7px;height:7px}}
+
+main.consent-pending{padding-bottom:190px}
+footer .cookie-settings-link{font-size:11px;color:#abc7dd;text-decoration:underline;text-underline-offset:4px;min-height:44px;padding:10px}
+@media(max-width:700px){main.consent-pending{padding-bottom:270px}footer{flex-wrap:wrap;gap:12px}footer .cookie-settings-link{font-size:11px}}
 @media(min-width:801px){dialog.landscape{width:min(1200px,96vw);grid-template-columns:minmax(0,2fr) minmax(280px,1fr)}}

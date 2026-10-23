@@ -11,6 +11,7 @@ const sets = [
 
 test.beforeEach(async ({ page }) => {
  await page.addInitScript(() => localStorage.setItem('bias.quick-guide.hidden.v1', '1'));
+ await page.addInitScript(() => localStorage.setItem('bias.analytics-consent.v1', JSON.stringify({choice:'rejected',expiresAt:Date.now()+180*86400000})));
  await page.route('**/api/facets', route => route.fulfill({ json: {
   total: sets.length, ready: 0, groups: [{ name: 'aespa', count: 5 }, { name: 'IVE', count: 1 }],
  } }));

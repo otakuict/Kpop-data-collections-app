@@ -2,10 +2,10 @@ name: Backend — CI and deploy
 on:
   pull_request:
     branches: [main]
-    paths: ['backend/**', 'compose.release.yaml', 'scripts/deploy-server.sh', 'scripts/release-workflow.test.mjs', '.dockerignore', '.github/workflows/backend.yml', 'data/**', 'scripts/verify-seed.py']
+    paths: ['.nvmrc', 'backend/**', 'compose.release.yaml', 'scripts/deploy-server.sh', 'scripts/release-workflow.test.mjs', '.dockerignore', '.github/workflows/backend.yml', 'data/**', 'scripts/verify-seed.py']
   push:
     branches: [main]
-    paths: ['backend/**', 'compose.release.yaml', 'scripts/deploy-server.sh', 'scripts/release-workflow.test.mjs', '.dockerignore', '.github/workflows/backend.yml', 'data/**', 'scripts/verify-seed.py']
+    paths: ['.nvmrc', 'backend/**', 'compose.release.yaml', 'scripts/deploy-server.sh', 'scripts/release-workflow.test.mjs', '.dockerignore', '.github/workflows/backend.yml', 'data/**', 'scripts/verify-seed.py']
   workflow_dispatch:
 permissions:
   contents: read
@@ -26,7 +26,7 @@ jobs:
           cache-dependency-path: backend/go.sum
       - uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version-file: '.nvmrc'
       - run: node --test scripts/release-workflow.test.mjs
       - run: go test -race ./...
         working-directory: backend

@@ -8,6 +8,7 @@ services:
       ADMIN_TOKEN: ${ADMIN_TOKEN:?Run scripts/init-local.sh first}
       DATABASE_PATH: /data/gallery.sqlite
       SEED_DATABASE: /seed/seed.sqlite
+      GALLERY_COUNTRY_HEADER: ${GALLERY_COUNTRY_HEADER:-}
     ports:
       - "127.0.0.1:${API_PORT:-8080}:8080"
     volumes:
