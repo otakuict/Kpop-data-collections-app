@@ -9,7 +9,7 @@
  import { Asterisk, ArrowUpRight, ArrowRight, Search, X, SlidersHorizontal, ChevronLeft, ChevronRight, Image as ImageIcon, LayoutGrid, TableProperties, CalendarDays, CircleHelp, Send } from '@lucide/svelte';
  import { displayDate, groupSets, queryString } from './catalog.js';
  const initial = new URLSearchParams(window.location.search);
- let q=$state(initial.get('q')||''), group=$state(initial.get('group')||''), from=$state(initial.get('from')||''), to=$state(initial.get('to')||''), sort=$state(initial.get('sort')||'newest');
+ let ribbon=$state(initial.get('ribbon')||''), q=$state(initial.get('q')||''), group=$state(initial.get('group')||''), from=$state(initial.get('from')||''), to=$state(initial.get('to')||''), sort=$state(initial.get('sort')||'newest');
  let by=$state('none'), page=$state(0), items=$state([]), total=$state(0), facets=$state({groups:[],total:0,ready:0});
  let loading=$state(true), error=$state(''), mounted=$state(false), selected=$state(null), imageIndex=$state(0), landscape=$state(false), about=$state(false), filtersOpen=$state(false);
  let loadingMore=$state(false), moreError=$state('');
@@ -17,7 +17,7 @@
  let view=$state(initial.get('view')==='table'?'table':'cards'), guide=$state(false), guideHidden=$state(false);
  let activeRequest, timer, queryVersion=0;
  const sections=$derived(groupSets(items,by));
- const filtered=$derived(Boolean(q||group||from||to));
+ const filtered=$derived(Boolean(q||group||ribbon||from||to));
  const backoffice=import.meta.env.VITE_BACKOFFICE_URL || 'http://localhost:5174';
  const contacts=[{name:'Ganknow',url:'https://ganknow.com/OtakuICETEA',description:'@OtakuICETEA'},{name:'Telegram',url:'https://t.me/madaomg',description:'@madaomg'}];
  async function json(url,signal) { const response=await fetch(url,{signal});const result=await response.json();if(!response.ok)throw new Error(result.error||'Unable to load the archive');return result; }
@@ -34,7 +34,7 @@
   finally {if(activeRequest===controller){loading=false;loadingMore=false;}}
  }
  $effect(()=>{
-  const filters={q,group,from,to,sort};
+  const filters={q,group,ribbon,from,to,sort};
   if(mounted){
    const version=++queryVersion;activeRequest?.abort();activeRequest=null;
    const collection=document.getElementById('collection');
@@ -45,7 +45,7 @@
   return()=>clearTimeout(timer);
  });
  $effect(()=>{
-  const query=queryString({q,group,from,to,sort,view:view==='table'?'table':''});
+  const query=queryString({q,group,ribbon,from,to,sort,view:view==='table'?'table':''});
   if(mounted)window.history.replaceState(null,'',`${window.location.pathname}${query?`?${query}`:''}${window.location.hash}`);
  });
  onMount(()=>{
@@ -65,13 +65,13 @@
   document.addEventListener('visibilitychange',visible);
   return()=>{activeRequest?.abort();clearInterval(interval);document.removeEventListener('visibilitychange',visible);};
  });
- function loadMore(){if(!loading&&!loadingMore&&!error&&!moreError&&items.length<total)load({q,group,from,to,sort},page+1);}
+ function loadMore(){if(!loading&&!loadingMore&&!error&&!moreError&&items.length<total)load({q,group,ribbon,from,to,sort},page+1);}
  function infiniteScroll(node){
   const observer=new IntersectionObserver(entries=>{if(entries.some(entry=>entry.isIntersecting))loadMore();},{rootMargin:'400px 0px'});
   observer.observe(node);
   return {update(){observer.unobserve(node);observer.observe(node);},destroy(){observer.disconnect();}};
  }
- function reset(){q='';group='';from='';to='';sort='newest';}
+ function reset(){q='';group='';ribbon='';from='';to='';sort='newest';}
  function chooseGroup(name){group=name;}
  function open(set,index=0){selected=set;imageIndex=index;landscape=false;}
  function close(){selected=null;about=false;}
@@ -124,9 +124,9 @@
    <div class="aside-note"><Asterisk size={22}/><p>A collection of moments.<br/>Find the ones that stay.</p></div>
   </aside>
   <div class="collection-content">
-   <div class="collection-heading"><div class="collection-heading-copy"><div class="eyebrow small">BROWSE THE ARCHIVE</div><h2>{group || 'The collection'}<span class="title-dot">.</span></h2><p>{loading?'Finding your next favorite…':`${total} image sets to discover`}</p></div><div class="collection-actions"><button class="mobile-filter" aria-expanded={filtersOpen} onclick={()=>filtersOpen=!filtersOpen}><SlidersHorizontal size={16}/> Filters</button><button class="guide-trigger" aria-label="Open short guide" title="Short guide" onclick={showGuide}><CircleHelp size={20}/></button><button class="collection-icon" aria-label={view==='cards'?'Switch to table view':'Switch to card view'} title={view==='cards'?'Table view':'Card view'} aria-pressed={view==='table'} aria-controls="collection-results" onclick={()=>view=view==='cards'?'table':'cards'}>{#if view==='cards'}<TableProperties size={23}/>{:else}<LayoutGrid size={23}/>{/if}</button></div></div>
-   <div class="collection-toolbar"><div class="quick-groups">{#each ['', 'LE SSERAFIM', 'aespa', 'IVE', 'TWICE'] as name}<button class:selected={group===name} onclick={()=>chooseGroup(name)}>{name||'All sets'}</button>{/each}</div><div class="view-controls"><label>Group by<select aria-label="Group by" bind:value={by}><option value="none">None</option><option value="group">Artist</option><option value="date">Date</option></select></label><label>Sort<select aria-label="Sort sets" bind:value={sort}><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="name">Name A–Z</option></select></label></div></div>
-   {#if error}<div class="status error" role="alert"><CircleHelp size={25}/><h3>Couldn't load the archive</h3><p>{error}</p><button onclick={()=>load({q,group,from,to,sort})}>Try again</button></div>
+   <div class="collection-heading"><div class="quick-groups">{#each ['', 'LE SSERAFIM', 'aespa', 'IVE', 'TWICE'] as name}<button class:selected={group===name} onclick={()=>chooseGroup(name)}>{name||'All sets'}</button>{/each}</div><div class="collection-actions"><button class="mobile-filter" aria-expanded={filtersOpen} onclick={()=>filtersOpen=!filtersOpen}><SlidersHorizontal size={16}/> Filters</button><button class="guide-trigger" aria-label="Open short guide" title="Short guide" onclick={showGuide}><CircleHelp size={20}/></button><button class="collection-icon" aria-label={view==='cards'?'Switch to table view':'Switch to card view'} title={view==='cards'?'Table view':'Card view'} aria-pressed={view==='table'} aria-controls="collection-results" onclick={()=>view=view==='cards'?'table':'cards'}>{#if view==='cards'}<TableProperties size={23}/>{:else}<LayoutGrid size={23}/>{/if}</button></div></div>
+   <div class="collection-toolbar"><div class="view-controls"><label>Ribbon<select aria-label="Filter by ribbon type" bind:value={ribbon}><option value="">All types</option><option value="new">NEW</option><option value="selective">SELECTIVE</option><option value="wishlist">WISH LIST</option><option value="noTrade">NO TRADE</option></select></label><label>Group by<select aria-label="Group by" bind:value={by}><option value="none">None</option><option value="group">Artist</option><option value="date">Date</option></select></label><label>Sort<select aria-label="Sort sets" bind:value={sort}><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="name">Name A–Z</option></select></label></div></div>
+   {#if error}<div class="status error" role="alert"><CircleHelp size={25}/><h3>Couldn't load the archive</h3><p>{error}</p><button onclick={()=>load({q,group,ribbon,from,to,sort})}>Try again</button></div>
    {:else if loading}<div class="gallery-grid" aria-label="Loading image sets">{#each Array(6) as _}<div class="skeleton-card"><div></div><span></span><span></span></div>{/each}</div>
    {:else if !items.length}<div class="status"><Search size={30}/><h3>No moments found</h3><p>Try another artist, name, or date range.</p><button onclick={reset}>Reset filters <ArrowRight size={16}/></button></div>
    {:else}<div id="collection-results">{#each sections as section (section.label)}{#if section.label}<h3 class="section-label">{section.label}<span>{section.items.length} SETS LOADED</span></h3>{/if}{#if view==='table'}<GalleryTable items={section.items} onopen={open}/>{:else}<div class="gallery-grid">{#each section.items as set (set.id)}<div class="card-stage" use:floatingCard><article class="gallery-card" class:custom-color={!!set.style?.color} style={set.style?.color?`--card-color: ${set.style.color}`:undefined}><CardCarousel {set} number={String(items.indexOf(set)+1).padStart(3,'0')} onopen={open}/>{#if set.style?.wishlist}<span class="corner-ribbon ribbon-wishlist">Wish list</span>{/if}{#if set.style?.new}<span class="corner-ribbon ribbon-new">New</span>{/if}{#if set.style?.noTrade}<span class="corner-ribbon ribbon-no-trade">No trade</span>{/if}{#if set.style?.selective}<span class="corner-ribbon ribbon-selective">Selective</span>{/if}<div class="card-meta"><div class="card-date">{displayDate(set.date)}<span class="group-tag">{set.group}</span></div><button class="card-title" onclick={()=>open(set)}>{set.title}</button><div class="card-source"><span class="source-badge" class:unlisted={!set.source.trim()} style={`--shop-hue: ${sourceHue(set.source)??0}`}>{set.source || 'Source unlisted'}</span><span class="card-kind">IMAGE SET ↗</span></div></div></article></div>{/each}</div>{/if}{/each}</div>

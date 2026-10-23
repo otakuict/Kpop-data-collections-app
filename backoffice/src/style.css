@@ -9,6 +9,9 @@ dialog::backdrop{background:#00000066;backdrop-filter:blur(3px)}
 .set-id{font-family:monospace;font-size:12px;white-space:nowrap;color:#edf4fb}input[readonly]{background:#14263b;color:#edf4fb}
 
 .heading-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap}
+.row-actions .delete-action{color:#ab4b43}.row-actions .delete-action:hover:not(:disabled){color:#802e28;background:#f8e9e6;border-radius:3px}
+.primary.danger{background:#a53e35;color:#fff}.primary.danger:hover:not(:disabled){background:#842e27;color:#fff}
+.delete-confirmation{width:min(460px,92vw)}.delete-set{display:grid;gap:8px;padding:20px 0 4px;overflow-wrap:anywhere}.delete-set strong{font-size:15px}.delete-set span{font-size:12px;color:#788c61}.delete-confirmation .editor-footer{gap:16px}
 .import-review{width:min(960px,94vw)}
 .review-note{font-size:13px;line-height:1.8;color:#edf4fb}
 .image-policy{border:1px solid var(--line);border-radius:7px;padding:12px 16px;margin:18px 0}.image-policy legend{font-size:11px;font-weight:650;padding:0 6px}.image-policy label{display:flex;align-items:flex-start;gap:10px;margin:9px 0;font-size:12px}.image-policy input{width:auto;margin:3px 0 0;accent-color:var(--highlight)}.image-policy span{display:grid;gap:4px}.image-policy small{font-size:10px;line-height:1.5;color:#9aaec3}

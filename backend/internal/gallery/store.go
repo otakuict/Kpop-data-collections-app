@@ -305,6 +305,21 @@ func (s *Store) Get(ctx context.Context, id SetID) (Set, error) {
 	return x, err
 }
 
+func (s *Store) Delete(ctx context.Context, id SetID) error {
+	result, err := s.db.ExecContext(ctx, "DELETE FROM sets WHERE id=?", id)
+	if err != nil {
+		return err
+	}
+	count, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
 func (s *Store) List(ctx context.Context, f Filter) (Page, error) {
 	where := []string{"1=1"}
 	args := []any{}
@@ -316,6 +331,10 @@ func (s *Store) List(ctx context.Context, f Filter) (Page, error) {
 	if f.Group != "" {
 		where = append(where, "group_name=?")
 		args = append(args, f.Group)
+	}
+	if f.Ribbon != "" {
+		where = append(where, "json_extract(style,?)=1")
+		args = append(args, "$."+f.Ribbon)
 	}
 	if f.From != "" {
 		where = append(where, "date>=?")

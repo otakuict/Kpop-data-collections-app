@@ -35,9 +35,11 @@ API เป็นผู้เขียน SQLite เพียง service เด�
 
 ## Gallery และ back-office
 
+หัวข้อ The collection และจำนวนชุดเหนือแถบศิลปินถูกแทนด้วยแถบตัวกรอง ใช้ **Ribbon** เพื่อเลือก NEW / SELECTIVE / WISH LIST / NO TRADE จากค่า Card appearance ที่ตั้งไว้ใน back-office โดยใช้ร่วมกับศิลปิน, search, วันที่ และทั้งมุมมองการ์ด/ตารางได้ ตัวเลือกอยู่ใน URL (`ribbon=new`, `ribbon=selective`, `ribbon=wishlist`, `ribbon=noTrade`) และยังใช้เมื่อโหลดรายการเพิ่ม
+
 Gallery ใช้ธีม dark blueและตัวกรองขนาด 12–16px อ่านข้อมูลจาก API และรองรับค้นหาชื่อ/กลุ่ม/source, filter กลุ่มและช่วงวันที่, เรียงล่าสุด/เก่าสุด/ชื่อ, group ตามศิลปินหรือวันที่, lazy load ทีละ 24 ชุดเมื่อเลื่อนใกล้ท้ายรายการ (ไม่มีปุ่มเปลี่ยนหน้า), carousel บนแต่ละ card (แถบกึ่งกลางด้านล่างรูป กดค้างแล้วลากซ้าย/ขวาด้วยเมาส์หรือ touch; รองรับ ArrowLeft/ArrowRight และ Home/End เมื่อ focus ที่แถบ) และ dialog รายละเอียดพร้อมรูปและลิงก์ example post Filter อยู่ใน URL เพื่อแชร์มุมมองได้
 
-ปุ่มมุมมองข้างชื่อ collection สลับการ์ดกับตารางคล้าย Google Sheet ตารางแสดง SET_ID, วันที่, รูปย่อ/ชื่อชุด, ศิลปิน, shop/source, จำนวนรูป, example และ notes; เลื่อนแนวนอนเพื่อดูคอลัมน์ทั้งหมด กดชื่อชุดเพื่อเปิดรายละเอียด ทั้งสองมุมมองใช้ filter/group/sort และ lazy load เดียวกัน โดยไม่ล้างชุดที่โหลดแล้วเมื่อสลับ มุมมองตารางอยู่ใน URL (`view=table`)
+ปุ่มมุมมองข้างแถบศิลปินสลับการ์ดกับตารางคล้าย Google Sheet ตารางแสดง SET_ID, วันที่, รูปย่อ/ชื่อชุด, ศิลปิน, shop/source, จำนวนรูป, example และ notes; เลื่อนแนวนอนเพื่อดูคอลัมน์ทั้งหมด กดชื่อชุดเพื่อเปิดรายละเอียด ทั้งสองมุมมองใช้ filter/group/sort และ lazy load เดียวกัน โดยไม่ล้างชุดที่โหลดแล้วเมื่อสลับ มุมมองตารางอยู่ใน URL (`view=table`)
 
 ครั้งแรกมี short guide ภาษาอังกฤษ 3 ขั้นพร้อมตัวอย่างเคลื่อนไหว: มุมมอง, filter, การเปิด/เลื่อนรูปและโหลดเพิ่ม ติ๊ก **Don't show it again** แล้วปิดเพื่อจำค่าใน browser นี้ เปิดดูซ้ำได้จากปุ่ม **?** ข้างปุ่มมุมมอง และเอาติ๊กออกเพื่อให้แสดงเมื่อเข้าครั้งถัดไป รองรับ Escape และลด animation ตาม reduced-motion ของระบบ
 
@@ -46,6 +48,8 @@ Gallery ใช้ธีม dark blueและตัวกรองขนาด 1
 ป้าย group บนการ์ดใช้ขนาด 12px (11px บนจอแคบ) เท่าป้าย shop พร้อมพื้นหลังน้ำเงิน ตัวอักษรสว่าง และขึ้นบรรทัดใหม่เมื่อชื่อยาว ป้าย source/shop บนการ์ดและหน้ารายละเอียดขยายขนาดพร้อมสีพื้นหลังประจำร้าน (ชื่อร้านเดิมใช้สีเดิม รวม alias `datacoffeeshop (?)`) การ์ดบน desktop ลอยขึ้น เอียงตามเมาส์ และมีแสง sheen โดยคืนตำแหน่งเมื่อออกจากการ์ด การลาก carousel จะพักการเอียงทันที; touchscreen และ reduced motion แสดงการ์ดนิ่ง
 
 Back-office เพิ่มและแก้ไข set ด้วยมือ, แสดง `set_id` ในตารางและ editor, อัปโหลด JPEG/PNG/GIF/WebP ให้แต่ละชุดมี 2–5 รูปที่ไม่ซ้ำกัน (ไม่เกิน 15 MiB/รูป), import Google Sheet ที่อ่านได้โดยไม่ต้อง sign in หรือ CSV export และสั่ง extract/retry preview ที่ยังขาดได้ รูปจะตรวจชนิดและจำนวน pixel แล้วปรับขนาดไม่เกิน 1200 pixels ต่อด้านก่อนเก็บใน SQLite; JPEG จาก public source ที่มีขนาดไม่เกิน 1 MiB และไม่ต้องหมุนจะเก็บต้นฉบับไว้เพื่อรักษาคุณภาพ รูปอื่นเข้ารหัสเป็น JPEG คุณภาพ 90
+
+ปุ่มถังขยะแต่ละแถวใน back-office เปิด modal ยืนยันชื่อชุดและ set_id กด Cancel หรือ Escape เพื่อยกเลิกได้ กด **Delete image set** เพื่อลบ record พร้อมรูปที่เก็บไว้ถาวร แล้วรีเฟรชรายการและสถิติ การลบไม่ลบแถวใน Google Sheet; การ import แถวเดิมอีกครั้งอาจสร้าง record กลับมา
 
 ชุดที่นำเข้าหรือชุดเดิมซึ่งยังมี 0–1 รูปจะคง metadata ไว้และแสดง `needs 2+` จนเติมรูปได้ครบ API จำกัดสูงสุด 5 รูปต่อชุดทั้งจาก upload และ extraction การอัปโหลดที่ทำให้เกิน 5 หรือยังมีไม่ถึง 2 รูปจะยกเลิกทั้ง batch โดยตรวจจาก hash ของรูปจริง
 
@@ -127,7 +131,7 @@ docs/design/              สอง design candidates, cross-judge และแ�
 
 | Endpoint | ใช้งาน |
 |---|---|
-| `GET /api/sets?q=&group=&from=&to=&sort=&page=&limit=` | รายการและ pagination; limit 1–200 |
+| `GET /api/sets?q=&group=&ribbon=&from=&to=&sort=&page=&limit=` | รายการและ pagination; limit 1–200 |
 | `GET /api/sets/:id` | รายละเอียด set และ local image URLs |
 | `GET /api/facets` | กลุ่มและจำนวนชุด/preview |
 | `GET /api/images/:id` | JPEG BLOB จาก SQLite |
@@ -136,6 +140,7 @@ docs/design/              สอง design candidates, cross-judge และแ�
 | `POST /api/admin/session` | แลก `ADMIN_TOKEN` เป็น JWT อายุ 24 ชั่วโมง |
 | `GET /api/admin/status` | ตรวจ bearer token หรือ JWT |
 | `POST /api/admin/sets` / `PUT /api/admin/sets/:id` | เพิ่ม/แก้ไข metadata JSON |
+| `DELETE /api/admin/sets/:id` | ลบ set พร้อมรูปที่เก็บไว้; สำเร็จ `200 {"deleted":true}`, ID ผิด `400`, ไม่พบ `404`, token ไม่ถูกต้อง `401` |
 | `POST /api/admin/sets/:id/images` | Multipart field `images` |
 | `POST /api/admin/sets/:id/extract` | Extract images up to 5 (`?target=2` for bulk filling) |
 | `POST /api/admin/sets/:id/reload-images` | Re-fetch stored public images even when the set is full; fill open slots from the example URL |

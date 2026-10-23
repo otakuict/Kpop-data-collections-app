@@ -109,7 +109,13 @@ func RouterWithSheetSync(store *Store, token string, sheetSync *SheetSync) *gin.
 			c.JSON(400, gin.H{"error": "invalid page or limit"})
 			return
 		}
-		f := Filter{Query: c.Query("q"), Group: c.Query("group"), From: c.Query("from"), To: c.Query("to"), Sort: c.Query("sort"), Page: page, Limit: limit}
+		f := Filter{Query: c.Query("q"), Group: c.Query("group"), Ribbon: c.Query("ribbon"), From: c.Query("from"), To: c.Query("to"), Sort: c.Query("sort"), Page: page, Limit: limit}
+		switch f.Ribbon {
+		case "", "new", "selective", "wishlist", "noTrade":
+		default:
+			c.JSON(400, gin.H{"error": "invalid ribbon filter"})
+			return
+		}
 		for _, date := range []string{f.From, f.To} {
 			if date != "" {
 				if _, err := time.Parse("2006-01-02", date); err != nil {
@@ -301,6 +307,17 @@ func RouterWithSheetSync(store *Store, token string, sheetSync *SheetSync) *gin.
 			return
 		}
 		save(c, id)
+	})
+	admin.DELETE("/sets/:id", func(c *gin.Context) {
+		id, ok := parseID(c)
+		if !ok {
+			return
+		}
+		if err := store.Delete(c.Request.Context(), id); err != nil {
+			fail(c, err)
+			return
+		}
+		c.JSON(200, gin.H{"deleted": true})
 	})
 	admin.POST("/sets/:id/extract", func(c *gin.Context) {
 		id, ok := parseID(c)

@@ -69,8 +69,8 @@ type Set struct {
 }
 
 type Filter struct {
-	Query, Group, From, To, Sort string
-	Page, Limit                  int
+	Query, Group, Ribbon, From, To, Sort string
+	Page, Limit                          int
 }
 type Page struct {
 	Items []Set `json:"items"`

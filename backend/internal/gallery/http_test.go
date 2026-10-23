@@ -11,9 +11,100 @@ import (
 	"net"
 	"net/http/httptest"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 )
+
+func TestAdminDeleteRemovesOnlyTheSelectedSetAndItsImages(t *testing.T) {
+	s, err := Open(filepath.Join(t.TempDir(), "delete.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	ctx := context.Background()
+	removed, err := s.Save(ctx, 0, SetDraft{Title: "Remove me", Group: "DELETE"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	kept, err := s.Save(ctx, 0, SetDraft{Title: "Keep me", Group: "KEEP"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, set := range []Set{removed, kept} {
+		if err = s.AddImages(ctx, set.ID, []Raster{{Bytes: []byte("first"), MIME: "image/jpeg"}, {Bytes: []byte("second"), MIME: "image/jpeg"}}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	removed, err = s.Get(ctx, removed.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	token := "test-operator-token-at-least-24-chars"
+	router := Router(s, token)
+	call := func(method, path, suppliedToken string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(method, path, nil)
+		if suppliedToken != "" {
+			req.Header.Set("Authorization", "Bearer "+suppliedToken)
+		}
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		return w
+	}
+	path := "/api/admin/sets/" + strconv.FormatInt(int64(removed.ID), 10)
+	for _, suppliedToken := range []string{"", "incorrect-token"} {
+		if w := call("DELETE", path, suppliedToken); w.Code != 401 {
+			t.Fatalf("unauthorized deletion returned %d: %s", w.Code, w.Body.String())
+		}
+	}
+	if _, err = s.Get(ctx, removed.ID); err != nil {
+		t.Fatalf("unauthorized request removed the set: %v", err)
+	}
+	for _, id := range []string{"0", "-1", "invalid", "9223372036854775808"} {
+		if w := call("DELETE", "/api/admin/sets/"+id, token); w.Code != 400 {
+			t.Fatalf("invalid ID %s returned %d", id, w.Code)
+		}
+	}
+	if w := call("DELETE", "/api/admin/sets/99999", token); w.Code != 404 {
+		t.Fatalf("missing set returned %d", w.Code)
+	}
+	w := call("DELETE", path, token)
+	var result struct {
+		Deleted bool `json:"deleted"`
+	}
+	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &result) != nil || !result.Deleted {
+		t.Fatalf("delete response %d: %s", w.Code, w.Body.String())
+	}
+	if w = call("GET", "/api/sets/"+strconv.FormatInt(int64(removed.ID), 10), ""); w.Code != 404 {
+		t.Fatalf("deleted set still accessible: %d", w.Code)
+	}
+	for _, img := range removed.Images {
+		if w = call("GET", img.URL, ""); w.Code != 404 {
+			t.Fatalf("deleted image still accessible: %d", w.Code)
+		}
+	}
+	remaining, err := s.Get(ctx, kept.ID)
+	if err != nil || len(remaining.Images) != 2 {
+		t.Fatalf("unrelated set or images changed: %#v, %v", remaining, err)
+	}
+	listed, err := s.List(ctx, Filter{Page: 1, Limit: 40})
+	if err != nil || listed.Total != 1 || listed.Items[0].ID != kept.ID {
+		t.Fatalf("catalog still contains deleted set: %#v, %v", listed, err)
+	}
+	facets, err := s.Facets(ctx)
+	if err != nil || facets.Total != 1 || facets.Complete != 1 || len(facets.Groups) != 1 || facets.Groups[0].Name != "KEEP" {
+		t.Fatalf("facets still count deleted set: %#v, %v", facets, err)
+	}
+	if w = call("DELETE", path, token); w.Code != 404 {
+		t.Fatalf("repeated deletion returned %d", w.Code)
+	}
+	if err = s.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if w = call("DELETE", path, token); w.Code != 500 {
+		t.Fatalf("database failure returned %d", w.Code)
+	}
+}
 
 func TestAdminAuthManualUploadAndFilterFlow(t *testing.T) {
 	s, err := Open(filepath.Join(t.TempDir(), "test.sqlite"))

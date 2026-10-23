@@ -7,6 +7,7 @@ test.beforeEach(async ({ page }) => {
 const sets = Array.from({ length: 50 }, (_, index) => ({
  id: index + 1, title: `Scroll set ${index + 1}`, group: index < 2 ? 'aespa' : 'IVE',
  date: '2026-10-07', source: 'Fixture', example: '',
+ style: { new: index < 10, selective: index >= 10 },
  images: [1, 2].map(id => ({ id: index * 2 + id, url: `/api/images/${index * 2 + id}` })),
 }));
 
@@ -21,6 +22,7 @@ async function mockArchive(page, respond) {
   const params = new URL(route.request().url()).searchParams;
   if (params.has('page') && await respond?.(route, params)) return;
   const matching = sets.filter(set => (!params.get('group') || set.group === params.get('group')) &&
+   (!params.get('ribbon') || set.style[params.get('ribbon')]) &&
    (!params.get('q') || set.title.includes(params.get('q'))));
   const number = Number(params.get('page') || 1), limit = Number(params.get('limit') || 24);
   await route.fulfill({ json: { items: matching.slice((number - 1) * limit, number * limit), total: matching.length } });
@@ -93,4 +95,22 @@ test('changing sort at the end returns to the collection start without loading e
  await expect(page.locator('.gallery-card')).toHaveCount(24);
  await expect(page.locator('.collection-heading')).toBeInViewport();
  await expect(page).toHaveURL(/sort=oldest/);
+});
+
+test('loading more keeps the ribbon filter and switching views keeps the filtered results', async ({ page }) => {
+ const requests = [];
+ await mockArchive(page, async (_, query) => {
+  if (query.get('ribbon')) requests.push({ ribbon: query.get('ribbon'), page: query.get('page') });
+ });
+ await page.goto('/');
+ await page.getByLabel('Filter by ribbon type', { exact: true }).selectOption('selective');
+ await expect(page.locator('.gallery-card')).toHaveCount(24);
+ await expect(page.locator('.card-title').first()).toHaveText('Scroll set 11');
+ await reachEnd(page);
+ await expect(page.locator('.gallery-card')).toHaveCount(40);
+ await expect(page.locator('.card-title').last()).toHaveText('Scroll set 50');
+ expect(requests).toEqual([{ ribbon: 'selective', page: '1' }, { ribbon: 'selective', page: '2' }]);
+ await page.getByRole('button', { name: 'Switch to table view' }).click();
+ await expect(page.locator('.gallery-table tbody tr')).toHaveCount(40);
+ await expect(page).toHaveURL(/ribbon=selective/);
 });

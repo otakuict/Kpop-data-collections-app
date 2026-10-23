@@ -60,6 +60,8 @@ dialog::backdrop{background:#00000066;backdrop-filter:blur(3px)}
 /* Keep native dropdown menus readable across browser and OS themes. */
 .view-controls select{color-scheme:dark}
 .view-controls select option{background:#14263b;color:#edf4fb}
+.collection-content>.collection-heading{margin-bottom:0;padding-bottom:14px;gap:12px}.collection-heading .quick-groups{flex:1;min-width:0}.collection-toolbar .view-controls{flex:1;justify-content:space-between;gap:12px 18px}
+@media(max-width:560px){.collection-heading .quick-groups{flex:1 0 100%;flex-wrap:nowrap;overflow-x:auto;max-width:100%;padding:4px;scrollbar-width:thin}.collection-heading .quick-groups button{flex-shrink:0}}
 @keyframes demo-filter-cursor{0%,15%,100%{transform:translate(15px,20px)}35%,80%{transform:translate(-8px,-30px)}}
 @keyframes demo-results{0%,25%,100%{opacity:.55}45%,85%{opacity:1}}
 @keyframes demo-card-view{0%,35%,100%{opacity:1}45%,88%{opacity:0}}
