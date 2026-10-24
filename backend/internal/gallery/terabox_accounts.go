@@ -17,10 +17,12 @@ type teraAccount struct {
 	Root       string `json:"root"`
 	Source     string `json:"source"`
 	Configured bool   `json:"configured"`
+	Host       string `json:"host"`
 	// Input only; never populated in account responses.
 	Cookie string `json:"-"`
 }
 type teraSession struct {
+	Host     string `json:"host"`
 	Cookie   string `json:"cookie"`
 	BDSToken string `json:"bdstoken"`
 	JSToken  string `json:"jsToken"`
@@ -38,6 +40,9 @@ func (s *Store) initTeraBox(ctx context.Context) error {
 }
 
 func (s *Store) saveTeraAccount(ctx context.Context, key string, a teraAccount, session teraSession) error {
+	if _, err := teraBrowserOrigin(session.Host); err != nil {
+		return err
+	}
 	if a.ID < 1 || a.ID > 2 || len(strings.TrimSpace(a.Label)) == 0 || len(a.Label) > 80 || len(a.Source) > 300 || len(a.Root) > 1500 || !strings.HasPrefix(a.Root, "/") || strings.ContainsAny(a.Root, "\x00\r\n") {
 		return errors.New("Choose account 1 or 2, a label, and an absolute root folder path")
 	}

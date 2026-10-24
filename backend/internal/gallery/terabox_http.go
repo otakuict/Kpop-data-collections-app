@@ -2,6 +2,8 @@ package gallery
 
 import (
 	"encoding/json"
+	"errors"
+	"log"
 	"net/http"
 	"strconv"
 	"sync/atomic"
@@ -48,6 +50,17 @@ func registerTeraBox(admin *gin.RouterGroup, store *Store, key string, sheet *Sh
 		if err != nil {
 			c.JSON(500, gin.H{"error": "Cannot load TeraBox accounts"})
 			return
+		}
+		for i := range accounts {
+			session, sessionErr := store.teraSession(c.Request.Context(), key, accounts[i].ID)
+			if sessionErr != nil {
+				accounts[i].Configured = false
+				continue
+			}
+			accounts[i].Host = session.Host
+			if accounts[i].Host == "" {
+				accounts[i].Host = "www.terabox.com"
+			}
 		}
 		c.JSON(200, gin.H{"accounts": accounts, "jevConfigured": service.ai.apiKey != "", "sheetSyncEnabled": sheetActive.Load()})
 	})
@@ -99,6 +112,12 @@ func registerTeraBox(admin *gin.RouterGroup, store *Store, key string, sheet *Sh
 		}
 		preview, err := service.preview(c.Request.Context(), input.AccountID)
 		if err != nil {
+			log.Printf("terabox.preview.failed id=%s account=%d error=%q", requestID(c.Request.Context()), input.AccountID, err.Error())
+			var rejected *teraSessionError
+			if errors.As(err, &rejected) {
+				c.JSON(422, gin.H{"error": err.Error(), "code": "TERABOX_SESSION_REJECTED", "upstreamErrno": -6})
+				return
+			}
 			c.JSON(502, gin.H{"error": err.Error()})
 			return
 		}

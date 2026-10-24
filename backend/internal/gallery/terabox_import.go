@@ -144,6 +144,7 @@ func (s *Store) reconcileTeraImports(ctx context.Context) error {
 }
 
 func validateTeraSessionInput(session *teraSession) {
+	session.Host = strings.TrimSpace(session.Host)
 	session.Cookie = strings.TrimSpace(session.Cookie)
 	session.BDSToken = strings.TrimSpace(session.BDSToken)
 	session.JSToken = strings.TrimSpace(session.JSToken)

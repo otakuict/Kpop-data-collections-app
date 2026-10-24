@@ -3,6 +3,8 @@ package gallery
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -102,5 +104,132 @@ func TestKoromanActuallyRomanizesKoreanWithoutTranslation(t *testing.T) {
 		if names[i] != w {
 			t.Errorf("%d got %q want %q", i, names[i], w)
 		}
+	}
+}
+
+func TestTeraBoxOmitsAbsentBrowserTokens(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Has("bdstoken") {
+			t.Error("Empty bdstoken was sent despite being absent in the browser request")
+		}
+		if r.URL.Query().Get("jsToken") != "browser-token" {
+			t.Error("Missing browser jsToken")
+		}
+		w.Write([]byte(`{"errno":0,"list":[]}`))
+	}))
+	defer server.Close()
+	client := teraClient{baseURL: server.URL, client: server.Client()}
+	if _, err := client.list(context.Background(), teraSession{Cookie: "ndus=test", JSToken: "browser-token"}, "/", 1); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestTeraBoxSessionRejectionIsNotReportedAsGatewayOrAdminLoginFailure(t *testing.T) {
+	store := teraTestStore(t)
+	key := "test-administrator-key-at-least-24-characters"
+	if err := store.saveTeraAccount(context.Background(), key, teraAccount{ID: 1, Label: "First", Root: "/"}, teraSession{Cookie: "ndus=private-session", JSToken: "private-js"}); err != nil {
+		t.Fatal(err)
+	}
+	previous := http.DefaultTransport
+	http.DefaultTransport = responseTransport(func(req *http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": {"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"errno":-6,"list":[]}`)), Request: req}, nil
+	})
+	t.Cleanup(func() { http.DefaultTransport = previous })
+	client := newTeraClient()
+	_, err := client.list(context.Background(), teraSession{Cookie: "ndus=private-session"}, "/", 1)
+	var rejected *teraSessionError
+	if !errors.As(err, &rejected) {
+		t.Fatalf("expected session error, got %v", err)
+	}
+	router := Router(store, key)
+	req := httptest.NewRequest("POST", "/api/admin/terabox/preview", strings.NewReader(`{"accountId":1}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+key)
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, req)
+	if response.Code != 422 || !strings.Contains(response.Body.String(), "TERABOX_SESSION_REJECTED") {
+		t.Fatalf("%d %s", response.Code, response.Body.String())
+	}
+	if strings.Contains(response.Body.String(), "private-session") || strings.Contains(response.Body.String(), "private-js") {
+		t.Fatal("credentials leaked")
+	}
+}
+
+func TestTeraBoxUsesOnlyTheSelectedTrustedBrowserHost(t *testing.T) {
+	for _, host := range []string{"", "www.terabox.com", "dm.terabox.com", "evil.example", "dm.terabox.com@evil.example", "https://dm.terabox.com"} {
+		t.Run(host, func(t *testing.T) {
+			called := false
+			client := newTeraClient()
+			client.client.Transport = responseTransport(func(req *http.Request) (*http.Response, error) {
+				called = true
+				expected := host
+				if expected == "" {
+					expected = "www.terabox.com"
+				}
+				if req.URL.Host != expected || req.URL.Scheme != "https" || req.Header.Get("Referer") != "https://"+expected+"/main" {
+					t.Errorf("unexpected provider origin %s", req.URL.Host)
+				}
+				return &http.Response{StatusCode: 200, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(`{"errno":0,"list":[]}`)), Request: req}, nil
+			})
+			_, err := client.list(context.Background(), teraSession{Host: host, Cookie: "ndus=test"}, "/", 1)
+			valid := host == "" || host == "www.terabox.com" || host == "dm.terabox.com"
+			if valid && (err != nil || !called) {
+				t.Fatalf("trusted host failed: %v", err)
+			}
+			if !valid && (err == nil || called) {
+				t.Fatal("untrusted host reached transport")
+			}
+		})
+	}
+}
+
+func TestTeraBoxBrowserHostSurvivesAccountSaveWithoutReturningCredentials(t *testing.T) {
+	store := teraTestStore(t)
+	key := "test-administrator-key-at-least-24-characters"
+	router := Router(store, key)
+	for _, host := range []string{"dm.terabox.com", "evil.example"} {
+		req := httptest.NewRequest("PUT", "/api/admin/terabox/accounts/1", strings.NewReader(`{"label":"First","root":"/","host":"`+host+`","cookie":"ndus=private-session","jsToken":"private-js"}`))
+		req.Header.Set("Authorization", "Bearer "+key)
+		req.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, req)
+		expected := 200
+		if host == "evil.example" {
+			expected = 400
+		}
+		if recorder.Code != expected {
+			t.Fatalf("save host %s status %d: %s", host, recorder.Code, recorder.Body.String())
+		}
+	}
+	session, err := store.teraSession(context.Background(), key, 1)
+	if err != nil || session.Host != "dm.terabox.com" {
+		t.Fatalf("stored host=%q error=%v", session.Host, err)
+	}
+	req := httptest.NewRequest("GET", "/api/admin/terabox/accounts", nil)
+	req.Header.Set("Authorization", "Bearer "+key)
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, req)
+	body := recorder.Body.String()
+	if recorder.Code != 200 || !strings.Contains(body, `"host":"dm.terabox.com"`) || strings.Contains(body, "private-session") || strings.Contains(body, "private-js") {
+		t.Fatalf("account metadata response: %s", body)
+	}
+}
+
+func TestTeraBoxRecentFoldersIncludeUpdatesToOlderFolders(t *testing.T) {
+	now := time.Date(2026, 10, 24, 18, 0, 0, 0, time.UTC)
+	old := now.Add(-4 * 24 * time.Hour).Unix()
+	recent := now.Add(-3 * time.Hour).Unix()
+	files := []teraFile{
+		{ID: 1, Path: "/261017 하람", IsDir: 1, Created: old, Modified: recent},
+		{ID: 2, Path: "/old", IsDir: 1, Created: old, Modified: old},
+		{ID: 3, Path: "/missing-creation", IsDir: 1, Modified: recent},
+		{ID: 4, Path: "/missing-times", IsDir: 1},
+		{ID: 5, Path: "/photo.jpg", Modified: recent},
+		{ID: 6, Path: "/boundary", IsDir: 1, Created: old, Modified: now.Add(-72 * time.Hour).Unix()},
+		{ID: 7, Path: "/future", IsDir: 1, Created: old, Modified: now.Add(time.Hour).Unix()},
+	}
+	got, warnings := recentTeraFolders(files, now)
+	if len(got) != 3 || got[0].ID != 1 || got[1].ID != 3 || got[2].ID != 6 || len(warnings) != 1 {
+		t.Fatalf("recent=%+v warnings=%v", got, warnings)
 	}
 }

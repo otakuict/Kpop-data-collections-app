@@ -1,7 +1,7 @@
 # TeraBox private-drive import
 
 The back office has an **Update from TeraBox** button. Connect either of two
-TeraBox browser sessions, scan folders added in the past 72 hours, review names
+TeraBox browser sessions, scan folders created or updated in the past 72 hours, review names
 and groups, and confirm selected sets into the existing Google Sheet and SQLite
 save flow. Scanning does not create gallery sets or write to Google Sheets.
 
@@ -11,8 +11,10 @@ save flow. Scanning does not create gallery sets or write to Google Sheets.
 2. In Developer Tools → Network, open a folder and find its `/api/list` request.
 3. In BO → Update from TeraBox → Accounts, choose slot 1 or 2. Enter a label,
    source/seller and absolute root folder path, such as `/` or `/Kpop`.
-4. Copy the request's `Cookie` header, `bdstoken` and `jsToken` into the session
-   fields and save. Cookie must include `ndus`. Reconnect after session expiry.
+4. Set **API host** to the successful request's hostname: `www.terabox.com` or
+   `dm.terabox.com`. Copy its complete `Cookie` header and `jsToken` into the
+   session fields; leave `bdstoken` blank if absent. Save the session. Cookie
+   must include `ndus`. Reconnect after session expiry.
 5. Repeat for the other account. Choose the account to scan in the dropdown.
 
 Session values are never returned by the API or placed in browser storage.
@@ -20,6 +22,12 @@ They are encrypted with AES-GCM in `terabox_accounts`, using a separate key
 domain derived from `ADMIN_TOKEN` and the slot ID as authenticated data. Keep
 `ADMIN_TOKEN` stable across restarts; changing it requires reconnecting accounts.
 Connections are read-only; no TeraBox upload, delete or share mutation is used.
+Each account stores its selected host inside the encrypted session. Older
+sessions default to `www.terabox.com`. Other hosts are rejected before sending
+credentials, and redirects are not followed. If the browser uses
+`dm.terabox.com`, select that host and resave credentials from the same request.
+Provider errno `-6` returns HTTP 422 with `TERABOX_SESSION_REJECTED`, so the BO
+can display the account error without a gateway HTML page or an admin logout.
 
 This uses TeraBox's **undocumented browser-session interface**, not the paid
 third-party `teraboxapi.com` extraction API or its 100-call trial. Session expiry,
@@ -31,9 +39,11 @@ Do not expose the private session in client code, logs or public gallery data.
 - Recursively enumerate container folders under the selected root, paging in
   batches of 100. Date-prefixed set folders are treated as sets; their image
   contents are not traversed or downloaded.
-- `server_ctime`, rather than the photo date in the folder title or the last
-  modification time, determines whether a folder is inside the past 72 hours.
-- Missing creation timestamps produce a visible warning and are excluded.
+- The later of `server_ctime` and `server_mtime` determines whether a folder
+  is inside the past 72 hours. The preview shows this as last activity, keeping
+  the original creation timestamp separately in the API. Changes to old folders
+  therefore appear for review; this does not establish that the folder is new.
+- Folders missing both timestamps produce a warning and are excluded.
   A date such as `240404` can therefore still describe a newly added set.
 - The scan is bounded to 100 requests, three minutes and 200 recent folders.
   Reaching a limit is explicitly marked as partial. Use a narrower root to
@@ -42,6 +52,15 @@ Do not expose the private session in client code, logs or public gallery data.
   names and malformed dates require manual review; no date is silently guessed.
 - Edit the final title, group, photographed date, notes and optional Example
   URL. Duplicates and uncertain previous writes cannot be selected.
+- Expand **Find an example link** on a reviewable row to use the same Gank
+  search and TypeSafe recommendations as Add image set. Seller starts from the
+  account's saved Source; date and name start from the row's final title and
+  photographed date. The seller dropdown offers gallery Sources, just like
+  Add image set, and also accepts a new nickname. Each row keeps its own seller
+  selection. Search fields remain editable without rewriting the set
+  details. Choosing a candidate fills only that row's Example URL. It is saved
+  through the existing Sheet → DB flow when the selected rows are confirmed.
+  Failed searches still allow a manually entered Example URL.
 - Previews expire after one hour and become invalid when account settings change.
 
 Confirm requires active Google Sheet sync. Each selected row uses
@@ -119,7 +138,7 @@ the external insertion. Failed Sheet reads retain pending receipts.
 ## Validation and remaining live checks
 
 Go tests cover account encryption/isolation, pagination and recursive scanning,
-creation-time filtering, actual KOROMAN execution, catalog boundaries, Jev choice
+creation/modification-time filtering, actual KOROMAN execution, catalog boundaries, Jev choice
 validation, preview without gallery writes, confirmation through a simulated
 Sheet, repeated clicks and interrupted Sheet writes. Playwright covers account
 switching, editing/confirming a preview, disabled Sheet sync and session errors.
@@ -146,9 +165,11 @@ and image row after starting the previous HEAD and the updated backend. All
 165 sets and 550 images matched; the new database had 31 artist categories and
 215 memberships. The source seed was not rewritten.
 
-Live reads from the two private drives still need their browser sessions.
-Verify the first scan's `server_ctime` against TeraBox's displayed added time
-before relying on the three-day filter for a particular account.
+On 2026-10-25 a local private-drive scan confirmed why creation-only filtering
+missed updates: `261017 하람` had `server_ctime` on October 20 at 12:14 Bangkok
+time, while `server_mtime` was October 24 at 22:55. Filtering now includes both
+new folders and changes to older folders. Duplicate checks still apply before
+confirmation; modified folders do not automatically rewrite existing sets.
 
 References:
 

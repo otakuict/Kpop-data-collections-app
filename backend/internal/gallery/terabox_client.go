@@ -16,11 +16,29 @@ import (
 )
 
 // This read-only adapter uses TeraBox's browser session API, not teraboxapi.com.
-// Keep the origin fixed: cookies must never be forwarded to arbitrary hosts.
+// Only trusted browser origins can receive account cookies.
 type teraClient struct {
 	baseURL string
 	client  *http.Client
 }
+
+type teraSessionError struct{}
+
+func (*teraSessionError) Error() string {
+	return "TeraBox rejected this account session (errno -6). Match the account's API host to the browser /api/list request, then copy its complete Cookie and jsToken, save the session, and scan again."
+}
+
+func teraBrowserOrigin(host string) (string, error) {
+	switch host {
+	case "", "www.terabox.com":
+		return "https://www.terabox.com", nil
+	case "dm.terabox.com":
+		return "https://dm.terabox.com", nil
+	default:
+		return "", errors.New("Choose www.terabox.com or dm.terabox.com as the TeraBox API host")
+	}
+}
+
 type teraFile struct {
 	ID       int64  `json:"fs_id"`
 	Name     string `json:"server_filename"`
@@ -40,16 +58,30 @@ func newTeraClient() teraClient {
 }
 func (t teraClient) list(ctx context.Context, session teraSession, dir string, pageNumber int) (teraPage, error) {
 	var result teraPage
-	q := url.Values{"app_id": {"250528"}, "web": {"1"}, "channel": {"dubox"}, "clienttype": {"0"}, "dir": {dir}, "order": {"time"}, "desc": {"1"}, "num": {"100"}, "page": {strconv.Itoa(pageNumber)}, "showempty": {"1"}, "bdstoken": {session.BDSToken}, "jsToken": {session.JSToken}}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, t.baseURL+"/api/list?"+q.Encode(), nil)
+	origin := t.baseURL
+	if session.Host != "" {
+		var err error
+		origin, err = teraBrowserOrigin(session.Host)
+		if err != nil {
+			return result, err
+		}
+	}
+	q := url.Values{"app_id": {"250528"}, "web": {"1"}, "channel": {"dubox"}, "clienttype": {"0"}, "dir": {dir}, "order": {"time"}, "desc": {"1"}, "num": {"100"}, "page": {strconv.Itoa(pageNumber)}, "showempty": {"1"}}
+	if session.BDSToken != "" {
+		q.Set("bdstoken", session.BDSToken)
+	}
+	if session.JSToken != "" {
+		q.Set("jsToken", session.JSToken)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, origin+"/api/list?"+q.Encode(), nil)
 	if err != nil {
 		return result, err
 	}
 	req.Header.Set("Cookie", session.Cookie)
-	req.Header.Set("Referer", t.baseURL+"/main")
+	req.Header.Set("Referer", origin+"/main")
 	req.Header.Set("User-Agent", "Mozilla/5.0")
 	req.Header.Set("Accept", "application/json")
-	response, err := t.client.Do(req)
+	response, err := loggedDo(t.client, req)
 	if err != nil {
 		return result, errors.New("TeraBox connection failed; check network and reconnect the session")
 	}
@@ -63,6 +95,9 @@ func (t teraClient) list(ctx context.Context, session teraSession, dir string, p
 	}
 	if json.Unmarshal(b, &result) != nil || result.Errno == nil {
 		return result, errors.New("TeraBox did not return a file list; reconnect the account")
+	}
+	if *result.Errno == -6 {
+		return result, &teraSessionError{}
 	}
 	if *result.Errno != 0 {
 		return result, fmt.Errorf("TeraBox error %d; check the root path and reconnect the browser session", *result.Errno)
@@ -142,17 +177,22 @@ func recentTeraFolders(files []teraFile, now time.Time) ([]teraFile, []string) {
 		if f.IsDir != 1 {
 			continue
 		}
-		if f.Created == 0 {
+		activity := f.activityTime()
+		if activity == 0 {
 			if len(warnings) < 100 {
-				warnings = append(warnings, "Creation time missing: "+f.Path)
+				warnings = append(warnings, "Creation and modification times missing: "+f.Path)
 			} else if len(warnings) == 100 {
-				warnings = append(warnings, "Additional folders without a creation timestamp were excluded; showing the first 100 warnings")
+				warnings = append(warnings, "Additional folders without timestamps were excluded; showing the first 100 warnings")
 			}
 			continue
 		}
-		if f.Created >= cutoff && f.Created <= now.Unix() {
+		if activity >= cutoff && activity <= now.Unix() {
 			result = append(result, f)
 		}
 	}
 	return result, warnings
+}
+
+func (f teraFile) activityTime() int64 {
+	return max(f.Created, f.Modified)
 }

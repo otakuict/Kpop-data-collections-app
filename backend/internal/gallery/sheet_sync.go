@@ -108,7 +108,7 @@ func (s *SheetSync) accessToken(ctx context.Context) (string, error) {
 		return "", err
 	}
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	response, err := s.client.Do(request)
+	response, err := loggedDo(s.client, request)
 	if err != nil {
 		return "", fmt.Errorf("%w: request access token: %v", ErrSheetUnavailable, err)
 	}
@@ -148,7 +148,7 @@ func (s *SheetSync) request(ctx context.Context, method, endpoint string, body a
 	if body != nil {
 		request.Header.Set("Content-Type", "application/json")
 	}
-	response, err := s.client.Do(request)
+	response, err := loggedDo(s.client, request)
 	if err != nil {
 		return fmt.Errorf("%w: %v", ErrSheetUnavailable, err)
 	}
