@@ -268,7 +268,7 @@ func (f exampleFinder) recommend(ctx context.Context, q exampleQuery, result *ex
 }
 
 func (f exampleFinder) decode(request *http.Request, target any) error {
-	response, err := f.client.Do(request)
+	response, err := loggedDo(f.client, request)
 	if err != nil {
 		return errors.New("upstream unavailable")
 	}

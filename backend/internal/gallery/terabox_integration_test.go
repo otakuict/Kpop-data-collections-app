@@ -87,7 +87,7 @@ func TestTeraPreviewScansPrivateDriveButDoesNotCreateSets(t *testing.T) {
 			t.Error("Wrong account session")
 		}
 		json.NewEncoder(w).Encode(map[string]any{"errno": 0, "list": []teraFile{
-			{ID: 1, Name: "240404 지연2", Path: "/albums/240404 지연2", IsDir: 1, Created: now.Add(-time.Hour).Unix()},
+			{ID: 1, Name: "240404 지연2", Path: "/albums/240404 지연2", IsDir: 1, Created: now.Add(-96 * time.Hour).Unix(), Modified: now.Add(-time.Hour).Unix()},
 			{ID: 2, Name: "261024 카에데", Path: "/albums/261024 카에데", IsDir: 1, Created: now.Add(-96 * time.Hour).Unix()},
 		}})
 	}))
@@ -99,6 +99,9 @@ func TestTeraPreviewScansPrivateDriveButDoesNotCreateSets(t *testing.T) {
 	}
 	if len(preview.Rows) != 1 || preview.Rows[0].Title != "240404 JiYeon2" || preview.Rows[0].Group != "TripleS" || preview.Rows[0].Romanized != "Jiyeon2" || preview.Rows[0].Status != "new" {
 		t.Fatalf("%+v", preview)
+	}
+	if preview.Rows[0].UpdatedAt != now.Add(-time.Hour).Format(time.RFC3339) {
+		t.Fatalf("wrong update time: %+v", preview.Rows[0])
 	}
 	sets, _ := s.List(ctx, Filter{Page: 1, Limit: 40})
 	if sets.Total != 1 {

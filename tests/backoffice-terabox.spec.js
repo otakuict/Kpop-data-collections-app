@@ -16,7 +16,7 @@ async function setup(page,{sheet=true}={}){
   const req=route.request(),path=new URL(req.url()).pathname;
   const replies={
    '/api/admin/session':{token:'test-session'},'/api/admin/status':{authenticated:true},
-   '/api/sets':{items:[],total:0},'/api/facets':{total:0,ready:0,complete:0,groups:[],sources:[]},'/api/admin/ingestion':{},
+   '/api/sets':{items:[],total:0},'/api/facets':{total:0,ready:0,complete:0,groups:[],sources:[{name:'studio',count:1},{name:'loveshakedata',count:2}]},'/api/admin/ingestion':{},
    '/api/admin/artists':{groups},
    '/api/admin/terabox/accounts':{accounts:[{id:1,label:'First drive',root:'/Albums',source:'studio'},{id:2,label:'Second drive',root:'/Albums',source:'studio2'}],jevConfigured:true,sheetSyncEnabled:sheet},
   };
@@ -78,4 +78,106 @@ test('expired private session reports an error without writing any sets',async({
  await expect(dialog.getByRole('alert')).toContainText('session expired');
  expect(calls).toHaveLength(0);
  await expect(dialog.getByRole('button',{name:'Confirm to Sheet & DB'})).toHaveCount(0);
+});
+
+test('HTML 502 from the gateway shows a useful error and does not create sets',async({page})=>{
+ const {dialog,calls}=await setup(page);
+ await page.route('**/api/admin/terabox/preview',route=>route.fulfill({status:502,contentType:'text/html',body:'<!DOCTYPE html><html>gateway diagnostics</html>'}));
+ await dialog.getByRole('button',{name:'Scan last 3 days'}).click();
+ await expect(dialog.getByRole('alert')).toContainText('Gateway request failed (HTTP 502)');
+ await expect(dialog.getByRole('alert')).not.toContainText('Unexpected token');
+ expect(calls).toHaveLength(0);
+ await expect(dialog.getByRole('button',{name:'Scan last 3 days'})).toBeEnabled();
+});
+
+test('account API host saves with its session and follows account switching',async({page})=>{
+ const {dialog}=await setup(page);
+ let saved;
+ await page.route('**/api/admin/terabox/accounts/1',async route=>{
+  saved=route.request().postDataJSON();
+  return route.fulfill({json:{saved:true}});
+ });
+ await page.route('**/api/admin/terabox/accounts',route=>route.fulfill({json:{accounts:[
+  {id:1,label:'First drive',root:'/Albums',source:'studio',host:'dm.terabox.com'},
+  {id:2,label:'Second drive',root:'/',host:'www.terabox.com'},
+ ],jevConfigured:true,sheetSyncEnabled:true}}));
+ await expect(dialog.getByLabel('API host')).toHaveValue('www.terabox.com');
+ await dialog.getByLabel('API host').selectOption('dm.terabox.com');
+ await dialog.getByLabel('Session Cookie').fill('ndus=test-cookie');
+ await dialog.getByLabel('jsToken',{exact:true}).fill('test-js');
+ await dialog.getByRole('button',{name:'Save account session'}).click();
+ await expect(dialog.getByRole('status')).toContainText('Session saved securely');
+ expect(saved).toMatchObject({host:'dm.terabox.com',cookie:'ndus=test-cookie',jsToken:'test-js',bdstoken:''});
+ await expect(dialog.getByLabel('Session Cookie')).toHaveValue('');
+ await dialog.getByLabel('TeraBox account',{exact:true}).selectOption('2');
+ await expect(dialog.getByLabel('API host')).toHaveValue('www.terabox.com');
+ await dialog.getByLabel('TeraBox account',{exact:true}).selectOption('1');
+ await expect(dialog.getByLabel('API host')).toHaveValue('dm.terabox.com');
+});
+
+test('TeraBox preview reuses Finder and commits only the chosen row example',async({page},info)=>{
+ const {dialog,calls}=await setup(page);
+ const searches=[];
+ const url='https://ganknow.com/services/terabox-example';
+ await page.route('**/api/admin/example-candidates',async route=>{
+  searches.push(route.request().postDataJSON());
+  return route.fulfill({json:{candidates:[{url,title:'Jiyeon sample',source:'studio',status:'active',matchExplanation:'Date and name match',excerpt:'Public sample'}],recommendedUrl:url,confidence:0.98}});
+ });
+ await dialog.getByRole('button',{name:'Scan last 3 days'}).click();
+ const row=dialog.locator('.tera-row').filter({has:page.getByLabel('Import 240404 지연2',{exact:true})});
+ await row.locator('summary').filter({hasText:'Find an example link'}).click();
+ await expect(row.getByLabel('Gank seller nickname')).toHaveValue('studio');
+ await expect(row.getByLabel('Search date (YYMMDD)')).toHaveValue('240404');
+ await expect(row.getByLabel('Search name preview')).toHaveValue('Jiyeon2');
+ await row.getByLabel('Search name preview').fill('Jiyeon');
+ await row.getByLabel('File count (optional)').fill('2075');
+ await row.getByRole('button',{name:'Find example links',exact:true}).click();
+ await expect(row.getByText('TypeSafe recommendation',{exact:false})).toBeVisible();
+ await expect(row.getByLabel('Example URL (optional)')).toHaveValue('');
+ expect(calls.filter(c=>c.type==='commit')).toHaveLength(0);
+ await row.getByRole('button',{name:'Use this link'}).click();
+ await expect(row.getByLabel('Example URL (optional)')).toHaveValue(url);
+ const other=dialog.locator('.tera-row').filter({has:page.getByLabel('Import 261013 모르는이름',{exact:true})});
+ await expect(other.getByLabel('Example URL (optional)')).toHaveValue('');
+ expect(searches).toEqual([{seller:'studio',setDate:'2024-04-04',name:'Jiyeon',group:'TripleS',count:2075}]);
+ await expect(row.getByLabel('Final title')).toHaveValue('240404 Jiyeon2');
+ await dialog.screenshot({path:`test-results/terabox-finder-${info.project.name}.png`});
+ await dialog.getByRole('button',{name:'Confirm to Sheet & DB'}).click();
+ await expect(dialog.getByRole('status')).toContainText('Saved 1 sets');
+ expect(calls.find(c=>c.type==='commit').body.rows).toEqual([{fileId:11,title:'240404 Jiyeon2',group:'TripleS',setDate:'2024-04-04',example:url,notes:''}]);
+});
+
+test('TeraBox Finder failure keeps manual example input usable',async({page})=>{
+ const {dialog,calls}=await setup(page);
+ await page.route('**/api/admin/example-candidates',route=>route.fulfill({status:502,json:{error:'Finder unavailable'}}));
+ await dialog.getByRole('button',{name:'Scan last 3 days'}).click();
+ const row=dialog.locator('.tera-row').first();
+ await row.locator('summary').filter({hasText:'Find an example link'}).click();
+ await row.getByRole('button',{name:'Find example links',exact:true}).click();
+ await expect(row.getByRole('alert')).toHaveText('Finder unavailable');
+ await row.getByLabel('Example URL (optional)').fill('https://ganknow.com/services/manual');
+ await expect(row.getByLabel('Example URL (optional)')).toHaveValue('https://ganknow.com/services/manual');
+ expect(calls.filter(c=>c.type==='commit')).toHaveLength(0);
+});
+
+test('TeraBox Finder seller dropdown uses gallery sources independently per row',async({page})=>{
+ const {dialog}=await setup(page);
+ await dialog.getByRole('button',{name:'Scan last 3 days'}).click();
+ const rows=dialog.locator('.tera-row');
+ const first=rows.first();
+ const other=rows.last();
+ await first.locator('summary').filter({hasText:'Find an example link'}).click();
+ await other.locator('summary').filter({hasText:'Find an example link'}).click();
+ const seller=first.getByRole('combobox',{name:'Gank seller nickname'});
+ const otherSeller=other.getByRole('combobox',{name:'Gank seller nickname'});
+ await expect(seller).toHaveValue('studio',{timeout:2000});
+ expect(await seller.evaluate(el=>Array.from(el.list.options,o=>o.value))).toEqual(['studio','loveshakedata']);
+ expect(await seller.getAttribute('list')).not.toBe(await otherSeller.getAttribute('list'));
+ let query;
+ await page.route('**/api/admin/example-candidates',route=>{query=route.request().postDataJSON();return route.fulfill({json:{candidates:[]}});});
+ await seller.fill('loveshakedata');
+ await first.getByRole('button',{name:'Find example links',exact:true}).click();
+ await expect(first.getByText('No matching links found.',{exact:false})).toBeVisible();
+ expect(query.seller).toBe('loveshakedata');
+ await expect(otherSeller).toHaveValue('studio');
 });

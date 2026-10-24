@@ -18,6 +18,7 @@ type teraPreviewRow struct {
 	Original   string   `json:"original"`
 	Path       string   `json:"path"`
 	CreatedAt  string   `json:"createdAt"`
+	UpdatedAt  string   `json:"updatedAt"`
 	SetDate    string   `json:"setDate"`
 	RawName    string   `json:"rawName"`
 	Romanized  string   `json:"romanized"`
@@ -99,6 +100,10 @@ func (t *teraService) preview(ctx context.Context, accountID int) (teraPreview, 
 	for i, f := range recent {
 		date, name, dateErr := splitTeraTitle(f.Name)
 		row := teraPreviewRow{FileID: f.ID, Original: f.Name, Path: f.Path, CreatedAt: time.Unix(f.Created, 0).UTC().Format(time.RFC3339), SetDate: date, RawName: name, Romanized: romanized[i], Title: romanized[i], Method: "koroman", Status: "review"}
+		row.UpdatedAt = time.Unix(f.activityTime(), 0).UTC().Format(time.RFC3339)
+		if f.Created == 0 {
+			row.CreatedAt = ""
+		}
 		if dateErr != nil {
 			row.RawName = f.Name
 			row.Warning = dateErr.Error()

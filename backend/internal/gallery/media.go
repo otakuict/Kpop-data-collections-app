@@ -147,7 +147,7 @@ func Fetch(ctx context.Context, raw string, max int64) ([]byte, string, error) {
 		base = http.DefaultTransport
 	}
 	client.Transport = &loggingTransport{base: base}
-	response, err := client.Do(req)
+	response, err := loggedDo(&client, req)
 	if err != nil {
 		return nil, "", err
 	}

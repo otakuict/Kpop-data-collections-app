@@ -2,7 +2,8 @@
  import { onDestroy } from 'svelte';
  import { splitFinderClue, finderSearchPreview, finderSearchDate } from './finder-query.js';
  import { Search, LoaderCircle } from '@lucide/svelte';
- let { source, setDate, name, group, selectedURL='', disabled=false, api, onchoose }=$props();
+ let { source, sources=[], setDate, name, group, selectedURL='', disabled=false, api, onchoose }=$props();
+ const sellerListID=$props.id();
  let searchDate=$state(''), searchName=$state('');
  let seller=$state(''), count=$state(''), searching=$state(false), result=$state(null), error=$state('');
  let controller;
@@ -44,7 +45,8 @@
  <legend>Find an example link</legend>
  <p class="form-help">Search Gank using the editable preview below. A YYMMDD date at the start of Name is split out automatically, just like Finder. These fields control lookup; Save uses the set details above. TypeSafe suggests a match; choose a link to fill Example, then save as usual.</p>
  <div class="form-row">
-  <label>Gank seller nickname<input bind:value={seller} maxlength="80" placeholder="loveshakedata"/><small>Starts from Source. Use the seller’s Gank nickname.</small></label>
+  <label>Gank seller nickname<input bind:value={seller} list={sellerListID} maxlength="80" placeholder="Choose a source or type a nickname"/><small>Starts from Source. Choose a saved source or enter the seller’s Gank nickname.</small></label>
+  <datalist id={sellerListID}>{#each sources as option}<option value={option.name}></option>{/each}</datalist>
   <label>File count (optional)<input type="number" bind:value={count} min="1" max="9999999" step="1" placeholder="2075"/></label>
  </div>
  <div class="form-row">

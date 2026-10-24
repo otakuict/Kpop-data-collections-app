@@ -1,11 +1,13 @@
 <script>
  import { onMount } from 'svelte';
  import { X, RefreshCw, Check, LoaderCircle } from '@lucide/svelte';
- let { api, onclose, onsaved } = $props();
+ import ExampleFinder from './ExampleFinder.svelte';
+ let { api, sources=[], onclose, onsaved } = $props();
  let accounts=$state([]), groups=$state([]), accountID=$state(1), working=$state(false);
  let error=$state(''), notice=$state(''), preview=$state(null), results=$state(null);
  let sheetEnabled=$state(false), jevConfigured=$state(false), pane=$state('accounts');
  let label=$state(''), root=$state('/'), source=$state(''), cookie=$state(''), bdstoken=$state(''), jsToken=$state('');
+ let host=$state('www.terabox.com');
  let memberGroup=$state(''), memberName=$state(''), memberAliases=$state(''), memberSource=$state('');
  const selectedAccount=$derived(accounts.find(a=>a.id===accountID));
  const selectedRows=$derived(preview?.rows.filter(r=>r.selected)||[]);
@@ -20,12 +22,13 @@
   preview=null;results=null;notice='';error='';
   const a=accounts.find(a=>a.id===accountID);
   label=a?.label||`Account ${accountID}`;root=a?.root||'/';source=a?.source||'';
+  host=a?.host||'www.terabox.com';
   cookie='';bdstoken='';jsToken='';
  }
  async function saveAccount(event){
   event.preventDefault();working=true;error='';notice='';
   try{
-   await api(`/admin/terabox/accounts/${accountID}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({label,root,source,cookie,bdstoken,jsToken})});
+   await api(`/admin/terabox/accounts/${accountID}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({label,root,source,host,cookie,bdstoken,jsToken})});
    cookie='';bdstoken='';jsToken='';preview=null;results=null;await load();notice='Session saved securely. Scan to check this account.';
   }catch(e){error=e.message;}finally{working=false;}
  }
@@ -95,29 +98,34 @@
  {#if !jevConfigured}<p class="form-help">Jev is not configured. Known aliases still resolve from the catalog; other names need manual review.</p>{/if}
  {#if pane==='accounts'}
   <p class="review-note">Connect each account using its logged-in browser session. Sessions stay encrypted on the backend. This reads your private drive through TeraBox’s browser interface; reconnect when the session expires.</p>
-  <details><summary>How to connect an account</summary><p>Log in to TeraBox in your browser. Open Developer Tools → Network, open a folder, and select the request to <code>/api/list</code>. Copy its Cookie request header and the bdstoken / jsToken query parameters below. Repeat after logging in to the second account. Do not paste these values into chat.</p></details>
+  <details><summary>How to connect an account</summary><p>Log in to TeraBox in your browser. Open Developer Tools → Network, open a folder, and select a successful request to <code>/api/list</code>. Match its hostname in API host below. Copy the complete Cookie request header and jsToken from that same request. Leave bdstoken blank if absent. Repeat for the second account. Do not paste these values into chat.</p></details>
   <form onsubmit={saveAccount} class="tera-account-form">
    <div class="form-row"><label>Account label<input bind:value={label} placeholder={`Account ${accountID}`} maxlength="80" required disabled={working}/></label><label>Source / seller<input bind:value={source} maxlength="300" placeholder="Source saved with imported sets" disabled={working}/></label></div>
    <label>Root folder path<input bind:value={root} placeholder="/" maxlength="1500" required disabled={working}/><small>Scans inside this folder and its containers. Use a narrower path for a large drive.</small></label>
+   <label>API host<select bind:value={host} disabled={working}><option value="www.terabox.com">www.terabox.com</option><option value="dm.terabox.com">dm.terabox.com</option></select><small>Use the hostname of the successful /api/list request in your browser.</small></label>
    <label>Session Cookie<input type="password" autocomplete="off" bind:value={cookie} maxlength="16000" placeholder="Contains ndus=…" required disabled={working}/></label>
    <div class="form-row"><label>bdstoken<input type="password" autocomplete="off" bind:value={bdstoken} maxlength="2000" disabled={working}/></label><label>jsToken<input type="password" autocomplete="off" bind:value={jsToken} maxlength="4000" disabled={working}/></label></div>
    <button class="primary secondary" disabled={working}><Check size={16}/> Save account session</button>
   </form>
  {:else if pane==='preview'&&preview}
-  <p class="review-note">{preview.scanned} entries scanned · {preview.complete?'Scan complete':'Partial scan'} · added within the past 72 hours. Review the original, suggested name and group. Nothing is imported until you confirm.</p>
+  <p class="review-note">{preview.scanned} entries scanned · {preview.complete?'Scan complete':'Partial scan'} · created or updated within the past 72 hours. Review the original, suggested name and group. Nothing is imported until you confirm.</p>
   {#each preview.warnings as warning}<p class="alert error">{warning}</p>{/each}
   {#if preview.rows.some(row=>row.status==='reconcile')}<p class="form-help">A previous save has an uncertain result. Check the live Sheet before making a new attempt.</p><button class="primary secondary" disabled={working||!sheetEnabled} onclick={recover}>Check Sheet & recover</button>{/if}
-  {#if !preview.rows.length}<p class="table-status">No new set folders found within the last 3 days.</p>{/if}
+  {#if !preview.rows.length}<p class="table-status">No created or updated set folders found within the last 3 days.</p>{/if}
   <div class="tera-rows">
   {#each preview.rows as row (row.fileId)}
    <article class="tera-row" class:muted={row.status==='duplicate'||row.status==='reconcile'}>
     <div class="tera-row-heading"><label><input type="checkbox" bind:checked={row.selected} disabled={working||['duplicate','reconcile','pending','saved'].includes(row.status)} aria-label={`Import ${row.original}`}/><strong>{row.original}</strong></label><span>{row.status} · {row.method}{row.confidence!=null?` · ${Math.round(row.confidence*100)}%`:''}</span></div>
-    <small class="tera-path">{row.path} · added {new Date(row.createdAt).toLocaleString()}</small>
+    <small class="tera-path">{row.path} · last activity {new Date(row.updatedAt||row.createdAt).toLocaleString()}</small>
     <p class="form-help">KOROMAN: {row.romanized}</p>
     {#if row.warning}<p class="alert error">{row.warning}</p>{/if}
     {#if row.status!=='duplicate'&&row.status!=='reconcile'}
      <label>Artist suggestion<select value={row.memberId} onchange={event=>pickArtist(row,event.currentTarget.value)} disabled={working}><option value={0}>Choose from the catalog / edit manually</option>{#each groups as g}<optgroup label={g.name}>{#each g.members as member}<option value={member.id}>{member.name}</option>{/each}</optgroup>{/each}</select></label>
      <div class="form-row"><label>Final title<input bind:value={row.title} maxlength="500" disabled={working}/></label><label>Group / solo<select bind:value={row.group} disabled={working}><option value="">Choose a group</option>{#each groups as g}<option value={g.name}>{g.name}</option>{/each}</select></label><label>Photographed date<input type="date" bind:value={row.setDate} disabled={working}/></label></div>
+     <details class="tera-finder">
+      <summary>Find an example link</summary>
+      <ExampleFinder source={selectedAccount?.source||''} {sources} setDate={row.setDate} name={row.title} group={row.group} selectedURL={row.example} disabled={working} {api} onchoose={url=>row.example=url}/>
+     </details>
      <div class="form-row"><label>Example URL (optional)<input bind:value={row.example} maxlength="2000" placeholder="Public example link" disabled={working}/></label><label>Notes<input bind:value={row.notes} maxlength="10000" disabled={working}/></label></div>
     {/if}
    </article>

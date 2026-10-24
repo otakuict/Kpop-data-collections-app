@@ -211,7 +211,7 @@ func fetchStored(ctx context.Context, store *Store, raw string, max int64) ([]by
 	client.Transport = &loggingTransport{base: &remoteTransport{base: base, store: store}}
 	// Timeout includes the shared schedule wait and all redirects.
 	client.Timeout = 90 * time.Second
-	response, err := client.Do(req)
+	response, err := loggedDo(&client, req)
 	if err != nil {
 		return nil, "", err
 	}

@@ -12,7 +12,7 @@ async function openEditor(page) {
    '/api/admin/session':{token:'test-session'},
    '/api/admin/status':{authenticated:true},
    '/api/sets':{items:[],total:0},
-   '/api/facets':{total:0,ready:0,complete:0,groups:[],sources:[]},
+   '/api/facets':{total:0,ready:0,complete:0,groups:[],sources:[{name:'studio',count:1},{name:'loveshakedata',count:2}]},
    '/api/admin/ingestion':{},
   };
   if (Object.hasOwn(replies,path)) return route.fulfill({json:replies[path]});
@@ -136,4 +136,18 @@ test('editable search preview splits date and name like Finder without changing 
  await editor.getByRole('button',{name:'Save image set',exact:true}).click();
  await expect(editor).toHaveCount(0);
  expect(saved[0]).toMatchObject({setDate:'2026-10-24',name:'261018 sullyoon'});
+});
+
+test('Finder seller offers gallery sources and accepts a new nickname',async({page})=>{
+ const editor=await openEditor(page);
+ const seller=editor.getByRole('combobox',{name:'Gank seller nickname'});
+ await expect(seller).toHaveValue('studio',{timeout:2000});
+ expect(await seller.evaluate(el=>Array.from(el.list.options,o=>o.value))).toEqual(['studio','loveshakedata']);
+ let query;
+ await page.route('**/api/admin/example-candidates',route=>{query=route.request().postDataJSON();return route.fulfill({json:{candidates:[]}});});
+ await seller.fill('new-seller');
+ await editor.getByRole('button',{name:'Find example links',exact:true}).click();
+ await expect(editor.getByText('No matching links found.',{exact:false})).toBeVisible();
+ expect(query.seller).toBe('new-seller');
+ await expect(editor.getByLabel('Source',{exact:true})).toHaveValue('studio');
 });
