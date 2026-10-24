@@ -2,7 +2,11 @@
 
 When adding an image set, fill in the photographed date, name, group, and Source.
 In **Find an example link**, check the Gank seller nickname (initially copied from
-Source), optionally enter the file count, and click **Find example links**.
+Source), review or edit **Search date (YYMMDD)** and **Search name preview**,
+optionally enter the file count, and click **Find example links**. The preview
+splits a date-prefixed Name using Finder’s existing paste logic. You can also
+paste `261018 sullyoon` into either search field to populate both. Editing the
+search preview does not change the set metadata saved by the main form.
 The nickname must be the seller's Gank account name, not a display name or URL.
 
 The backoffice shows matching public post and service URLs with their titles,
@@ -64,9 +68,14 @@ The gallery exposes authenticated `POST /api/admin/example-candidates`:
 {"seller":"loveshakedata","setDate":"2026-08-27","name":"chaewon","group":"LE SSERAFIM","count":2075}
 ```
 
+If Name starts with a valid `YYMMDD` date followed by a space (for example
+`261018 sullyoon`), lookup uses that date and searches the remaining name. This
+matches the existing Save convention, even if the selected Set date differs.
+Otherwise it uses the selected Set date and the full name.
+
 The backend translates the photographed date to `YYMMDD` and calls the finder's
 existing `GET /api/search` with seller, date, name, count, `source=both`,
-`includeInactive=true`, and `mode=exact`. Count is optional and influences finder
+`includeInactive=true`, and `mode=broad`. Count is optional and influences finder
 ranking; it does not exclude all different counts. Group is context for TypeSafe,
 not a finder filter. At least date, name, or count must be supplied. Finder limits
 name to 100 characters; longer set names can still be saved using a manual URL.
@@ -110,3 +119,11 @@ PLAYWRIGHT_CHROME_PATH='/Applications/Microsoft Edge.app/Contents/MacOS/Microsof
 
 `PLAYWRIGHT_CHROME_PATH` is the existing test config's executable override; it
 also accepts Microsoft Edge. No live set is created by these browser tests.
+
+To reproduce the reported `girlskpopphoto` lookup against a real finder, set
+`GALLERY_FINDER_LIVE_URL` to that finder's origin and run
+`go test ./internal/gallery -run TestExampleFinderLiveReportedBOPayload -v -count=1`
+from `backend/`. Set `TYPESAFE_API_KEY` in the process environment to include real
+AI advice. This opt-in test uses the original BO date-prefixed-name payload,
+creates only a temporary local database, and logs public candidate links. It is
+skipped in ordinary CI; a configured TypeSafe key may incur one API request.

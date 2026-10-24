@@ -17,7 +17,7 @@ func TestExampleFinderSearchAndRecommendation(t *testing.T) {
 		case "/api/search":
 			finderCalls++
 			q := r.URL.Query()
-			if r.Method != "GET" || q.Get("seller") != "studio" || q.Get("date") != "261024" || q.Get("name") != "Sana" || q.Get("count") != "200" || q.Get("source") != "both" {
+			if r.Method != "GET" || q.Get("seller") != "studio" || q.Get("date") != "261024" || q.Get("name") != "Sana" || q.Get("count") != "200" || q.Get("source") != "both" || q.Get("mode") != "broad" || q.Get("includeInactive") != "true" {
 				t.Errorf("finder query: %v", q)
 			}
 			if r.Header.Get("Authorization") != "" {
@@ -30,13 +30,14 @@ func TestExampleFinderSearchAndRecommendation(t *testing.T) {
 				t.Error("missing API key")
 			}
 			var body struct {
-				Model     string `json:"model"`
+				Model     string       `json:"model"`
+				State     exampleQuery `json:"state"`
 				Questions map[string]struct {
 					Type     string         `json:"type"`
 					Criteria map[string]any `json:"criteria"`
 				} `json:"questions"`
 			}
-			if json.NewDecoder(r.Body).Decode(&body) != nil || body.Model != "jev-latest" || body.Questions["best"].Type != "choice" || len(body.Questions["best"].Criteria) != 3 {
+			if json.NewDecoder(r.Body).Decode(&body) != nil || body.Model != "jev-latest" || body.State.Name != "Sana" || body.State.SetDate != "2026-10-24" || body.Questions["best"].Type != "choice" || len(body.Questions["best"].Criteria) != 3 {
 				t.Errorf("invalid TypeSafe request: %+v", body)
 			}
 			w.Write([]byte(`{"answers":{"best":{"type":"choice","choice":"candidate_1","confidence":0.8}}}`))
@@ -46,7 +47,7 @@ func TestExampleFinderSearchAndRecommendation(t *testing.T) {
 	}))
 	defer upstream.Close()
 	finder := exampleFinder{baseURL: upstream.URL, apiKey: "test-key", model: "jev-latest", aiURL: upstream.URL + "/v1/systemone", client: upstream.Client()}
-	result, err := finder.search(context.Background(), exampleQuery{Seller: "studio", SetDate: "2026-10-24", Name: "Sana", Count: 200})
+	result, err := finder.search(context.Background(), exampleQuery{Seller: "studio", SetDate: "2026-10-01", Name: "261024 Sana", Count: 200})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -217,5 +218,28 @@ func TestExampleFinderConfigurationAndRedirects(t *testing.T) {
 	router.ServeHTTP(w, request)
 	if w.Code != 503 {
 		t.Fatalf("missing config: %d", w.Code)
+	}
+}
+
+func TestExampleQueryUsesBroadSearchAndDateFromName(t *testing.T) {
+	for _, tc := range []struct {
+		name         string
+		query        exampleQuery
+		date, person string
+	}{
+		{"reported BO payload", exampleQuery{Seller: "girlskpopphoto", SetDate: "2026-10-24", Name: "261018 sullyoon"}, "261018", "sullyoon"},
+		{"plain name", exampleQuery{Seller: "girlskpopphoto", SetDate: "2026-10-18", Name: "sullyoon"}, "261018", "sullyoon"},
+		{"prefix without selected date", exampleQuery{Seller: "girlskpopphoto", Name: "261018 sullyoon"}, "261018", "sullyoon"},
+		{"invalid prefix remains a name", exampleQuery{Seller: "studio", SetDate: "2026-10-24", Name: "261399 sullyoon"}, "261024", "261399 sullyoon"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			values, err := tc.query.parameters()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if values.Get("date") != tc.date || values.Get("name") != tc.person || values.Get("mode") != "broad" || values.Get("source") != "both" || values.Get("includeInactive") != "true" {
+				t.Fatalf("unexpected finder query: %v", values)
+			}
+		})
 	}
 }

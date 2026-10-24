@@ -30,11 +30,25 @@ type exampleQuery struct {
 	Count   int    `json:"count"`
 }
 
+// Match Save's date-prefixed Name convention so lookup and stored titles use the same photographed date.
+func (q exampleQuery) forLookup() exampleQuery {
+	q.Seller = strings.TrimSpace(q.Seller)
+	q.Name = strings.TrimSpace(q.Name)
+	if len(q.Name) > 6 && q.Name[6] == ' ' && strings.TrimSpace(q.Name[6:]) != "" {
+		if date, ok := titleSetDate(q.Name); ok {
+			q.SetDate = date.Format("2006-01-02")
+			q.Name = strings.TrimSpace(q.Name[6:])
+		}
+	}
+	return q
+}
+
 func (q exampleQuery) parameters() (url.Values, error) {
+	q = q.forLookup()
 	if !finderSellerPattern.MatchString(q.Seller) || len([]rune(q.Name)) > 100 || len([]rune(q.Group)) > 150 || q.Count < 0 || q.Count > 9999999 {
 		return nil, errors.New("Enter a valid Gank seller nickname, name (up to 100 characters), and optional positive file count")
 	}
-	values := url.Values{"seller": {q.Seller}, "name": {q.Name}, "source": {"both"}, "mode": {"exact"}, "includeInactive": {"true"}}
+	values := url.Values{"seller": {q.Seller}, "name": {q.Name}, "source": {"both"}, "mode": {"broad"}, "includeInactive": {"true"}}
 	if q.SetDate != "" {
 		date, err := time.Parse("2006-01-02", q.SetDate)
 		if err != nil {
@@ -119,6 +133,7 @@ func registerExampleFinder(admin *gin.RouterGroup) {
 }
 
 func (f exampleFinder) search(ctx context.Context, q exampleQuery) (exampleSuggestions, error) {
+	q = q.forLookup()
 	result := exampleSuggestions{Candidates: []exampleCandidate{}}
 	values, err := q.parameters()
 	if err != nil {
