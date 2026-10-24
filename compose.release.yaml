@@ -9,7 +9,12 @@ services:
       DATABASE_PATH: /data/gallery.sqlite
       SEED_DATABASE: /seed/seed.sqlite
       GALLERY_COUNTRY_HEADER: ${GALLERY_COUNTRY_HEADER:-}
+      GANK_FINDER_URL: ${GANK_FINDER_URL:-http://host.docker.internal:3001}
+      TYPESAFE_API_KEY: ${TYPESAFE_API_KEY:-}
+      TYPESAFE_MODEL: ${TYPESAFE_MODEL:-jev-latest}
       GOOGLE_SHEETS_URL: ${GOOGLE_SHEETS_URL:-}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - gallery-data:/data
     restart: unless-stopped

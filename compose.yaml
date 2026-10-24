@@ -10,7 +10,12 @@ services:
       DATABASE_PATH: /data/gallery.sqlite
       SEED_DATABASE: /seed/seed.sqlite
       GALLERY_COUNTRY_HEADER: ${GALLERY_COUNTRY_HEADER:-}
+      GANK_FINDER_URL: ${GANK_FINDER_URL:-}
+      TYPESAFE_API_KEY: ${TYPESAFE_API_KEY:-}
+      TYPESAFE_MODEL: ${TYPESAFE_MODEL:-jev-latest}
       GIN_MODE: debug
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "127.0.0.1:${API_PORT:-8080}:8080"
     volumes:
