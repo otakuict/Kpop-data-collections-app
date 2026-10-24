@@ -160,7 +160,16 @@ func Open(path string) (*Store, error) {
 		db.Close()
 		return nil, err
 	}
-	return &Store{db: db}, nil
+	store := &Store{db: db}
+	if err = store.initTeraBox(context.Background()); err != nil {
+		db.Close()
+		return nil, err
+	}
+	if err = store.seedArtistCatalog(context.Background()); err != nil {
+		db.Close()
+		return nil, err
+	}
+	return store, nil
 }
 func (s *Store) Close() error { return s.db.Close() }
 
