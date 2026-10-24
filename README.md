@@ -273,3 +273,5 @@ bash scripts/deploy-server.sh backoffice '<full SHA of the published backoffice 
 เลือก service และ SHA ของ image ก่อนหน้าเพื่อ rollback เฉพาะ service นั้น การ rollback ไม่ rollback schema/data และ script ไม่ลบ volume ข้อมูล ระบบรองรับ backend replica เดียวต่อ SQLite volume Release compose bind สองเว็บที่ loopback สำหรับ reverse proxy/TLS และไม่เปิด backend port ภายนอก ต้องตั้ง reverse proxy/TLS บน host แยกต่างหาก
 
 สำรอง SQLite ด้วย SQLite backup API (`.backup`) หรือหยุด backend ก่อน copy volume; ไม่ copy เฉพาะ main database ขณะที่ WAL กำลังถูกเขียน
+
+เชื่อม finder และ TypeSafe เพื่อช่วยเลือกลิงก์ Example ในฟอร์มเพิ่มชุดภาพ: [การใช้งานและ runtime config](docs/FINDER.md)

@@ -84,6 +84,9 @@ jobs:
         env:
           DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
           ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+          GANK_FINDER_URL: ${{ vars.GANK_FINDER_URL }}
+          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
+          TYPESAFE_MODEL: ${{ vars.TYPESAFE_MODEL }}
           DEPLOY_PROJECT_NAME: ${{ vars.DEPLOY_PROJECT_NAME }}
           GALLERY_PORT: ${{ vars.GALLERY_PORT }}
           BACKOFFICE_PORT: ${{ vars.BACKOFFICE_PORT }}

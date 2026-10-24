@@ -2,10 +2,10 @@ name: Backoffice — CI and deploy
 on:
   pull_request:
     branches: [main]
-    paths: ['.nvmrc', 'backoffice/**', 'compose.release.yaml', 'scripts/deploy-server.sh', 'scripts/release-workflow.test.mjs', 'scripts/configure-nginx-resolver.sh', 'scripts/nginx-resolver.test.mjs', '.dockerignore', '.github/workflows/backoffice.yml', 'package.json', 'package-lock.json', 'frontend/package.json', 'backoffice/package.json', 'scripts/sheet-scan.test.mjs']
+    paths: ['.nvmrc', 'backoffice/**', 'compose.release.yaml', 'scripts/deploy-server.sh', 'scripts/release-workflow.test.mjs', 'scripts/configure-nginx-resolver.sh', 'scripts/nginx-resolver.test.mjs', '.dockerignore', '.github/workflows/backoffice.yml', 'package.json', 'package-lock.json', 'frontend/package.json', 'backoffice/package.json', 'scripts/sheet-scan.test.mjs', 'tests/backoffice-finder.spec.js', 'playwright.config.js']
   push:
     branches: [main]
-    paths: ['.nvmrc', 'backoffice/**', 'compose.release.yaml', 'scripts/deploy-server.sh', 'scripts/release-workflow.test.mjs', 'scripts/configure-nginx-resolver.sh', 'scripts/nginx-resolver.test.mjs', '.dockerignore', '.github/workflows/backoffice.yml', 'package.json', 'package-lock.json', 'frontend/package.json', 'backoffice/package.json', 'scripts/sheet-scan.test.mjs']
+    paths: ['.nvmrc', 'backoffice/**', 'compose.release.yaml', 'scripts/deploy-server.sh', 'scripts/release-workflow.test.mjs', 'scripts/configure-nginx-resolver.sh', 'scripts/nginx-resolver.test.mjs', '.dockerignore', '.github/workflows/backoffice.yml', 'package.json', 'package-lock.json', 'frontend/package.json', 'backoffice/package.json', 'scripts/sheet-scan.test.mjs', 'tests/backoffice-finder.spec.js', 'playwright.config.js']
   workflow_dispatch:
 permissions:
   contents: read
@@ -27,6 +27,29 @@ jobs:
       - run: npm ci --workspace backoffice --include-workspace-root
       - run: npm run check --workspace backoffice
       - run: node --test scripts/release-workflow.test.mjs scripts/nginx-resolver.test.mjs scripts/sheet-scan.test.mjs
+      - name: Install Edge for finder form checks
+        run: npx playwright install --with-deps msedge
+      - name: Verify finder selection on desktop and mobile
+        env:
+          PLAYWRIGHT_CHROME_PATH: /opt/microsoft/msedge/msedge
+        run: |
+          set -euo pipefail
+          npm run dev --workspace backoffice -- --host 127.0.0.1 --port 5184 --strictPort > "$RUNNER_TEMP/backoffice-finder.log" 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          ready=false
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:5184/ >/dev/null; then
+              ready=true
+              break
+            fi
+            sleep 1
+          done
+          if [ "$ready" != true ]; then
+            cat "$RUNNER_TEMP/backoffice-finder.log"
+            exit 1
+          fi
+          npx playwright test tests/backoffice-finder.spec.js
       - run: npm run build --workspace backoffice
         env:
           VITE_BASE_PATH: /backoffice/

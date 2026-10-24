@@ -182,6 +182,7 @@ func RouterWithSheetSync(store *Store, token string, sheetSync *SheetSync) *gin.
 		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 80<<20)
 		c.Next()
 	})
+	registerExampleFinder(admin)
 	admin.GET("/analytics", func(c *gin.Context) {
 		days, err := strconv.Atoi(c.DefaultQuery("days", "30"))
 		if err != nil || (days != 7 && days != 30 && days != 90) {
