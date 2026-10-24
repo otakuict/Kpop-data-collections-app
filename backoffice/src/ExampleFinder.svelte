@@ -75,14 +75,23 @@
 </fieldset>
 
 <style>
- .example-finder{border:1px solid var(--line,#d7dce2);border-radius:12px;padding:16px;margin:16px 0;min-width:0}
- legend{padding:0 6px;font-weight:600}
- .finder-results{display:grid;gap:12px;margin-top:16px;max-height:420px;overflow:auto}
- article{display:grid;gap:8px;border:1px solid var(--line,#d7dce2);border-radius:10px;padding:14px}
- article p{margin:0;font-size:13px}
- article a{overflow-wrap:anywhere;font-size:12px;color:inherit}
+ .example-finder{background:linear-gradient(145deg,#173b58,#10263e 72%);border:1px solid #477b9e;border-left:3px solid #75d7f2;border-radius:12px;padding:18px;margin:20px 0;min-width:0;box-shadow:0 8px 24px #030c192b,inset 0 1px #a5e8ff12}
+ legend{padding:7px 12px;background:#1b4663;border:1px solid #568bab;border-radius:7px;color:#c6f2ff;font-size:13px;font-weight:650;letter-spacing:.2px}
+ .form-help{color:#b8cee1;line-height:1.7}
+ label{color:#e1eef9}
+ input{background:#0b1b2d;border-color:#4a6c89;color:#f0f8ff}
+ input::placeholder{color:#a3bcd1;opacity:1}
+ input:focus{border-color:#8ae5fa;outline-color:#8ae5fa;box-shadow:0 0 0 3px #75d7f218}
+ .example-finder>.primary{background:linear-gradient(135deg,#9be9fa,#65cce7);border:1px solid #b3f1ff;color:#082238;box-shadow:0 3px 12px #04152233;font-weight:650}
+ .example-finder>.primary:hover:not(:disabled){background:#b5f0ff;color:#061b2d;border-color:#dcf8ff}
+ .finder-results{display:grid;gap:12px;margin-top:16px;max-height:420px;overflow:auto;scrollbar-color:#5684a5 #10263e}
+ article{display:grid;gap:8px;background:#0d2034;border:1px solid #3e6381;border-radius:10px;padding:14px}
+ article p{margin:0;font-size:13px;color:#d2e2f0}
+ article a{overflow-wrap:anywhere;font-size:12px;color:#9ce7ff;text-decoration:underline;text-underline-offset:3px;text-decoration-color:#5a8aa6}
+ article a:hover{color:#dcf8ff}
  article button{justify-self:start}
- .recommended{border-color:var(--highlight,#75d7f2);background:#75d7f20a}
- .recommendation{color:var(--highlight,#75d7f2);font-size:12px}
- small{font-size:12px;opacity:.75}
+ article button[aria-pressed="true"]{background:#9be9fa;border-color:#c3f5ff;color:#082238}
+ .recommended{border-color:#8ae5fa;background:#153c51;box-shadow:inset 3px 0 #8ae5fa}
+ .recommendation{color:#b0f0ff;font-size:12px}
+ small{font-size:12px;color:#acc5dc;opacity:1}
 </style>
