@@ -258,6 +258,13 @@ func sheetDate(date, oldRaw string) string {
 // InsertNew adds a row within the existing group ordered by the date in Name.
 // The Sheet Date column records the Bangkok date when the set was added.
 func (s *SheetSync) InsertNew(ctx context.Context, store *Store, requested SetDraft, setDate time.Time) (SetDraft, int, error) {
+	return s.insertNew(ctx, store, requested, setDate, false)
+}
+
+// TeraBox retries keep a title unique across added dates, including after a
+// failed request is recovered on a later day. Manual insertion retains its
+// existing title-plus-added-date identity rule.
+func (s *SheetSync) insertNew(ctx context.Context, store *Store, requested SetDraft, setDate time.Time, uniqueTitle bool) (SetDraft, int, error) {
 	s.writeMu.Lock()
 	defer s.writeMu.Unlock()
 	title, err := s.sheetTitle(ctx)
@@ -278,7 +285,7 @@ func (s *SheetSync) InsertNew(ctx context.Context, store *Store, requested SetDr
 	}
 	for _, row := range parsed {
 		if strings.EqualFold(strings.TrimSpace(row.Draft.Group), strings.TrimSpace(requested.Group)) {
-			if row.Draft.Title == requested.Title && row.Draft.Date == requested.Date {
+			if row.Draft.Title == requested.Title && (uniqueTitle || row.Draft.Date == requested.Date) {
 				return requested, 0, fmt.Errorf("%w: this set already appears in the Sheet; import it before retrying", ErrSheetConflict)
 			}
 			requested.Group = row.Draft.Group

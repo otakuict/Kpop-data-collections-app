@@ -183,6 +183,7 @@ func RouterWithSheetSync(store *Store, token string, sheetSync *SheetSync) *gin.
 		c.Next()
 	})
 	registerExampleFinder(admin)
+	registerTeraBox(admin, store, token, sheetSync, &sheetSyncActive)
 	admin.GET("/analytics", func(c *gin.Context) {
 		days, err := strconv.Atoi(c.DefaultQuery("days", "30"))
 		if err != nil || (days != 7 && days != 30 && days != 90) {

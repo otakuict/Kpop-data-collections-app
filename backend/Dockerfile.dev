@@ -1,6 +1,6 @@
 FROM golang:1.25-bookworm
 ENV GOPATH=/go GOCACHE=/cache/go-build
-RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && rm -rf /var/lib/apt/lists/* \
+RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates nodejs && rm -rf /var/lib/apt/lists/* \
     && useradd --uid 10001 --create-home gallery \
     && GOBIN=/usr/local/bin go install github.com/air-verse/air@v1.61.7
 WORKDIR /src

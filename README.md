@@ -275,3 +275,10 @@ bash scripts/deploy-server.sh backoffice '<full SHA of the published backoffice 
 สำรอง SQLite ด้วย SQLite backup API (`.backup`) หรือหยุด backend ก่อน copy volume; ไม่ copy เฉพาะ main database ขณะที่ WAL กำลังถูกเขียน
 
 เชื่อม finder และ TypeSafe เพื่อช่วยเลือกลิงก์ Example ในฟอร์มเพิ่มชุดภาพ: [การใช้งานและ runtime config](docs/FINDER.md)
+
+## TeraBox private-drive update
+
+BO now supports two encrypted TeraBox browser sessions, a three-day folder scan,
+and an editable preview before saving through the existing Sheet/DB flow.
+Korean names use KOROMAN and the backend artist catalog, with optional Jev
+choice recommendations. See [setup, behavior and validation](docs/TERABOX.md).
