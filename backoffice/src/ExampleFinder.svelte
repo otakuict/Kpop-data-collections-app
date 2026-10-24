@@ -1,12 +1,18 @@
 <script>
  import { onDestroy } from 'svelte';
+ import { splitFinderClue, finderSearchPreview, finderSearchDate } from './finder-query.js';
  import { Search, LoaderCircle } from '@lucide/svelte';
  let { source, setDate, name, group, selectedURL='', disabled=false, api, onchoose }=$props();
+ let searchDate=$state(''), searchName=$state('');
  let seller=$state(''), count=$state(''), searching=$state(false), result=$state(null), error=$state('');
  let controller;
  let generation=0;
  let previousSource='';
- const searchKey=$derived(JSON.stringify({seller,setDate,name,group,count}));
+ const searchKey=$derived(JSON.stringify({seller,setDate,name,group,count,searchDate,searchName}));
+ $effect(()=>{
+  const preview=finderSearchPreview(name,setDate);
+  searchDate=preview.date;searchName=preview.name;
+ });
  $effect(()=>{
   if(source!==previousSource){previousSource=source;seller=source||'';}
  });
@@ -17,12 +23,17 @@
   searching=false;result=null;error='';
  });
  onDestroy(()=>{generation++;controller?.abort();});
+ function pasteClue(event){
+  const clue=splitFinderClue(event.clipboardData?.getData('text')||'');
+  if(!clue)return;
+  event.preventDefault();searchDate=clue.date;searchName=clue.name;
+ }
  async function findExamples(){
   const current=++generation;
   controller?.abort();controller=new AbortController();
   searching=true;error='';result=null;
   try{
-   const found=await api('/admin/example-candidates',{method:'POST',signal:controller.signal,headers:{'Content-Type':'application/json'},body:JSON.stringify({seller:seller.trim(),setDate,name:name.trim(),group,count:Number(count)||0})});
+   const found=await api('/admin/example-candidates',{method:'POST',signal:controller.signal,headers:{'Content-Type':'application/json'},body:JSON.stringify({seller:seller.trim(),setDate:finderSearchDate(searchDate.trim()),name:searchName.trim(),group,count:Number(count)||0})});
    if(current===generation)result=found;
   }catch(e){if(current===generation&&e.name!=='AbortError')error=e.message;}
   finally{if(current===generation)searching=false;}
@@ -31,12 +42,16 @@
 
 <fieldset class="example-finder" disabled={disabled}>
  <legend>Find an example link</legend>
- <p class="form-help">Search Gank using this set’s date and name. TypeSafe suggests a match; choose a link to fill Example, then save as usual.</p>
+ <p class="form-help">Search Gank using the editable preview below. A YYMMDD date at the start of Name is split out automatically, just like Finder. These fields control lookup; Save uses the set details above. TypeSafe suggests a match; choose a link to fill Example, then save as usual.</p>
  <div class="form-row">
   <label>Gank seller nickname<input bind:value={seller} maxlength="80" placeholder="loveshakedata"/><small>Starts from Source. Use the seller’s Gank nickname.</small></label>
   <label>File count (optional)<input type="number" bind:value={count} min="1" max="9999999" step="1" placeholder="2075"/></label>
  </div>
- <button type="button" class="primary secondary" disabled={disabled||searching||!seller.trim()||(!setDate&&!name.trim()&&!count)} onclick={findExamples}>
+ <div class="form-row">
+  <label>Search date (YYMMDD)<input type="text" inputmode="numeric" pattern={'[0-9]{6}'} maxlength="6" bind:value={searchDate} onpaste={pasteClue} placeholder="261018"/></label>
+  <label>Search name preview<input type="text" bind:value={searchName} onpaste={pasteClue} maxlength="100" placeholder="sullyoon"/></label>
+ </div>
+ <button type="button" class="primary secondary" disabled={disabled||searching||!seller.trim()||(!searchDate&&!searchName.trim()&&!count)} onclick={findExamples}>
   {#if searching}<LoaderCircle size={16} class="spin"/>{:else}<Search size={16}/>{/if}{searching?'Finding links and asking TypeSafe…':'Find example links'}
  </button>
  {#if error}<p class="alert error" role="alert">{error}</p>{/if}

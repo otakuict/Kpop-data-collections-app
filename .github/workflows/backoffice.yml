@@ -2,10 +2,10 @@ name: Backoffice — CI and deploy
 on:
   pull_request:
     branches: [main]
-    paths: ['.nvmrc', 'backoffice/**', 'compose.release.yaml', 'scripts/deploy-server.sh', 'scripts/release-workflow.test.mjs', 'scripts/configure-nginx-resolver.sh', 'scripts/nginx-resolver.test.mjs', '.dockerignore', '.github/workflows/backoffice.yml', 'package.json', 'package-lock.json', 'frontend/package.json', 'backoffice/package.json', 'scripts/sheet-scan.test.mjs', 'tests/backoffice-finder.spec.js', 'playwright.config.js']
+    paths: ['.nvmrc', 'backoffice/**', 'compose.release.yaml', 'scripts/deploy-server.sh', 'scripts/release-workflow.test.mjs', 'scripts/configure-nginx-resolver.sh', 'scripts/nginx-resolver.test.mjs', '.dockerignore', '.github/workflows/backoffice.yml', 'package.json', 'package-lock.json', 'frontend/package.json', 'backoffice/package.json', 'scripts/sheet-scan.test.mjs', 'scripts/finder-query.test.mjs', 'tests/backoffice-finder.spec.js', 'playwright.config.js']
   push:
     branches: [main]
-    paths: ['.nvmrc', 'backoffice/**', 'compose.release.yaml', 'scripts/deploy-server.sh', 'scripts/release-workflow.test.mjs', 'scripts/configure-nginx-resolver.sh', 'scripts/nginx-resolver.test.mjs', '.dockerignore', '.github/workflows/backoffice.yml', 'package.json', 'package-lock.json', 'frontend/package.json', 'backoffice/package.json', 'scripts/sheet-scan.test.mjs', 'tests/backoffice-finder.spec.js', 'playwright.config.js']
+    paths: ['.nvmrc', 'backoffice/**', 'compose.release.yaml', 'scripts/deploy-server.sh', 'scripts/release-workflow.test.mjs', 'scripts/configure-nginx-resolver.sh', 'scripts/nginx-resolver.test.mjs', '.dockerignore', '.github/workflows/backoffice.yml', 'package.json', 'package-lock.json', 'frontend/package.json', 'backoffice/package.json', 'scripts/sheet-scan.test.mjs', 'scripts/finder-query.test.mjs', 'tests/backoffice-finder.spec.js', 'playwright.config.js']
   workflow_dispatch:
 permissions:
   contents: read
@@ -26,7 +26,7 @@ jobs:
           cache: npm
       - run: npm ci --workspace backoffice --include-workspace-root
       - run: npm run check --workspace backoffice
-      - run: node --test scripts/release-workflow.test.mjs scripts/nginx-resolver.test.mjs scripts/sheet-scan.test.mjs
+      - run: node --test scripts/release-workflow.test.mjs scripts/nginx-resolver.test.mjs scripts/sheet-scan.test.mjs scripts/finder-query.test.mjs
       - name: Install Edge for finder form checks
         run: npx playwright install --with-deps msedge
       - name: Verify finder selection on desktop and mobile

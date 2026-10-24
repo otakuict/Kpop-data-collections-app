@@ -94,3 +94,46 @@ test('changing filters cancels a pending search and clears old suggestions',asyn
  await expect(editor.getByRole('article')).toHaveCount(0);
  await expect(editor.getByLabel('Example post, service or image URL')).toHaveValue('');
 });
+
+test('editable search preview splits date and name like Finder without changing saved metadata',async({page},testInfo)=>{
+ const editor=await openEditor(page);
+ await editor.getByLabel('Name',{exact:true}).fill('261018 sullyoon');
+ const date=editor.getByLabel('Search date (YYMMDD)',{exact:true});
+ const name=editor.getByLabel('Search name preview',{exact:true});
+ await expect(date).toHaveValue('261018');
+ await expect(name).toHaveValue('sullyoon');
+ const requests=[];
+ await page.route('**/api/admin/example-candidates',async route=>{
+  requests.push(route.request().postDataJSON());
+  await route.fulfill({json:{candidates,recommendedUrl:''}});
+ });
+ const search=editor.getByRole('button',{name:'Find example links',exact:true});
+ await search.click();
+ await expect(editor.getByRole('article')).toHaveCount(2);
+ expect(requests[0]).toMatchObject({setDate:'2026-10-18',name:'sullyoon'});
+ await date.fill('261019');
+ await name.fill('sullyoon nol festival');
+ await expect(editor.getByRole('article')).toHaveCount(0);
+ await search.click();
+ await expect(editor.getByRole('article')).toHaveCount(2);
+ expect(requests[1]).toMatchObject({setDate:'2026-10-19',name:'sullyoon nol festival'});
+ await name.evaluate(input=>{
+  const clipboard=new DataTransfer();clipboard.setData('text/plain','261018\n  sullyoon');
+  input.dispatchEvent(new ClipboardEvent('paste',{clipboardData:clipboard,bubbles:true,cancelable:true}));
+ });
+ await expect(date).toHaveValue('261018');
+ await expect(name).toHaveValue('sullyoon');
+ await expect(editor.getByLabel('Set date')).toHaveValue('2026-10-24');
+ await expect(editor.getByLabel('Name',{exact:true})).toHaveValue('261018 sullyoon');
+ await search.click();
+ await expect(editor.getByRole('article')).toHaveCount(2);
+ await editor.locator('.example-finder').screenshot({path:`test-results/finder-preview-${testInfo.project.name}.png`});
+ const saved=[];
+ await page.route('**/api/admin/sets',async route=>{
+  saved.push(route.request().postDataJSON());
+  await route.fulfill({json:{id:1,title:'261018 sullyoon',date:'2026-10-24',origin:'manual',images:[{},{}]}});
+ });
+ await editor.getByRole('button',{name:'Save image set',exact:true}).click();
+ await expect(editor).toHaveCount(0);
+ expect(saved[0]).toMatchObject({setDate:'2026-10-24',name:'261018 sullyoon'});
+});
