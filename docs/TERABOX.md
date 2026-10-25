@@ -1,9 +1,10 @@
 # TeraBox private-drive import
 
 The back office has an **Update from TeraBox** button. Connect either of two
-TeraBox browser sessions, scan folders created or updated in the past 5 days, review names
-and groups, and confirm selected sets into the existing Google Sheet and SQLite
-save flow. Scanning does not create gallery sets or write to Google Sheets.
+TeraBox browser sessions and scan folders created or updated in the past 1–10
+days (5 days by default). Review names and groups, then confirm selected sets
+into the existing Google Sheet and SQLite save flow. Scanning does not create
+gallery sets or write to Google Sheets.
 
 ## Connect accounts
 
@@ -18,6 +19,8 @@ save flow. Scanning does not create gallery sets or write to Google Sheets.
    fills API host and `bdstoken` when present. Save the session. Cookie
    must include `ndus`. Reconnect after session expiry.
 5. Repeat for the other account. Choose the account to scan in the dropdown.
+6. Enter a lookback period from 1 to 10 days before scanning. The default is
+   5 days; each preview shows the period used for that scan.
 
 Session values are never returned by the API or placed in browser storage.
 They are encrypted with AES-GCM in `terabox_accounts`, using a separate key
@@ -42,8 +45,8 @@ Do not expose the private session in client code, logs or public gallery data.
   batches of 100. Date-prefixed set folders are treated as sets; their image
   contents are not traversed or downloaded.
 - The later of `server_ctime` and `server_mtime` determines whether a folder
-  is inside the past 5 days. The preview shows this as last activity, keeping
-  the original creation timestamp separately in the API. Changes to old folders
+  is inside the selected 1–10-day period. The preview shows this as last
+  activity, keeping the original creation timestamp separately in the API. Changes to old folders
   therefore appear for review; this does not establish that the folder is new.
 - Folders missing both timestamps produce a warning and are excluded.
   A date such as `240404` can therefore still describe a newly added set.
@@ -52,17 +55,18 @@ Do not expose the private session in client code, logs or public gallery data.
   inspect a larger drive. An upstream failure is an error, not “nothing new”.
 - A folder title normally starts with `YYMMDD` and an artist name. Unknown
   names and malformed dates require manual review; no date is silently guessed.
-- Edit the final title, group, photographed date, notes and optional Example
-  URL. A changed final title is checked against existing sets in the selected
+- Edit the final title, group, photographed date, Seller / Source, notes and
+  optional Example URL. A changed final title is checked against existing sets in the selected
   group, and a duplicate warning prevents confirmation until corrected.
   Duplicates and uncertain previous writes cannot be selected.
 - Expand **Find an example link** on a reviewable row to use the same Gank
-  search and TypeSafe recommendations as Add image set. Seller starts from the
-  account's saved Source; date and name start from the row's final title and
-  photographed date. The seller dropdown offers gallery Sources, just like
-  Add image set, and also accepts a new nickname. Each row keeps its own seller
-  selection. Search fields remain editable without rewriting the set
-  details. Choosing a candidate fills only that row's Example URL. It is saved
+  search and TypeSafe recommendations as Add image set. Each row's seller starts
+  from the account's saved Source and can be changed above the Finder or inside
+  it; both fields stay in sync. The seller options include gallery Sources and
+  also accept a new nickname. The selected seller is saved as that set's Source.
+  Date and name start from the row's photographed date and final title.
+  Other search fields remain editable without rewriting the set details.
+  Choosing a candidate fills only that row's Example URL. It is saved
   through the existing Sheet → DB flow when the selected rows are confirmed.
   Failed searches still allow a manually entered Example URL.
 - Previews expire after one hour and become invalid when account settings change.

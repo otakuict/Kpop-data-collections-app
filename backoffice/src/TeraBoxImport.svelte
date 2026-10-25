@@ -4,7 +4,7 @@
  import ExampleFinder from './ExampleFinder.svelte';
  import { parseTeraBoxCurl } from './teraboxCurl.js';
  let { api, sources=[], onclose, onsaved } = $props();
- let accounts=$state([]), groups=$state([]), accountID=$state(1), working=$state(false);
+ let accounts=$state([]), groups=$state([]), accountID=$state(1), lookbackDays=$state(5), working=$state(false);
  let error=$state(''), notice=$state(''), preview=$state(null), results=$state(null);
  let sheetEnabled=$state(false), jevConfigured=$state(false), pane=$state('accounts');
  let label=$state(''), root=$state('/'), source=$state(''), cookie=$state(''), bdstoken=$state(''), jsToken=$state('');
@@ -14,6 +14,7 @@
  const selectedAccount=$derived(accounts.find(a=>a.id===accountID));
  const selectedRows=$derived(preview?.rows.filter(r=>r.selected)||[]);
  const memberCount=$derived(groups.reduce((sum,g)=>sum+g.members.length,0));
+ const validLookback=$derived(Number.isInteger(lookbackDays)&&lookbackDays>=1&&lookbackDays<=10);
  const duplicateTimers=new Map();
  function clearDuplicateChecks(){for(const timer of duplicateTimers.values())clearTimeout(timer);duplicateTimers.clear();}
  function checkFinalTitle(row){
@@ -69,14 +70,14 @@
   clearDuplicateChecks();
   working=true;error='';notice='';results=null;preview=null;
   try{
-   const p=await api('/admin/terabox/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accountId:accountID})});
-   preview={...p,rows:p.rows.map(row=>({...row,selected:row.status==='new',example:'',notes:'',duplicate:false,checking:false,checkError:''}))};pane='preview';
+   const p=await api('/admin/terabox/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accountId:accountID,days:lookbackDays})});
+   preview={...p,rows:p.rows.map(row=>({...row,selected:row.status==='new',seller:selectedAccount?.source||'',example:'',notes:'',duplicate:false,checking:false,checkError:''}))};pane='preview';
   }catch(e){error=e.message;}finally{working=false;}
  }
  async function confirm(){
   working=true;error='';notice='';
   try{
-   const rows=selectedRows.map(({fileId,title,group,setDate,example,notes})=>({fileId,title,group,setDate,example,notes}));
+   const rows=selectedRows.map(({fileId,title,group,setDate,seller,example,notes})=>({fileId,title,group,setDate,source:seller.trim(),example,notes}));
    const response=await api('/admin/terabox/commit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({previewId:preview.id,rows})});
    results=response.results;
    for(const result of results){const row=preview.rows.find(r=>r.fileId===result.fileId);if(row){row.selected=false;row.status=result.status==='saved'?'duplicate':result.status;row.warning=result.error||'';}}
@@ -120,7 +121,8 @@
  </div>
  <div class="tera-toolbar">
   <label>TeraBox account<select aria-label="TeraBox account" bind:value={accountID} onchange={changeAccount} disabled={working}><option value={1}>{accounts.find(a=>a.id===1)?.label||'Account 1 — not connected'}</option><option value={2}>{accounts.find(a=>a.id===2)?.label||'Account 2 — not connected'}</option></select></label>
-  <button class="primary" disabled={working||!selectedAccount} onclick={scan}>{#if working}<LoaderCircle size={16} class="spin"/>{:else}<RefreshCw size={16}/>{/if}{working?'Working…':'Scan last 5 days'}</button>
+  <label class="lookback-days">Look back (days)<input type="number" min="1" max="10" step="1" bind:value={lookbackDays} disabled={working} required/></label>
+  <button class="primary" disabled={working||!selectedAccount||!validLookback} onclick={scan}>{#if working}<LoaderCircle size={16} class="spin"/>{:else}<RefreshCw size={16}/>{/if}{working?'Working…':validLookback?`Scan last ${lookbackDays} ${lookbackDays===1?'day':'days'}`:'Scan TeraBox'}</button>
  </div>
  <nav class="tera-tabs" aria-label="TeraBox steps">
   <button class:active={pane==='accounts'} disabled={working} onclick={()=>{pane='accounts';changeAccount();}}>Accounts</button>
@@ -144,25 +146,27 @@
    <button class="primary secondary" disabled={working}><Check size={16}/> Save account session</button>
   </form>
  {:else if pane==='preview'&&preview}
-  <p class="review-note">{preview.scanned} entries scanned · {preview.complete?'Scan complete':'Partial scan'} · created or updated within the past 5 days. Review the original, suggested name and group. Nothing is imported until you confirm.</p>
+  <p class="review-note">{preview.scanned} entries scanned · {preview.complete?'Scan complete':'Partial scan'} · created or updated within the past {preview.days} {preview.days===1?'day':'days'}. Review the original, suggested name and group. Nothing is imported until you confirm.</p>
   {#each preview.warnings as warning}<p class="alert error">{warning}</p>{/each}
   {#if preview.rows.some(row=>row.status==='reconcile')}<p class="form-help">A previous save has an uncertain result. Check the live Sheet before making a new attempt.</p><button class="primary secondary" disabled={working||!sheetEnabled} onclick={recover}>Check Sheet & recover</button>{/if}
-  {#if !preview.rows.length}<p class="table-status">No created or updated set folders found within the last 5 days.</p>{/if}
+  {#if !preview.rows.length}<p class="table-status">No created or updated set folders found within the last {preview.days} {preview.days===1?'day':'days'}.</p>{/if}
   <div class="tera-rows">
   {#each preview.rows as row (row.fileId)}
-   <article class="tera-row" class:muted={row.status==='duplicate'||row.status==='reconcile'}>
-    <div class="tera-row-heading"><label><input type="checkbox" bind:checked={row.selected} disabled={working||['duplicate','reconcile','pending','saved'].includes(row.status)} aria-label={`Import ${row.original}`}/><strong>{row.original}</strong></label><span>{row.status} · {row.method}{row.confidence!=null?` · ${Math.round(row.confidence*100)}%`:''}</span></div>
+   <article class="tera-row" class:muted={row.status==='reconcile'} class:duplicate={row.status==='duplicate'||row.duplicate}>
+    <div class="tera-row-heading"><label><input type="checkbox" bind:checked={row.selected} disabled={working||['duplicate','reconcile','pending','saved'].includes(row.status)} aria-label={`Import ${row.original}`}/><strong>{row.original}</strong></label><span>{row.duplicate?'duplicate':row.status} · {row.method}{row.confidence!=null?` · ${Math.round(row.confidence*100)}%`:''}</span></div>
     <small class="tera-path">{row.path} · last activity {new Date(row.updatedAt||row.createdAt).toLocaleString()}</small>
     <p class="form-help">KOROMAN: {row.romanized}</p>
     {#if row.warning}<p class="alert error">{row.warning}</p>{/if}
     {#if row.status!=='duplicate'&&row.status!=='reconcile'}
      <label>Artist suggestion<select value={row.memberId} onchange={event=>pickArtist(row,event.currentTarget.value)} disabled={working}><option value={0}>Choose from the catalog / edit manually</option>{#each groups as g}<optgroup label={g.name}>{#each g.members as member}<option value={member.id}>{member.name}</option>{/each}</optgroup>{/each}</select></label>
      <div class="form-row"><label>Final title<input bind:value={row.title} oninput={event=>{row.title=event.currentTarget.value;checkFinalTitle(row);}} maxlength="500" disabled={working}/></label><label>Group / solo<select bind:value={row.group} onchange={event=>{row.group=event.currentTarget.value;checkFinalTitle(row);}} disabled={working}><option value="">Choose a group</option>{#each groups as g}<option value={g.name}>{g.name}</option>{/each}</select></label><label>Photographed date<input type="date" bind:value={row.setDate} onchange={event=>{row.setDate=event.currentTarget.value;checkFinalTitle(row);}} disabled={working}/></label></div>
+     <label class="tera-seller">Seller / Source<input bind:value={row.seller} list={`tera-sellers-${preview.id}-${row.fileId}`} maxlength="80" placeholder="Choose a source or type a seller nickname" disabled={working}/><small>Used for this set and its example link search.</small></label>
+     <datalist id={`tera-sellers-${preview.id}-${row.fileId}`}>{#each sources as option}<option value={option.name}></option>{/each}</datalist>
      {#if row.duplicate}<p class="alert error" role="alert">Final title already exists in this group. Change the title before confirming.</p>{/if}
      {#if row.checkError}<p class="alert error" role="alert">Could not check Final title: {row.checkError}</p>{/if}
      <details class="tera-finder">
       <summary>Find an example link</summary>
-      <ExampleFinder source={selectedAccount?.source||''} {sources} setDate={row.setDate} name={row.title} group={row.group} selectedURL={row.example} disabled={working} {api} onchoose={url=>row.example=url}/>
+      <ExampleFinder source={row.seller} {sources} setDate={row.setDate} name={row.title} group={row.group} selectedURL={row.example} disabled={working} {api} onchoose={url=>row.example=url} onsellerchange={value=>row.seller=value}/>
      </details>
      <div class="form-row"><label>Example URL (optional)<input bind:value={row.example} maxlength="2000" placeholder="Public example link" disabled={working}/></label><label>Notes<input bind:value={row.notes} maxlength="10000" disabled={working}/></label></div>
     {/if}
@@ -205,9 +209,10 @@
  .tera-curl-trigger{justify-self:start}
  .tera-toolbar,.tera-tabs,.tera-row-heading,.tera-member{display:flex;align-items:center;justify-content:space-between;gap:14px}
  .tera-toolbar{margin:20px 0;flex-wrap:wrap}.tera-toolbar label{min-width:220px;flex:1}
+ .tera-toolbar .lookback-days{min-width:130px;max-width:170px;flex:0 0 150px}
  label{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:#edf4fb;margin:8px 0}input,select{min-width:0;width:100%;padding:10px;border:1px solid #314d6b;border-radius:7px;background:#0a1423;color:#edf4fb}input[type=checkbox]{width:auto}
  .tera-tabs{justify-content:flex-start;flex-wrap:wrap;border-bottom:1px solid #314d6b;margin-bottom:20px}.tera-tabs button{padding:10px;border:0;background:none;border-bottom:2px solid transparent}.tera-tabs button.active{border-color:#5fd2ef;font-weight:700}
  .tera-account-form{display:grid;gap:16px;margin:20px 0}.form-row{display:flex;gap:14px;flex-wrap:wrap}.form-row>label{flex:1;min-width:180px}
- .tera-rows{display:grid;gap:16px}.tera-row{display:grid;gap:12px;border:1px solid #314d6b;border-radius:12px;padding:18px}.tera-row.muted{background:#0b1522}.tera-row-heading{align-items:flex-start;flex-wrap:wrap}.tera-row-heading label{flex-direction:row;align-items:center}.tera-row-heading span,.tera-path{font-size:12px;color:#9aaec3;overflow-wrap:anywhere}.tera-path{display:block}.tera-group{padding:12px 0;border-top:1px solid #314d6b}.tera-member{padding:8px 0;flex-wrap:wrap}.tera-member small{flex:1;color:#9aaec3;overflow-wrap:anywhere}.form-help{font-size:11px}.review-note{color:#cedbe9;font-size:12px}details>p{font-size:13px;line-height:1.7}summary{cursor:pointer}
+ .tera-rows{display:grid;gap:16px}.tera-row{display:grid;gap:12px;border:1px solid #314d6b;border-radius:12px;padding:18px}.tera-row.muted{background:#0b1522}.tera-row.duplicate{background:linear-gradient(135deg,#432a17,#2c2330 78%);border-color:#efbd71;box-shadow:inset 4px 0 #ffcb79,0 0 0 1px #efbd7133}.tera-row.duplicate .tera-row-heading span{color:#231509;background:#ffd18a;border:1px solid #ffe4b5;border-radius:5px;padding:5px 8px;font-weight:700}.tera-row.duplicate .tera-row-heading strong{color:#ffe2ac}.tera-row-heading{align-items:flex-start;flex-wrap:wrap}.tera-row-heading label{flex-direction:row;align-items:center}.tera-row-heading span,.tera-path{font-size:12px;color:#9aaec3;overflow-wrap:anywhere}.tera-path{display:block}.tera-seller{max-width:420px}.tera-seller small{color:#abc4da;font-weight:400}.tera-group{padding:12px 0;border-top:1px solid #314d6b}.tera-member{padding:8px 0;flex-wrap:wrap}.tera-member small{flex:1;color:#9aaec3;overflow-wrap:anywhere}.form-help{font-size:11px}.review-note{color:#cedbe9;font-size:12px}details>p{font-size:13px;line-height:1.7}summary{cursor:pointer}
  @media(max-width:600px){.tera-dialog{padding:16px}.tera-toolbar .primary{width:100%}.form-row>label{min-width:100%}.tera-row{padding:12px}}
 </style>

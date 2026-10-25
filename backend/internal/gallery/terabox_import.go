@@ -14,6 +14,7 @@ type teraImportRow struct {
 	Title   string `json:"title"`
 	Group   string `json:"group"`
 	SetDate string `json:"setDate"`
+	Source  *string `json:"source,omitempty"`
 	Example string `json:"example"`
 	Notes   string `json:"notes"`
 }
@@ -63,7 +64,11 @@ func (t *teraService) commit(ctx context.Context, sheet *SheetSync, active bool,
 			return nil, errors.New("Each row needs a valid photographed date")
 		}
 		title, date := buildSetTitle(date, row.Title)
-		draft := SetDraft{Title: title, Group: row.Group, Date: t.now().In(time.FixedZone("Asia/Bangkok", 7*60*60)).Format("2006-01-02"), Source: source, Example: row.Example, Notes: row.Notes}
+		rowSource := source
+		if row.Source != nil {
+			rowSource = strings.TrimSpace(*row.Source)
+		}
+		draft := SetDraft{Title: title, Group: row.Group, Date: t.now().In(time.FixedZone("Asia/Bangkok", 7*60*60)).Format("2006-01-02"), Source: rowSource, Example: row.Example, Notes: row.Notes}
 		if e = draft.Validate(); e != nil {
 			return nil, e
 		}

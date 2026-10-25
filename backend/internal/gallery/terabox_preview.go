@@ -33,6 +33,7 @@ type teraPreviewRow struct {
 type teraPreview struct {
 	ID        string           `json:"id"`
 	AccountID int              `json:"accountId"`
+	Days      int              `json:"days"`
 	Rows      []teraPreviewRow `json:"rows"`
 	Warnings  []string         `json:"warnings"`
 	Complete  bool             `json:"complete"`
@@ -47,9 +48,12 @@ type teraService struct {
 	now      func() time.Time
 }
 
-func (t *teraService) preview(ctx context.Context, accountID int) (teraPreview, error) {
+func (t *teraService) preview(ctx context.Context, accountID, days int) (teraPreview, error) {
 	now := t.now()
-	result := teraPreview{AccountID: accountID, Rows: []teraPreviewRow{}, Warnings: []string{}, ExpiresAt: now.Add(time.Hour).Unix()}
+	result := teraPreview{AccountID: accountID, Days: days, Rows: []teraPreviewRow{}, Warnings: []string{}, ExpiresAt: now.Add(time.Hour).Unix()}
+	if days < 1 || days > 10 {
+		return result, errors.New("Choose a lookback period from 1 to 10 days")
+	}
 	var root, revision string
 	if err := t.store.db.QueryRowContext(ctx, "SELECT root,updated_at FROM terabox_accounts WHERE id=?", accountID).Scan(&root, &revision); err != nil {
 		return result, errors.New("Connect the selected TeraBox account first")
@@ -70,7 +74,7 @@ func (t *teraService) preview(ctx context.Context, accountID int) (teraPreview, 
 	if !complete {
 		result.Warnings = append(result.Warnings, "Scan reached the 100-request limit. Results are partial; narrow the account root folder and scan again for full coverage.")
 	}
-	recent, warnings := recentTeraFolders(files, now)
+	recent, warnings := recentTeraFolders(files, now, days)
 	result.Warnings = append(result.Warnings, warnings...)
 	if len(recent) > 200 {
 		recent = recent[:200]

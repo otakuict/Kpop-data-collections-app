@@ -120,18 +120,27 @@ func registerTeraBox(admin *gin.RouterGroup, store *Store, key string, sheet *Sh
 		}
 		defer func() { <-slot }()
 		var input struct {
-			AccountID int `json:"accountId"`
+			AccountID int  `json:"accountId"`
+			Days      *int `json:"days"`
 		}
 		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 1024)
 		if c.ShouldBindJSON(&input) != nil || input.AccountID < 1 || input.AccountID > 2 {
 			c.JSON(400, gin.H{"error": "Choose account 1 or 2"})
 			return
 		}
+		days := 5
+		if input.Days != nil {
+			days = *input.Days
+		}
+		if days < 1 || days > 10 {
+			c.JSON(400, gin.H{"error": "Choose a lookback period from 1 to 10 days"})
+			return
+		}
 		if err := store.reconcileTeraImports(c.Request.Context()); err != nil {
 			c.JSON(500, gin.H{"error": "Cannot reconcile previous imports"})
 			return
 		}
-		preview, err := service.preview(c.Request.Context(), input.AccountID)
+		preview, err := service.preview(c.Request.Context(), input.AccountID, days)
 		if err != nil {
 			log.Printf("terabox.preview.failed id=%s account=%d error=%q", requestID(c.Request.Context()), input.AccountID, err.Error())
 			var rejected *teraSessionError

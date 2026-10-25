@@ -22,7 +22,7 @@ async function setup(page,{sheet=true}={}){
   };
   if(path==='/api/admin/terabox/preview'){
    calls.push({type:'preview',body:req.postDataJSON()});
-   return route.fulfill({json:{id:'preview-token',accountId:req.postDataJSON().accountId,rows,complete:true,scanned:20,warnings:[]}});
+   return route.fulfill({json:{id:'preview-token',accountId:req.postDataJSON().accountId,days:req.postDataJSON().days,rows,complete:true,scanned:20,warnings:[]}});
   }
   if(path==='/api/admin/terabox/title-check'){
    const query=new URL(req.url()).searchParams;
@@ -51,15 +51,16 @@ test('private drive import switches accounts and waits for edited preview confir
  await dialog.getByLabel('TeraBox account',{exact:true}).selectOption('2');
  await dialog.getByRole('button',{name:'Scan last 5 days'}).click();
  await expect(dialog.getByText('KOROMAN: Jiyeon2')).toBeVisible();
- expect(calls).toEqual([{type:'preview',body:{accountId:2}}]);
+ expect(calls).toEqual([{type:'preview',body:{accountId:2,days:5}}]);
  await expect(dialog.getByLabel('Import 240404 지연2',{exact:true})).toBeChecked();
  await expect(dialog.getByLabel('Import 261013 안나',{exact:true})).toBeDisabled();
+ await expect(dialog.locator('.tera-row').filter({has:page.getByLabel('Import 261013 안나',{exact:true})})).toHaveClass(/duplicate/);
  await expect(dialog.getByLabel('Import 261013 모르는이름',{exact:true})).not.toBeChecked();
  await dialog.getByLabel('Final title',{exact:true}).first().fill('240404 Jiyeon 2 premium');
  await dialog.screenshot({path:`test-results/terabox-preview-${info.project.name}.png`});
  await dialog.getByRole('button',{name:'Confirm to Sheet & DB'}).click();
  await expect(dialog.getByRole('status')).toContainText('Saved 1 sets');
- expect(calls.filter(c=>c.type==='commit')).toEqual([{type:'commit',body:{previewId:'preview-token',rows:[{fileId:11,title:'240404 Jiyeon 2 premium',group:'TripleS',setDate:'2024-04-04',example:'',notes:''}]}}]);
+ expect(calls.filter(c=>c.type==='commit')).toEqual([{type:'commit',body:{previewId:'preview-token',rows:[{fileId:11,title:'240404 Jiyeon 2 premium',group:'TripleS',setDate:'2024-04-04',source:'studio2',example:'',notes:''}]}}]);
  await expect(dialog.getByRole('button',{name:'Confirm to Sheet & DB'})).toBeDisabled();
 });
 
@@ -75,12 +76,29 @@ test('preview allows manual artist choice and cannot confirm without Sheet sync'
  expect(calls.filter(c=>c.type==='commit')).toHaveLength(0);
 });
 
+test('lookback input scans from 1 to 10 days and blocks values outside the range',async({page})=>{
+ const {dialog,calls}=await setup(page);
+ const days=dialog.getByLabel('Look back (days)');
+ await expect(days).toHaveValue('5');
+ await days.fill('10');
+ await dialog.getByRole('button',{name:'Scan last 10 days'}).click();
+ await expect(dialog.getByText('created or updated within the past 10 days')).toBeVisible();
+ expect(calls.filter(c=>c.type==='preview').map(c=>c.body.days)).toEqual([10]);
+ await days.fill('11');
+ await expect(dialog.getByRole('button',{name:'Scan TeraBox'})).toBeDisabled();
+ await days.fill('1');
+ await dialog.getByRole('button',{name:'Scan last 1 day'}).click();
+ await expect(dialog.getByText('created or updated within the past 1 day')).toBeVisible();
+ expect(calls.filter(c=>c.type==='preview').map(c=>c.body.days)).toEqual([10,1]);
+});
+
 test('editing Final title warns when the title already exists in the selected group',async({page})=>{
  const {dialog,calls}=await setup(page);
  await dialog.getByRole('button',{name:'Scan last 5 days'}).click();
  const row=dialog.locator('.tera-row').filter({has:page.getByLabel('Import 240404 지연2',{exact:true})});
  await row.getByLabel('Final title').fill('240404 Jiyeon2');
  await expect(row.getByRole('alert')).toContainText('Final title already exists in this group');
+ await expect(row).toHaveClass(/duplicate/);
  await expect(dialog.getByRole('button',{name:'Confirm to Sheet & DB'})).toBeDisabled();
  await row.getByLabel('Final title').fill('240404 Jiyeon 2 premium');
  await expect(row.getByRole('alert')).toHaveCount(0);
@@ -177,7 +195,7 @@ test('TeraBox preview reuses Finder and commits only the chosen row example',asy
  await dialog.screenshot({path:`test-results/terabox-finder-${info.project.name}.png`});
  await dialog.getByRole('button',{name:'Confirm to Sheet & DB'}).click();
  await expect(dialog.getByRole('status')).toContainText('Saved 1 sets');
- expect(calls.find(c=>c.type==='commit').body.rows).toEqual([{fileId:11,title:'240404 Jiyeon2',group:'TripleS',setDate:'2024-04-04',example:url,notes:''}]);
+ expect(calls.find(c=>c.type==='commit').body.rows).toEqual([{fileId:11,title:'240404 Jiyeon2',group:'TripleS',setDate:'2024-04-04',source:'studio',example:url,notes:''}]);
 });
 
 test('TeraBox Finder failure keeps manual example input usable',async({page})=>{
@@ -194,7 +212,7 @@ test('TeraBox Finder failure keeps manual example input usable',async({page})=>{
 });
 
 test('TeraBox Finder seller dropdown uses gallery sources independently per row',async({page})=>{
- const {dialog}=await setup(page);
+ const {dialog,calls}=await setup(page);
  await dialog.getByRole('button',{name:'Scan last 5 days'}).click();
  const rows=dialog.locator('.tera-row');
  const first=rows.first();
@@ -203,14 +221,23 @@ test('TeraBox Finder seller dropdown uses gallery sources independently per row'
  await other.locator('summary').filter({hasText:'Find an example link'}).click();
  const seller=first.getByRole('combobox',{name:'Gank seller nickname'});
  const otherSeller=other.getByRole('combobox',{name:'Gank seller nickname'});
+ const rowSeller=first.getByLabel('Seller / Source');
+ await expect(rowSeller).toHaveValue('studio');
  await expect(seller).toHaveValue('studio',{timeout:2000});
  expect(await seller.evaluate(el=>Array.from(el.list.options,o=>o.value))).toEqual(['studio','loveshakedata']);
  expect(await seller.getAttribute('list')).not.toBe(await otherSeller.getAttribute('list'));
  let query;
  await page.route('**/api/admin/example-candidates',route=>{query=route.request().postDataJSON();return route.fulfill({json:{candidates:[]}});});
+ await rowSeller.fill('loveshakedata');
+ await expect(seller).toHaveValue('loveshakedata');
+ await seller.fill('studio');
+ await expect(rowSeller).toHaveValue('studio');
  await seller.fill('loveshakedata');
  await first.getByRole('button',{name:'Find example links',exact:true}).click();
  await expect(first.getByText('No matching links found.',{exact:false})).toBeVisible();
  expect(query.seller).toBe('loveshakedata');
  await expect(otherSeller).toHaveValue('studio');
+ await expect(other.getByLabel('Seller / Source')).toHaveValue('studio');
+ await dialog.getByRole('button',{name:'Confirm to Sheet & DB'}).click();
+ expect(calls.find(c=>c.type==='commit').body.rows[0].source).toBe('loveshakedata');
 });

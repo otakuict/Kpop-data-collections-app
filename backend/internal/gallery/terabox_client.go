@@ -169,10 +169,10 @@ func splitTeraTitle(title string) (string, string, error) {
 	}
 	return date.Format("2006-01-02"), strings.TrimSpace(parts[2]), nil
 }
-func recentTeraFolders(files []teraFile, now time.Time) ([]teraFile, []string) {
+func recentTeraFolders(files []teraFile, now time.Time, days int) ([]teraFile, []string) {
 	result := []teraFile{}
 	warnings := []string{}
-	cutoff := now.Add(-5 * 24 * time.Hour).Unix()
+	cutoff := now.Add(-time.Duration(days) * 24 * time.Hour).Unix()
 	for _, f := range files {
 		if f.IsDir != 1 {
 			continue

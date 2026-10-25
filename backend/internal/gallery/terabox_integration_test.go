@@ -93,7 +93,7 @@ func TestTeraPreviewScansPrivateDriveButDoesNotCreateSets(t *testing.T) {
 	}))
 	defer server.Close()
 	service := teraService{store: s, key: "key", provider: teraClient{baseURL: server.URL, client: server.Client()}, now: func() time.Time { return now }}
-	preview, err := service.preview(ctx, 2)
+	preview, err := service.preview(ctx, 2, 5)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -216,7 +216,8 @@ func TestTeraConfirmWritesSheetAndDBExactlyOnceAndRejectsUnreviewedRows(t *testi
 		t.Fatal("TeraBox inserted a duplicate title from an earlier added date")
 	}
 	service := teraService{store: s, key: "key", now: func() time.Time { return now }}
-	request := teraImportRequest{PreviewID: "reviewed", Rows: []teraImportRow{{FileID: 10, Title: "261013 Anna", Group: "MEOVV", SetDate: "2026-10-13"}}}
+	seller := "chosen-seller"
+	request := teraImportRequest{PreviewID: "reviewed", Rows: []teraImportRow{{FileID: 10, Title: "261013 Anna", Group: "MEOVV", SetDate: "2026-10-13", Source: &seller}}}
 	bad := request
 	bad.Rows = []teraImportRow{{FileID: 999, Title: "Injected", Group: "MEOVV", SetDate: "2026-10-13"}}
 	if _, err = service.commit(ctx, syncer, true, bad); err == nil || writes != 0 {
@@ -230,7 +231,7 @@ func TestTeraConfirmWritesSheetAndDBExactlyOnceAndRejectsUnreviewedRows(t *testi
 		t.Fatalf("%+v writes=%d err=%v", results, writes, err)
 	}
 	saved, err := s.Get(ctx, results[0].SetID)
-	if err != nil || saved.Origin != "sheet" || saved.Source != "studio" {
+	if err != nil || saved.Origin != "sheet" || saved.Source != seller {
 		t.Fatalf("%+v %v", saved, err)
 	}
 	results, err = service.commit(ctx, syncer, true, request)

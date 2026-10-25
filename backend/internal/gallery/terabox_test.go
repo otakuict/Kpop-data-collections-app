@@ -23,7 +23,7 @@ func TestTeraBoxRecentFoldersUseCreationNotPhotoDate(t *testing.T) {
 		{ID: 3, Name: "261024 수아", Path: "/261024 수아", IsDir: 1},
 		{ID: 4, Name: "photo.jpg", Path: "/photo.jpg", Created: recent},
 	}
-	got, warnings := recentTeraFolders(entries, now)
+	got, warnings := recentTeraFolders(entries, now, 5)
 	if len(got) != 1 || got[0].ID != 1 || len(warnings) != 1 {
 		t.Fatalf("folders=%+v warnings=%v", got, warnings)
 	}
@@ -229,8 +229,32 @@ func TestTeraBoxRecentFoldersIncludeUpdatesToOlderFolders(t *testing.T) {
 		{ID: 8, Path: "/inside", IsDir: 1, Created: now.Add(-4 * 24 * time.Hour).Unix()},
 		{ID: 7, Path: "/future", IsDir: 1, Created: old, Modified: now.Add(time.Hour).Unix()},
 	}
-	got, warnings := recentTeraFolders(files, now)
+	got, warnings := recentTeraFolders(files, now, 5)
 	if len(got) != 4 || got[0].ID != 1 || got[1].ID != 3 || got[2].ID != 6 || got[3].ID != 8 || len(warnings) != 1 {
 		t.Fatalf("recent=%+v warnings=%v", got, warnings)
+	}
+	lastDay, _ := recentTeraFolders(files, now, 1)
+	if len(lastDay) != 2 || lastDay[0].ID != 1 || lastDay[1].ID != 3 {
+		t.Fatalf("one-day folders=%+v", lastDay)
+	}
+	tenDays, _ := recentTeraFolders(files, now, 10)
+	if len(tenDays) != 5 || tenDays[1].ID != 2 || tenDays[4].ID != 8 {
+		t.Fatalf("ten-day folders=%+v", tenDays)
+	}
+}
+
+func TestTeraBoxPreviewRejectsLookbackOutsideOneToTenDays(t *testing.T) {
+	store := teraTestStore(t)
+	key := "test-administrator-key-at-least-24-characters"
+	router := Router(store, key)
+	for _, days := range []string{"0", "-1", "11"} {
+		req := httptest.NewRequest("POST", "/api/admin/terabox/preview", strings.NewReader(`{"accountId":1,"days":`+days+`}`))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+key)
+		response := httptest.NewRecorder()
+		router.ServeHTTP(response, req)
+		if response.Code != 400 || !strings.Contains(response.Body.String(), "1 to 10 days") {
+			t.Fatalf("days=%s status=%d body=%s", days, response.Code, response.Body.String())
+		}
 	}
 }
