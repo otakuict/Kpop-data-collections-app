@@ -149,6 +149,7 @@ func (t *teraService) preview(ctx context.Context, accountID int) (teraPreview, 
 			}
 			if exists {
 				row.Status = "duplicate"
+				row.Warning = "Final title already exists in this group"
 			}
 		}
 	}

@@ -1,7 +1,7 @@
 # TeraBox private-drive import
 
 The back office has an **Update from TeraBox** button. Connect either of two
-TeraBox browser sessions, scan folders created or updated in the past 72 hours, review names
+TeraBox browser sessions, scan folders created or updated in the past 5 days, review names
 and groups, and confirm selected sets into the existing Google Sheet and SQLite
 save flow. Scanning does not create gallery sets or write to Google Sheets.
 
@@ -13,7 +13,9 @@ save flow. Scanning does not create gallery sets or write to Google Sheets.
    source/seller and absolute root folder path, such as `/` or `/Kpop`.
 4. Set **API host** to the successful request's hostname: `www.terabox.com` or
    `dm.terabox.com`. Copy its complete `Cookie` header and `jsToken` into the
-   session fields; leave `bdstoken` blank if absent. Save the session. Cookie
+   session fields, or use **Paste cURL to fill Cookie & jsToken** and paste the
+   Bash cURL command from the same `/api/list` request. The paste option also
+   fills API host and `bdstoken` when present. Save the session. Cookie
    must include `ndus`. Reconnect after session expiry.
 5. Repeat for the other account. Choose the account to scan in the dropdown.
 
@@ -40,7 +42,7 @@ Do not expose the private session in client code, logs or public gallery data.
   batches of 100. Date-prefixed set folders are treated as sets; their image
   contents are not traversed or downloaded.
 - The later of `server_ctime` and `server_mtime` determines whether a folder
-  is inside the past 72 hours. The preview shows this as last activity, keeping
+  is inside the past 5 days. The preview shows this as last activity, keeping
   the original creation timestamp separately in the API. Changes to old folders
   therefore appear for review; this does not establish that the folder is new.
 - Folders missing both timestamps produce a warning and are excluded.
@@ -51,7 +53,9 @@ Do not expose the private session in client code, logs or public gallery data.
 - A folder title normally starts with `YYMMDD` and an artist name. Unknown
   names and malformed dates require manual review; no date is silently guessed.
 - Edit the final title, group, photographed date, notes and optional Example
-  URL. Duplicates and uncertain previous writes cannot be selected.
+  URL. A changed final title is checked against existing sets in the selected
+  group, and a duplicate warning prevents confirmation until corrected.
+  Duplicates and uncertain previous writes cannot be selected.
 - Expand **Find an example link** on a reviewable row to use the same Gank
   search and TypeSafe recommendations as Add image set. Seller starts from the
   account's saved Source; date and name start from the row's final title and

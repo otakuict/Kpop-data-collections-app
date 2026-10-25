@@ -2,23 +2,56 @@
  import { onMount } from 'svelte';
  import { X, RefreshCw, Check, LoaderCircle } from '@lucide/svelte';
  import ExampleFinder from './ExampleFinder.svelte';
+ import { parseTeraBoxCurl } from './teraboxCurl.js';
  let { api, sources=[], onclose, onsaved } = $props();
  let accounts=$state([]), groups=$state([]), accountID=$state(1), working=$state(false);
  let error=$state(''), notice=$state(''), preview=$state(null), results=$state(null);
  let sheetEnabled=$state(false), jevConfigured=$state(false), pane=$state('accounts');
  let label=$state(''), root=$state('/'), source=$state(''), cookie=$state(''), bdstoken=$state(''), jsToken=$state('');
  let host=$state('www.terabox.com');
+ let curlOpen=$state(false),curlInput=$state(''),curlError=$state('');
  let memberGroup=$state(''), memberName=$state(''), memberAliases=$state(''), memberSource=$state('');
  const selectedAccount=$derived(accounts.find(a=>a.id===accountID));
  const selectedRows=$derived(preview?.rows.filter(r=>r.selected)||[]);
  const memberCount=$derived(groups.reduce((sum,g)=>sum+g.members.length,0));
+ const duplicateTimers=new Map();
+ function clearDuplicateChecks(){for(const timer of duplicateTimers.values())clearTimeout(timer);duplicateTimers.clear();}
+ function checkFinalTitle(row){
+  clearTimeout(duplicateTimers.get(row.fileId));
+  row.checkVersion=(row.checkVersion||0)+1;
+  row.duplicate=false;row.checkError='';row.checking=Boolean(row.title.trim()&&row.group&&row.setDate);
+  if(!row.checking)return;
+  const version=row.checkVersion;
+  duplicateTimers.set(row.fileId,setTimeout(async()=>{
+   duplicateTimers.delete(row.fileId);
+   try{
+    const params=new URLSearchParams({title:row.title,group:row.group,setDate:row.setDate});
+    const result=await api(`/admin/terabox/title-check?${params}`);
+    if(row.checkVersion===version&&preview?.rows.includes(row))row.duplicate=result.duplicate;
+   }catch(e){
+    if(row.checkVersion===version&&preview?.rows.includes(row))row.checkError=e.message;
+   }finally{
+    if(row.checkVersion===version&&preview?.rows.includes(row))row.checking=false;
+   }
+  },300));
+ }
  function modal(node){node.showModal();return {destroy(){node.close();}};}
+ function closeCurlImport(){curlOpen=false;curlInput='';curlError='';}
+ function applyCurl(event){
+  event.preventDefault();
+  try{
+   const parsed=parseTeraBoxCurl(curlInput);
+   cookie=parsed.cookie;jsToken=parsed.jsToken;bdstoken=parsed.bdstoken;host=parsed.host;
+   closeCurlImport();error='';notice='Session fields filled from cURL. Save the account session to connect.';
+  }catch(e){curlError=e.message;}
+ }
  async function load(){
   const [a,g]=await Promise.all([api('/admin/terabox/accounts'),api('/admin/artists')]);
   accounts=a.accounts;groups=g.groups;sheetEnabled=a.sheetSyncEnabled;jevConfigured=a.jevConfigured;
  }
- onMount(()=>{working=true;load().then(changeAccount).catch(e=>error=e.message).finally(()=>working=false);});
+ onMount(()=>{working=true;load().then(changeAccount).catch(e=>error=e.message).finally(()=>working=false);return clearDuplicateChecks;});
  function changeAccount(){
+  clearDuplicateChecks();
   preview=null;results=null;notice='';error='';
   const a=accounts.find(a=>a.id===accountID);
   label=a?.label||`Account ${accountID}`;root=a?.root||'/';source=a?.source||'';
@@ -33,10 +66,11 @@
   }catch(e){error=e.message;}finally{working=false;}
  }
  async function scan(){
+  clearDuplicateChecks();
   working=true;error='';notice='';results=null;preview=null;
   try{
    const p=await api('/admin/terabox/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accountId:accountID})});
-   preview={...p,rows:p.rows.map(row=>({...row,selected:row.status==='new',example:'',notes:''}))};pane='preview';
+   preview={...p,rows:p.rows.map(row=>({...row,selected:row.status==='new',example:'',notes:'',duplicate:false,checking:false,checkError:''}))};pane='preview';
   }catch(e){error=e.message;}finally{working=false;}
  }
  async function confirm(){
@@ -74,6 +108,7 @@
   const suffix=matched?row.rawName.slice(matched.length):row.rawName.match(/(\s*(?:\d+|premium)(?:\s+.*)?)$/i)?.[0]||'';
   row.title=(row.setDate?row.setDate.replaceAll('-','').slice(2)+' ':'')+member.name+suffix;
   row.method='manual';row.warning='';
+  checkFinalTitle(row);
  }
  function editMember(group,member){memberGroup=group;memberName=member.name;memberAliases=member.aliases.join(', ');memberSource=member.source;}
 </script>
@@ -85,7 +120,7 @@
  </div>
  <div class="tera-toolbar">
   <label>TeraBox account<select aria-label="TeraBox account" bind:value={accountID} onchange={changeAccount} disabled={working}><option value={1}>{accounts.find(a=>a.id===1)?.label||'Account 1 — not connected'}</option><option value={2}>{accounts.find(a=>a.id===2)?.label||'Account 2 — not connected'}</option></select></label>
-  <button class="primary" disabled={working||!selectedAccount} onclick={scan}>{#if working}<LoaderCircle size={16} class="spin"/>{:else}<RefreshCw size={16}/>{/if}{working?'Working…':'Scan last 3 days'}</button>
+  <button class="primary" disabled={working||!selectedAccount} onclick={scan}>{#if working}<LoaderCircle size={16} class="spin"/>{:else}<RefreshCw size={16}/>{/if}{working?'Working…':'Scan last 5 days'}</button>
  </div>
  <nav class="tera-tabs" aria-label="TeraBox steps">
   <button class:active={pane==='accounts'} disabled={working} onclick={()=>{pane='accounts';changeAccount();}}>Accounts</button>
@@ -103,15 +138,16 @@
    <div class="form-row"><label>Account label<input bind:value={label} placeholder={`Account ${accountID}`} maxlength="80" required disabled={working}/></label><label>Source / seller<input bind:value={source} maxlength="300" placeholder="Source saved with imported sets" disabled={working}/></label></div>
    <label>Root folder path<input bind:value={root} placeholder="/" maxlength="1500" required disabled={working}/><small>Scans inside this folder and its containers. Use a narrower path for a large drive.</small></label>
    <label>API host<select bind:value={host} disabled={working}><option value="www.terabox.com">www.terabox.com</option><option value="dm.terabox.com">dm.terabox.com</option></select><small>Use the hostname of the successful /api/list request in your browser.</small></label>
+   <button type="button" class="text-btn tera-curl-trigger" disabled={working} onclick={()=>{curlInput='';curlError='';curlOpen=true;}}>Paste cURL to fill Cookie & jsToken</button>
    <label>Session Cookie<input type="password" autocomplete="off" bind:value={cookie} maxlength="16000" placeholder="Contains ndus=…" required disabled={working}/></label>
    <div class="form-row"><label>bdstoken<input type="password" autocomplete="off" bind:value={bdstoken} maxlength="2000" disabled={working}/></label><label>jsToken<input type="password" autocomplete="off" bind:value={jsToken} maxlength="4000" disabled={working}/></label></div>
    <button class="primary secondary" disabled={working}><Check size={16}/> Save account session</button>
   </form>
  {:else if pane==='preview'&&preview}
-  <p class="review-note">{preview.scanned} entries scanned · {preview.complete?'Scan complete':'Partial scan'} · created or updated within the past 72 hours. Review the original, suggested name and group. Nothing is imported until you confirm.</p>
+  <p class="review-note">{preview.scanned} entries scanned · {preview.complete?'Scan complete':'Partial scan'} · created or updated within the past 5 days. Review the original, suggested name and group. Nothing is imported until you confirm.</p>
   {#each preview.warnings as warning}<p class="alert error">{warning}</p>{/each}
   {#if preview.rows.some(row=>row.status==='reconcile')}<p class="form-help">A previous save has an uncertain result. Check the live Sheet before making a new attempt.</p><button class="primary secondary" disabled={working||!sheetEnabled} onclick={recover}>Check Sheet & recover</button>{/if}
-  {#if !preview.rows.length}<p class="table-status">No created or updated set folders found within the last 3 days.</p>{/if}
+  {#if !preview.rows.length}<p class="table-status">No created or updated set folders found within the last 5 days.</p>{/if}
   <div class="tera-rows">
   {#each preview.rows as row (row.fileId)}
    <article class="tera-row" class:muted={row.status==='duplicate'||row.status==='reconcile'}>
@@ -121,7 +157,9 @@
     {#if row.warning}<p class="alert error">{row.warning}</p>{/if}
     {#if row.status!=='duplicate'&&row.status!=='reconcile'}
      <label>Artist suggestion<select value={row.memberId} onchange={event=>pickArtist(row,event.currentTarget.value)} disabled={working}><option value={0}>Choose from the catalog / edit manually</option>{#each groups as g}<optgroup label={g.name}>{#each g.members as member}<option value={member.id}>{member.name}</option>{/each}</optgroup>{/each}</select></label>
-     <div class="form-row"><label>Final title<input bind:value={row.title} maxlength="500" disabled={working}/></label><label>Group / solo<select bind:value={row.group} disabled={working}><option value="">Choose a group</option>{#each groups as g}<option value={g.name}>{g.name}</option>{/each}</select></label><label>Photographed date<input type="date" bind:value={row.setDate} disabled={working}/></label></div>
+     <div class="form-row"><label>Final title<input bind:value={row.title} oninput={event=>{row.title=event.currentTarget.value;checkFinalTitle(row);}} maxlength="500" disabled={working}/></label><label>Group / solo<select bind:value={row.group} onchange={event=>{row.group=event.currentTarget.value;checkFinalTitle(row);}} disabled={working}><option value="">Choose a group</option>{#each groups as g}<option value={g.name}>{g.name}</option>{/each}</select></label><label>Photographed date<input type="date" bind:value={row.setDate} onchange={event=>{row.setDate=event.currentTarget.value;checkFinalTitle(row);}} disabled={working}/></label></div>
+     {#if row.duplicate}<p class="alert error" role="alert">Final title already exists in this group. Change the title before confirming.</p>{/if}
+     {#if row.checkError}<p class="alert error" role="alert">Could not check Final title: {row.checkError}</p>{/if}
      <details class="tera-finder">
       <summary>Find an example link</summary>
       <ExampleFinder source={selectedAccount?.source||''} {sources} setDate={row.setDate} name={row.title} group={row.group} selectedURL={row.example} disabled={working} {api} onchoose={url=>row.example=url}/>
@@ -133,7 +171,7 @@
   </div>
   {#if results}{#each results.filter(r=>r.error) as result}<p class="alert error" role="alert">Folder #{result.fileId}: {result.error}</p>{/each}{/if}
   <p class="form-help">Confirmation uses the existing Google Sheet → DB flow. Existing sets are skipped. Preview images can be added or fetched using the usual gallery tools after saving.</p>
-  <div class="editor-footer"><span>{selectedRows.length} selected</span><button class="primary" disabled={working||!sheetEnabled||!selectedRows.length||selectedRows.some(r=>!r.title.trim()||!r.group||!r.setDate)} onclick={confirm}><Check size={16}/>{working?'Saving…':'Confirm to Sheet & DB'}</button></div>
+  <div class="editor-footer"><span>{selectedRows.length} selected</span><button class="primary" disabled={working||!sheetEnabled||!selectedRows.length||selectedRows.some(r=>!r.title.trim()||!r.group||!r.setDate||r.duplicate||r.checking||r.checkError)} onclick={confirm}><Check size={16}/>{working?'Saving…':'Confirm to Sheet & DB'}</button></div>
  {:else if pane==='artists'}
   <p class="review-note">{groups.filter(g=>g.kind==='group').length} gallery groups · {groups.filter(g=>g.kind==='solo').length} solo categories · {memberCount} artist memberships. Includes historical members for older sets. Sources are saved per artist; ambiguous names remain separate by group.</p>
   <form onsubmit={saveMember} class="tera-account-form">
@@ -146,9 +184,25 @@
  {/if}
 </dialog>
 
+{#if curlOpen}
+ <dialog class="tera-curl-dialog" use:modal oncancel={event=>{event.preventDefault();closeCurlImport();}} aria-labelledby="tera-curl-title">
+  <div class="editor-heading"><h2 id="tera-curl-title">Import TeraBox cURL</h2><button type="button" class="icon-btn" aria-label="Close cURL import" onclick={closeCurlImport}><X size={20}/></button></div>
+  <p class="review-note">Paste the Bash cURL command for a successful TeraBox <code>/api/list</code> request. Cookie, jsToken and API host will fill the account form. The command stays in this browser and is cleared when this window closes.</p>
+  <form onsubmit={applyCurl}>
+   <label>cURL command<textarea bind:value={curlInput} oninput={()=>curlError=''} rows="10" spellcheck="false" autocomplete="off" required placeholder="curl --url 'https://dm.terabox.com/api/list?jsToken=…' -b 'ndus=…'"></textarea></label>
+   {#if curlError}<p class="alert error" role="alert">{curlError}</p>{/if}
+   <div class="editor-footer"><button type="button" class="text-btn" onclick={closeCurlImport}>Cancel</button><button class="primary" type="submit">Fill session fields</button></div>
+  </form>
+ </dialog>
+{/if}
+
 <style>
  .tera-dialog{width:min(1100px,96vw);max-height:92vh;padding:28px;border:1px solid var(--line,#ddd);border-radius:18px;background:var(--surface,#101b2b);color:#edf4fb;overflow:auto}
  .tera-dialog::backdrop{background:#15151b99;backdrop-filter:blur(4px)}
+ .tera-curl-dialog{width:min(760px,94vw);max-height:90vh;padding:24px;border:1px solid var(--line,#ddd);border-radius:16px;background:var(--surface,#101b2b);color:#edf4fb;overflow:auto}
+ .tera-curl-dialog::backdrop{background:#15151bcc;backdrop-filter:blur(4px)}
+ .tera-curl-dialog form{display:grid;gap:14px}.tera-curl-dialog textarea{width:100%;min-height:220px;resize:vertical;padding:12px;border:1px solid #314d6b;border-radius:7px;background:#0a1423;color:#edf4fb;font:12px/1.5 ui-monospace,monospace}
+ .tera-curl-trigger{justify-self:start}
  .tera-toolbar,.tera-tabs,.tera-row-heading,.tera-member{display:flex;align-items:center;justify-content:space-between;gap:14px}
  .tera-toolbar{margin:20px 0;flex-wrap:wrap}.tera-toolbar label{min-width:220px;flex:1}
  label{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:#edf4fb;margin:8px 0}input,select{min-width:0;width:100%;padding:10px;border:1px solid #314d6b;border-radius:7px;background:#0a1423;color:#edf4fb}input[type=checkbox]{width:auto}

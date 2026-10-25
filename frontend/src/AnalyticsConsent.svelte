@@ -9,7 +9,7 @@
 
 {#if choice===null&&!settings}
  <section class="consent-banner" aria-label="Analytics cookies">
-  <div class="consent-copy"><h2><ShieldCheck size={18}/>Your choice, your visit.</h2><p>With your permission, we use a browser cookie to count visitors and estimate time spent here. Country is included when available. You can enjoy the gallery without analytics.</p></div>
+  <div class="consent-copy"><h2><ShieldCheck size={18}/>Your choice, your visit.</h2><p>With your permission, we use a browser cookie and collect visit data to understand how the gallery is used. You can enjoy the gallery without analytics.</p></div>
   <div class="consent-actions"><button class="consent-button" onclick={()=>choose('accepted')}>Accept analytics</button><button class="consent-button" onclick={()=>choose('rejected')}>Reject analytics</button><button class="privacy-link" onclick={openSettings}>Privacy & cookies</button></div>
  </section>
 {/if}
@@ -20,8 +20,8 @@
   <div class="eyebrow">YOUR PRIVACY</div><h2 id="cookie-title">Privacy & cookies</h2>
   <p class="cookie-status">{choice==='accepted'?'Analytics is on':choice==='rejected'?'Analytics is off':'Analytics is off until you accept'}</p>
   <h3>Optional gallery analytics</h3>
-  <p>If you accept, a random browser identifier in the <code>gallery_visitor</code> cookie helps count people and visits. A heartbeat every 20 seconds estimates time spent while the page is visible. A 60-second gap starts a new visit. We record an approximate country when our network provider supplies it.</p>
-  <p>The analytics database stores the identifier, visit times and country. It does not store your name or IP address. We use these records for this gallery’s statistics, not advertising or tracking across other sites.</p>
+  <p>If you accept, a random browser identifier in the <code>gallery_visitor</code> cookie helps count people and visits. A heartbeat every 20 seconds estimates time spent while the page is visible. A 60-second gap starts a new visit.</p>
+  <p>We collect and store information about gallery visits for site statistics. We do not store your name or IP address, and we do not use this information for advertising or tracking across other sites.</p>
   <h3>Storage and your choice</h3>
   <p>The visitor cookie lasts for your browser session. We keep visit records for 90 days; expired records are removed when analytics next runs or the dashboard is opened. Hosting services may retain separate backups and request logs.</p>
   <p>We remember your accept or reject choice in this browser for 180 days. You can change it anytime using <strong>Cookie settings</strong> in the footer. Rejecting stops future analytics and clears the visitor cookie. Records collected before withdrawal remain until the retention period ends.</p>

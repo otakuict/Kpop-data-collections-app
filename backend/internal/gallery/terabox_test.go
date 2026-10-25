@@ -16,7 +16,7 @@ import (
 func TestTeraBoxRecentFoldersUseCreationNotPhotoDate(t *testing.T) {
 	now := time.Date(2026, 10, 24, 12, 0, 0, 0, time.UTC)
 	recent := now.Add(-time.Hour).Unix()
-	old := now.Add(-4 * 24 * time.Hour).Unix()
+	old := now.Add(-6 * 24 * time.Hour).Unix()
 	entries := []teraFile{
 		{ID: 1, Name: "240404 지연2", Path: "/240404 지연2", IsDir: 1, Created: recent},
 		{ID: 2, Name: "261024 안나", Path: "/261024 안나", IsDir: 1, Created: old},
@@ -217,7 +217,7 @@ func TestTeraBoxBrowserHostSurvivesAccountSaveWithoutReturningCredentials(t *tes
 
 func TestTeraBoxRecentFoldersIncludeUpdatesToOlderFolders(t *testing.T) {
 	now := time.Date(2026, 10, 24, 18, 0, 0, 0, time.UTC)
-	old := now.Add(-4 * 24 * time.Hour).Unix()
+	old := now.Add(-6 * 24 * time.Hour).Unix()
 	recent := now.Add(-3 * time.Hour).Unix()
 	files := []teraFile{
 		{ID: 1, Path: "/261017 하람", IsDir: 1, Created: old, Modified: recent},
@@ -225,11 +225,12 @@ func TestTeraBoxRecentFoldersIncludeUpdatesToOlderFolders(t *testing.T) {
 		{ID: 3, Path: "/missing-creation", IsDir: 1, Modified: recent},
 		{ID: 4, Path: "/missing-times", IsDir: 1},
 		{ID: 5, Path: "/photo.jpg", Modified: recent},
-		{ID: 6, Path: "/boundary", IsDir: 1, Created: old, Modified: now.Add(-72 * time.Hour).Unix()},
+		{ID: 6, Path: "/boundary", IsDir: 1, Created: old, Modified: now.Add(-5 * 24 * time.Hour).Unix()},
+		{ID: 8, Path: "/inside", IsDir: 1, Created: now.Add(-4 * 24 * time.Hour).Unix()},
 		{ID: 7, Path: "/future", IsDir: 1, Created: old, Modified: now.Add(time.Hour).Unix()},
 	}
 	got, warnings := recentTeraFolders(files, now)
-	if len(got) != 3 || got[0].ID != 1 || got[1].ID != 3 || got[2].ID != 6 || len(warnings) != 1 {
+	if len(got) != 4 || got[0].ID != 1 || got[1].ID != 3 || got[2].ID != 6 || got[3].ID != 8 || len(warnings) != 1 {
 		t.Fatalf("recent=%+v warnings=%v", got, warnings)
 	}
 }

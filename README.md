@@ -280,7 +280,7 @@ bash scripts/deploy-server.sh backoffice '<full SHA of the published backoffice 
 
 รายละเอียด incoming/outgoing HTTP logs และการปิดบังข้อมูลล็อกอิน: [HTTP logging](docs/HTTP_LOGGING.md)
 
-BO now supports two encrypted TeraBox browser sessions, a three-day folder scan,
+BO now supports two encrypted TeraBox browser sessions, a five-day folder scan,
 and an editable preview before saving through the existing Sheet/DB flow.
 Korean names use KOROMAN and the backend artist catalog, with optional Jev
 choice recommendations. See [setup, behavior and validation](docs/TERABOX.md).

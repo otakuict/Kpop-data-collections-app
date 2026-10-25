@@ -6,8 +6,10 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync/atomic"
 	"time"
+	"unicode/utf8"
 
 	"github.com/gin-gonic/gin"
 )
@@ -63,6 +65,25 @@ func registerTeraBox(admin *gin.RouterGroup, store *Store, key string, sheet *Sh
 			}
 		}
 		c.JSON(200, gin.H{"accounts": accounts, "jevConfigured": service.ai.apiKey != "", "sheetSyncEnabled": sheetActive.Load()})
+	})
+	admin.GET("/terabox/title-check", func(c *gin.Context) {
+		title, group, setDate := c.Query("title"), c.Query("group"), c.Query("setDate")
+		if utf8.RuneCountInString(title) > 500 || utf8.RuneCountInString(group) > 150 || strings.TrimSpace(title) == "" || strings.TrimSpace(group) == "" {
+			c.JSON(400, gin.H{"error": "Choose a final title and group"})
+			return
+		}
+		date, err := time.Parse("2006-01-02", setDate)
+		if err != nil || date.Year() < 2000 || date.Year() > 2099 {
+			c.JSON(400, gin.H{"error": "Choose a valid photographed date"})
+			return
+		}
+		normalized, _ := buildSetTitle(date, title)
+		exists, err := store.teraTitleExists(c.Request.Context(), normalized, group)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "Cannot check the gallery title"})
+			return
+		}
+		c.JSON(200, gin.H{"duplicate": exists})
 	})
 	admin.PUT("/terabox/accounts/:account", func(c *gin.Context) {
 		if !exclusive(c) {

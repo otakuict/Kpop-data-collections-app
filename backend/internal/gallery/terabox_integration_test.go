@@ -88,7 +88,7 @@ func TestTeraPreviewScansPrivateDriveButDoesNotCreateSets(t *testing.T) {
 		}
 		json.NewEncoder(w).Encode(map[string]any{"errno": 0, "list": []teraFile{
 			{ID: 1, Name: "240404 지연2", Path: "/albums/240404 지연2", IsDir: 1, Created: now.Add(-96 * time.Hour).Unix(), Modified: now.Add(-time.Hour).Unix()},
-			{ID: 2, Name: "261024 카에데", Path: "/albums/261024 카에데", IsDir: 1, Created: now.Add(-96 * time.Hour).Unix()},
+			{ID: 2, Name: "261024 카에데", Path: "/albums/261024 카에데", IsDir: 1, Created: now.Add(-6 * 24 * time.Hour).Unix()},
 		}})
 	}))
 	defer server.Close()
@@ -269,6 +269,34 @@ func TestTeraConfirmWritesSheetAndDBExactlyOnceAndRejectsUnreviewedRows(t *testi
 	}
 	if _, err = service.commit(ctx, syncer, true, request); err == nil {
 		t.Fatal("Expired preview was accepted")
+	}
+}
+
+func TestTeraBoxTitleCheckUsesFinalSavedTitleAndGroup(t *testing.T) {
+	s := teraTestStore(t)
+	if _, err := s.Save(context.Background(), 0, SetDraft{Title: "240404 Jiyeon2", Group: "TripleS"}); err != nil {
+		t.Fatal(err)
+	}
+	router := Router(s, "test-administrator-key-at-least-24-characters")
+	for _, tc := range []struct {
+		query     string
+		duplicate bool
+	}{
+		{"title=Jiyeon2&group=TripleS&setDate=2024-04-04", true},
+		{"title=240404%20JIYEON2%20&group=TripleS&setDate=2024-04-04", true},
+		{"title=Jiyeon2&group=MEOVV&setDate=2024-04-04", false},
+		{"title=Jiyeon3&group=TripleS&setDate=2024-04-04", false},
+	} {
+		req := httptest.NewRequest("GET", "/api/admin/terabox/title-check?"+tc.query, nil)
+		req.Header.Set("Authorization", "Bearer test-administrator-key-at-least-24-characters")
+		response := httptest.NewRecorder()
+		router.ServeHTTP(response, req)
+		var body struct {
+			Duplicate bool `json:"duplicate"`
+		}
+		if response.Code != 200 || json.Unmarshal(response.Body.Bytes(), &body) != nil || body.Duplicate != tc.duplicate {
+			t.Fatalf("query=%s status=%d body=%s", tc.query, response.Code, response.Body.String())
+		}
 	}
 }
 
