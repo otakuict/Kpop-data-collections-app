@@ -10,13 +10,13 @@ import (
 )
 
 type teraImportRow struct {
-	FileID  int64  `json:"fileId"`
-	Title   string `json:"title"`
-	Group   string `json:"group"`
-	SetDate string `json:"setDate"`
+	FileID  int64   `json:"fileId"`
+	Title   string  `json:"title"`
+	Group   string  `json:"group"`
+	SetDate string  `json:"setDate"`
 	Source  *string `json:"source,omitempty"`
-	Example string `json:"example"`
-	Notes   string `json:"notes"`
+	Example string  `json:"example"`
+	Notes   string  `json:"notes"`
 }
 type teraImportRequest struct {
 	PreviewID string          `json:"previewId"`
