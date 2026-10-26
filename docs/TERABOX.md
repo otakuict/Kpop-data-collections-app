@@ -12,9 +12,9 @@ gallery sets or write to Google Sheets.
 2. In Developer Tools → Network, open a folder and find its `/api/list` request.
 3. In BO → Update from TeraBox → Accounts, choose slot 1 or 2. Enter a label,
    source/seller and absolute root folder path, such as `/` or `/Kpop`.
-4. Set **API host** to the successful request's hostname: `www.terabox.com` or
-   `dm.terabox.com`. Copy its complete `Cookie` header and `jsToken` into the
-   session fields, or use **Paste cURL to fill Cookie & jsToken** and paste the
+4. Set **API host** to the successful request's hostname: `www.terabox.com`,
+   `dm.terabox.com` or `dm.terabox.app`. Copy its complete `Cookie` header and
+   `jsToken` into the session fields, or use **Paste cURL to fill Cookie & jsToken** and paste the
    Bash cURL command from the same `/api/list` request. The paste option also
    fills API host and `bdstoken` when present. Save the session. Cookie
    must include `ndus`. Reconnect after session expiry.
@@ -30,7 +30,8 @@ Connections are read-only; no TeraBox upload, delete or share mutation is used.
 Each account stores its selected host inside the encrypted session. Older
 sessions default to `www.terabox.com`. Other hosts are rejected before sending
 credentials, and redirects are not followed. If the browser uses
-`dm.terabox.com`, select that host and resave credentials from the same request.
+`dm.terabox.com` or `dm.terabox.app`, select that host and resave credentials
+from the same request.
 Provider errno `-6` returns HTTP 422 with `TERABOX_SESSION_REJECTED`, so the BO
 can display the account error without a gateway HTML page or an admin logout.
 
@@ -39,18 +40,44 @@ third-party `teraboxapi.com` extraction API or its 100-call trial. Session expir
 anti-bot checks and provider changes may require reconnecting or adapter updates.
 Do not expose the private session in client code, logs or public gallery data.
 
+## View raw names
+
+Use **Get TeraBox names** to open a second dialog above the import window.
+Choose either account, then click **Get names** to read original file and folder
+names from that account's saved root. The dialog starts with the import window's
+lookback period (1–10 days); select **All dates** to include older entries and
+entries without timestamps. Changing its account or period clears old results
+without changing the import window's account or preview.
+
+This lists only direct children of the saved root, including folders and ZIP
+files. It never enters subfolders, regardless of their names. Results preserve
+the order returned by TeraBox across pages, including when the lookback filter
+removes entries; no local sorting is applied. Requests use the same
+time-descending order as the copied browser request. Results include names,
+paths, file/folder types, and modification times in Bangkok time. Missing
+modification times display as unavailable. The 100-request and three-minute limits still apply;
+request-limited results are explicitly marked partial. This operation does not
+call AI, create an import preview, reconcile imports, or write to Sheets or the DB,
+and works while Sheet sync is disabled. Close the dialog to cancel an active read.
+
+**Copy JSON** copies the currently displayed results in the same order as a JSON
+array containing only `name` and `modify_at`. Modification times use the API's
+ISO 8601 UTC value; missing times are empty strings. Partial results copy only
+the entries returned so far.
+
 ## Scan and review
 
-- Recursively enumerate container folders under the selected root, paging in
-  batches of 100. Date-prefixed set folders are treated as sets; their image
-  contents are not traversed or downloaded.
-- The later of `server_ctime` and `server_mtime` determines whether a folder
+- Scan and Get names share one account/root listing and lookback function,
+  paging through direct root entries in batches of 100 without entering subfolders.
+  Scan takes those entries into artist matching and review, including ZIP files.
+  ZIP extensions are removed from suggested set names while original names stay intact.
+- The later of `server_ctime` and `server_mtime` determines whether an entry
   is inside the selected 1–10-day period. The preview shows this as last
   activity, keeping the original creation timestamp separately in the API. Changes to old folders
   therefore appear for review; this does not establish that the folder is new.
-- Folders missing both timestamps produce a warning and are excluded.
+- Entries missing both timestamps produce a warning and are excluded.
   A date such as `240404` can therefore still describe a newly added set.
-- The scan is bounded to 100 requests, three minutes and 200 recent folders.
+- The scan is bounded to 100 requests, three minutes and 200 recent entries.
   Reaching a limit is explicitly marked as partial. Use a narrower root to
   inspect a larger drive. An upstream failure is an error, not “nothing new”.
 - A folder title normally starts with `YYMMDD` and an artist name. Unknown
@@ -145,7 +172,7 @@ the external insertion. Failed Sheet reads retain pending receipts.
 
 ## Validation and remaining live checks
 
-Go tests cover account encryption/isolation, pagination and recursive scanning,
+Go tests cover account encryption/isolation, pagination and root-only listing,
 creation/modification-time filtering, actual KOROMAN execution, catalog boundaries, Jev choice
 validation, preview without gallery writes, confirmation through a simulated
 Sheet, repeated clicks and interrupted Sheet writes. Playwright covers account

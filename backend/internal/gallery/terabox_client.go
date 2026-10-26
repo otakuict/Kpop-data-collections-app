@@ -32,10 +32,10 @@ func teraBrowserOrigin(host string) (string, error) {
 	switch host {
 	case "", "www.terabox.com":
 		return "https://www.terabox.com", nil
-	case "dm.terabox.com":
-		return "https://dm.terabox.com", nil
+	case "dm.terabox.com", "dm.terabox.app":
+		return "https://" + host, nil
 	default:
-		return "", errors.New("Choose www.terabox.com or dm.terabox.com as the TeraBox API host")
+		return "", errors.New("Choose www.terabox.com, dm.terabox.com or dm.terabox.app as the TeraBox API host")
 	}
 }
 
@@ -105,55 +105,34 @@ func (t teraClient) list(ctx context.Context, session teraSession, dir string, p
 	return result, nil
 }
 
-// Traverse old containers too: a recently added set can sit inside an old folder.
-// A request budget bounds large drives; an incomplete scan is always surfaced.
-func (t teraClient) scan(ctx context.Context, session teraSession, root string, budget int) ([]teraFile, bool, error) {
+func (t teraClient) listRoot(ctx context.Context, session teraSession, root string, budget int) ([]teraFile, bool, error) {
 	result := []teraFile{}
-	queue := []string{path.Clean(root)}
-	seen := map[string]bool{}
+	dir := path.Clean(root)
 	ids := map[int64]bool{}
-	requests := 0
-	for len(queue) > 0 {
-		dir := queue[0]
-		queue = queue[1:]
-		if seen[dir] {
-			continue
+	for pageNumber := 1; pageNumber <= budget; pageNumber++ {
+		page, err := t.list(ctx, session, dir, pageNumber)
+		if err != nil {
+			return nil, false, err
 		}
-		seen[dir] = true
-		for pageNumber := 1; ; pageNumber++ {
-			if requests >= budget {
-				return result, false, nil
+		for _, f := range page.List {
+			if f.ID <= 0 || f.Path == "" || len(f.Path) > 2000 || len(f.Name) > 500 || !strings.HasPrefix(f.Path, "/") || path.Dir(path.Clean(f.Path)) != dir {
+				return nil, false, errors.New("TeraBox returned an invalid file identity or path")
 			}
-			requests++
-			page, err := t.list(ctx, session, dir, pageNumber)
-			if err != nil {
-				return nil, false, err
+			if ids[f.ID] {
+				continue
 			}
-			for _, f := range page.List {
-				if f.ID <= 0 || f.Path == "" || len(f.Path) > 2000 || len(f.Name) > 500 || !strings.HasPrefix(f.Path, "/") || path.Dir(path.Clean(f.Path)) != dir {
-					return nil, false, errors.New("TeraBox returned an invalid file identity or path")
-				}
-				if ids[f.ID] {
-					continue
-				}
-				ids[f.ID] = true
-				result = append(result, f)
-				if f.IsDir == 1 {
-					if _, _, err := splitTeraTitle(f.Name); err != nil {
-						queue = append(queue, path.Clean(f.Path))
-					}
-				}
-			}
-			more := len(page.List) >= 100
-			if page.HasMore != nil {
-				more = *page.HasMore
-			}
-			if !more {
-				break
-			}
+			ids[f.ID] = true
+			result = append(result, f)
+		}
+		more := len(page.List) >= 100
+		if page.HasMore != nil {
+			more = *page.HasMore
+		}
+		if !more {
+			return result, true, nil
 		}
 	}
-	return result, true, nil
+	return result, false, nil
 }
 
 var teraTitlePattern = regexp.MustCompile(`^([0-9]{6})\s+(.+)$`)
@@ -169,20 +148,20 @@ func splitTeraTitle(title string) (string, string, error) {
 	}
 	return date.Format("2006-01-02"), strings.TrimSpace(parts[2]), nil
 }
-func recentTeraFolders(files []teraFile, now time.Time, days int) ([]teraFile, []string) {
+func recentTeraEntries(files []teraFile, now time.Time, days int) ([]teraFile, []string) {
+	if days == 0 {
+		return files, []string{}
+	}
 	result := []teraFile{}
 	warnings := []string{}
 	cutoff := now.Add(-time.Duration(days) * 24 * time.Hour).Unix()
 	for _, f := range files {
-		if f.IsDir != 1 {
-			continue
-		}
 		activity := f.activityTime()
 		if activity == 0 {
 			if len(warnings) < 100 {
 				warnings = append(warnings, "Creation and modification times missing: "+f.Path)
 			} else if len(warnings) == 100 {
-				warnings = append(warnings, "Additional folders without timestamps were excluded; showing the first 100 warnings")
+				warnings = append(warnings, "Additional entries without timestamps were excluded; showing the first 100 warnings")
 			}
 			continue
 		}

@@ -54,38 +54,26 @@ func (t *teraService) preview(ctx context.Context, accountID, days int) (teraPre
 	if days < 1 || days > 10 {
 		return result, errors.New("Choose a lookback period from 1 to 10 days")
 	}
-	var root, revision string
-	if err := t.store.db.QueryRowContext(ctx, "SELECT root,updated_at FROM terabox_accounts WHERE id=?", accountID).Scan(&root, &revision); err != nil {
-		return result, errors.New("Connect the selected TeraBox account first")
-	}
-	session, err := t.store.teraSession(ctx, t.key, accountID)
-	if err != nil {
-		return result, err
-	}
-	// A three-minute scan cannot keep running after the browser request ends.
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Minute)
 	defer cancel()
-	files, complete, err := t.provider.scan(ctx, session, root, 100)
+	listing, err := t.rootNames(ctx, accountID, days)
 	if err != nil {
 		return result, err
 	}
-	result.Complete = complete
-	result.Scanned = len(files)
-	if !complete {
-		result.Warnings = append(result.Warnings, "Scan reached the 100-request limit. Results are partial; narrow the account root folder and scan again for full coverage.")
-	}
-	recent, warnings := recentTeraFolders(files, now, days)
-	result.Warnings = append(result.Warnings, warnings...)
+	result.Complete = listing.complete
+	result.Scanned = listing.scanned
+	result.Warnings = listing.warnings
+	recent := listing.files
 	if len(recent) > 200 {
 		recent = recent[:200]
 		result.Complete = false
-		result.Warnings = append(result.Warnings, "Showing the first 200 recent folders. Narrow the root folder to scan the remaining folders.")
+		result.Warnings = append(result.Warnings, "Showing the first 200 recent entries. Narrow the root folder to scan the remaining entries.")
 	}
 	names := []string{}
 	for _, f := range recent {
-		_, name, e := splitTeraTitle(f.Name)
+		_, name, e := splitTeraTitle(teraSetName(f))
 		if e != nil {
-			name = f.Name
+			name = teraSetName(f)
 		}
 		names = append(names, name)
 	}
@@ -102,14 +90,14 @@ func (t *teraService) preview(ctx context.Context, accountID, days int) (teraPre
 	}
 	members := catalogMembers(groups)
 	for i, f := range recent {
-		date, name, dateErr := splitTeraTitle(f.Name)
+		date, name, dateErr := splitTeraTitle(teraSetName(f))
 		row := teraPreviewRow{FileID: f.ID, Original: f.Name, Path: f.Path, CreatedAt: time.Unix(f.Created, 0).UTC().Format(time.RFC3339), SetDate: date, RawName: name, Romanized: romanized[i], Title: romanized[i], Method: "koroman", Status: "review"}
 		row.UpdatedAt = time.Unix(f.activityTime(), 0).UTC().Format(time.RFC3339)
 		if f.Created == 0 {
 			row.CreatedAt = ""
 		}
 		if dateErr != nil {
-			row.RawName = f.Name
+			row.RawName = teraSetName(f)
 			row.Warning = dateErr.Error()
 		} else {
 			row.Title = strings.ReplaceAll(date, "-", "")[2:] + " " + romanized[i]
@@ -170,9 +158,16 @@ func (t *teraService) preview(ctx context.Context, accountID, days int) (teraPre
 	if err != nil {
 		return result, err
 	}
-	_, err = t.store.db.ExecContext(ctx, "INSERT INTO terabox_previews(id,account_id,account_revision,expires_at,payload) VALUES(?,?,?,?,?)", result.ID, accountID, revision, result.ExpiresAt, string(payload))
+	_, err = t.store.db.ExecContext(ctx, "INSERT INTO terabox_previews(id,account_id,account_revision,expires_at,payload) VALUES(?,?,?,?,?)", result.ID, accountID, listing.revision, result.ExpiresAt, string(payload))
 	return result, err
 }
+func teraSetName(file teraFile) string {
+	if file.IsDir != 1 && strings.HasSuffix(strings.ToLower(file.Name), ".zip") {
+		return file.Name[:len(file.Name)-4]
+	}
+	return file.Name
+}
+
 func setTeraArtist(row *teraPreviewRow, m artistMember, method string, confidence *float64) {
 	suffix, ok := artistSuffix(row.RawName, m)
 	// Unknown spellings may be selected by AI. Preserve recognizable suffixes,

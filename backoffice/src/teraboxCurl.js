@@ -46,8 +46,8 @@ export function parseTeraBoxCurl(input){
  }
  let url;
  try{url=new URL(requestURL.replace(/\\:/g,':'));}catch{throw new Error('The cURL command needs a valid TeraBox /api/list URL.');}
- if(url.protocol!=='https:'||!['www.terabox.com','dm.terabox.com'].includes(url.hostname)||url.pathname!=='/api/list'){
-  throw new Error('Use a cURL command for /api/list on www.terabox.com or dm.terabox.com.');
+ if(url.protocol!=='https:'||!['www.terabox.com','dm.terabox.com','dm.terabox.app'].includes(url.hostname)||url.pathname!=='/api/list'){
+  throw new Error('Use a cURL command for /api/list on www.terabox.com, dm.terabox.com or dm.terabox.app.');
  }
  const jsToken=url.searchParams.get('jsToken');
  if(!cookie&&!headerCookie)throw new Error('The cURL command has no Cookie value (-b or Cookie header).');

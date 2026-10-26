@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-func TestTeraBoxRecentFoldersUseCreationNotPhotoDate(t *testing.T) {
+func TestTeraBoxRecentEntriesUseCreationNotPhotoDate(t *testing.T) {
 	now := time.Date(2026, 10, 24, 12, 0, 0, 0, time.UTC)
 	recent := now.Add(-time.Hour).Unix()
 	old := now.Add(-6 * 24 * time.Hour).Unix()
@@ -23,8 +23,8 @@ func TestTeraBoxRecentFoldersUseCreationNotPhotoDate(t *testing.T) {
 		{ID: 3, Name: "261024 수아", Path: "/261024 수아", IsDir: 1},
 		{ID: 4, Name: "photo.jpg", Path: "/photo.jpg", Created: recent},
 	}
-	got, warnings := recentTeraFolders(entries, now, 5)
-	if len(got) != 1 || got[0].ID != 1 || len(warnings) != 1 {
+	got, warnings := recentTeraEntries(entries, now, 5)
+	if len(got) != 2 || got[0].ID != 1 || got[1].ID != 4 || len(warnings) != 1 {
 		t.Fatalf("folders=%+v warnings=%v", got, warnings)
 	}
 	date, name, err := splitTeraTitle(got[0].Name)
@@ -88,7 +88,7 @@ func TestTeraBoxClientSendsSessionOnlyToProviderAndPaginates(t *testing.T) {
 	}))
 	defer server.Close()
 	client := teraClient{baseURL: server.URL, client: server.Client()}
-	entries, complete, err := client.scan(context.Background(), teraSession{Cookie: "ndus=test", BDSToken: "bds"}, "/", 10)
+	entries, complete, err := client.listRoot(context.Background(), teraSession{Cookie: "ndus=test", BDSToken: "bds"}, "/", 10)
 	if err != nil || !complete || len(entries) != 1 || calls < 2 {
 		t.Fatalf("%+v %v %v calls=%d", entries, complete, err, calls)
 	}
@@ -156,7 +156,7 @@ func TestTeraBoxSessionRejectionIsNotReportedAsGatewayOrAdminLoginFailure(t *tes
 }
 
 func TestTeraBoxUsesOnlyTheSelectedTrustedBrowserHost(t *testing.T) {
-	for _, host := range []string{"", "www.terabox.com", "dm.terabox.com", "evil.example", "dm.terabox.com@evil.example", "https://dm.terabox.com"} {
+	for _, host := range []string{"", "www.terabox.com", "dm.terabox.com", "dm.terabox.app", "dm.terabox.app.evil.example", "evil.example", "dm.terabox.com@evil.example", "https://dm.terabox.com"} {
 		t.Run(host, func(t *testing.T) {
 			called := false
 			client := newTeraClient()
@@ -172,7 +172,7 @@ func TestTeraBoxUsesOnlyTheSelectedTrustedBrowserHost(t *testing.T) {
 				return &http.Response{StatusCode: 200, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(`{"errno":0,"list":[]}`)), Request: req}, nil
 			})
 			_, err := client.list(context.Background(), teraSession{Host: host, Cookie: "ndus=test"}, "/", 1)
-			valid := host == "" || host == "www.terabox.com" || host == "dm.terabox.com"
+			valid := host == "" || host == "www.terabox.com" || host == "dm.terabox.com" || host == "dm.terabox.app"
 			if valid && (err != nil || !called) {
 				t.Fatalf("trusted host failed: %v", err)
 			}
@@ -187,7 +187,7 @@ func TestTeraBoxBrowserHostSurvivesAccountSaveWithoutReturningCredentials(t *tes
 	store := teraTestStore(t)
 	key := "test-administrator-key-at-least-24-characters"
 	router := Router(store, key)
-	for _, host := range []string{"dm.terabox.com", "evil.example"} {
+	for _, host := range []string{"dm.terabox.com", "dm.terabox.app", "evil.example"} {
 		req := httptest.NewRequest("PUT", "/api/admin/terabox/accounts/1", strings.NewReader(`{"label":"First","root":"/","host":"`+host+`","cookie":"ndus=private-session","jsToken":"private-js"}`))
 		req.Header.Set("Authorization", "Bearer "+key)
 		req.Header.Set("Content-Type", "application/json")
@@ -202,7 +202,7 @@ func TestTeraBoxBrowserHostSurvivesAccountSaveWithoutReturningCredentials(t *tes
 		}
 	}
 	session, err := store.teraSession(context.Background(), key, 1)
-	if err != nil || session.Host != "dm.terabox.com" {
+	if err != nil || session.Host != "dm.terabox.app" {
 		t.Fatalf("stored host=%q error=%v", session.Host, err)
 	}
 	req := httptest.NewRequest("GET", "/api/admin/terabox/accounts", nil)
@@ -210,12 +210,12 @@ func TestTeraBoxBrowserHostSurvivesAccountSaveWithoutReturningCredentials(t *tes
 	recorder := httptest.NewRecorder()
 	router.ServeHTTP(recorder, req)
 	body := recorder.Body.String()
-	if recorder.Code != 200 || !strings.Contains(body, `"host":"dm.terabox.com"`) || strings.Contains(body, "private-session") || strings.Contains(body, "private-js") {
+	if recorder.Code != 200 || !strings.Contains(body, `"host":"dm.terabox.app"`) || strings.Contains(body, "private-session") || strings.Contains(body, "private-js") {
 		t.Fatalf("account metadata response: %s", body)
 	}
 }
 
-func TestTeraBoxRecentFoldersIncludeUpdatesToOlderFolders(t *testing.T) {
+func TestTeraBoxRecentEntriesIncludeUpdatesToOlderEntries(t *testing.T) {
 	now := time.Date(2026, 10, 24, 18, 0, 0, 0, time.UTC)
 	old := now.Add(-6 * 24 * time.Hour).Unix()
 	recent := now.Add(-3 * time.Hour).Unix()
@@ -229,16 +229,16 @@ func TestTeraBoxRecentFoldersIncludeUpdatesToOlderFolders(t *testing.T) {
 		{ID: 8, Path: "/inside", IsDir: 1, Created: now.Add(-4 * 24 * time.Hour).Unix()},
 		{ID: 7, Path: "/future", IsDir: 1, Created: old, Modified: now.Add(time.Hour).Unix()},
 	}
-	got, warnings := recentTeraFolders(files, now, 5)
-	if len(got) != 4 || got[0].ID != 1 || got[1].ID != 3 || got[2].ID != 6 || got[3].ID != 8 || len(warnings) != 1 {
+	got, warnings := recentTeraEntries(files, now, 5)
+	if len(got) != 5 || got[0].ID != 1 || got[1].ID != 3 || got[2].ID != 5 || got[3].ID != 6 || got[4].ID != 8 || len(warnings) != 1 {
 		t.Fatalf("recent=%+v warnings=%v", got, warnings)
 	}
-	lastDay, _ := recentTeraFolders(files, now, 1)
-	if len(lastDay) != 2 || lastDay[0].ID != 1 || lastDay[1].ID != 3 {
+	lastDay, _ := recentTeraEntries(files, now, 1)
+	if len(lastDay) != 3 || lastDay[0].ID != 1 || lastDay[1].ID != 3 || lastDay[2].ID != 5 {
 		t.Fatalf("one-day folders=%+v", lastDay)
 	}
-	tenDays, _ := recentTeraFolders(files, now, 10)
-	if len(tenDays) != 5 || tenDays[1].ID != 2 || tenDays[4].ID != 8 {
+	tenDays, _ := recentTeraEntries(files, now, 10)
+	if len(tenDays) != 6 || tenDays[1].ID != 2 || tenDays[5].ID != 8 {
 		t.Fatalf("ten-day folders=%+v", tenDays)
 	}
 }
