@@ -10,7 +10,7 @@
 {#if choice===null&&!settings}
  <section class="consent-banner" aria-label="Analytics cookies">
   <div class="consent-copy"><h2><ShieldCheck size={18}/>Your choice, your visit.</h2><p>With your permission, we use a browser cookie and collect visit data to understand how the gallery is used. You can enjoy the gallery without analytics.</p></div>
-  <div class="consent-actions"><button class="consent-button" onclick={()=>choose('accepted')}>Accept analytics</button><button class="consent-button" onclick={()=>choose('rejected')}>Reject analytics</button><button class="privacy-link" onclick={openSettings}>Privacy & cookies</button></div>
+  <div class="consent-actions"><button class="consent-button" onclick={()=>choose('accepted')}>okey</button><button class="privacy-link" onclick={openSettings}>Privacy & cookies</button></div>
  </section>
 {/if}
 
@@ -26,9 +26,9 @@
   <p>The visitor cookie lasts for your browser session. We keep visit records for 90 days; expired records are removed when analytics next runs or the dashboard is opened. Hosting services may retain separate backups and request logs.</p>
   <p>We remember your accept or reject choice in this browser for 180 days. You can change it anytime using <strong>Cookie settings</strong> in the footer. Rejecting stops future analytics and clears the visitor cookie. Records collected before withdrawal remain until the retention period ends.</p>
   <h3>Browsing without analytics</h3>
-  <p>Search, filters and images work without analytics. Your cookie choice, short-guide preference and administrator sign-in use separate browser storage for those features. Online counts include only visitors who accept analytics.</p>
+  <p>Search, filters and images work without analytics. Your cookie choice, short-guide preference and administrator sign-in use separate browser storage for those features. Online counts include only visitors who okey.</p>
   <p>For privacy questions, contact the site operator through the gallery’s contact links.</p>
-  <div class="settings-actions"><button class="consent-button" onclick={()=>choose('accepted')}>Accept analytics</button><button class="consent-button" onclick={()=>choose('rejected')}>Reject analytics</button></div>
+  <div class="settings-actions"><button class="consent-button" onclick={()=>choose('accepted')}>okey</button><button class="consent-button" onclick={()=>choose('rejected')}>Reject analytics</button></div>
  </dialog>
 {/if}
 
@@ -38,10 +38,10 @@
  .consent-copy h2{display:flex;align-items:center;gap:9px;font-size:16px;font-weight:600;margin:0 0 9px}
  .consent-copy h2 :global(svg){color:#75d7f2}
  .consent-copy p{font-size:12px;line-height:1.8;color:#b3c8dc;margin:0;max-width:620px}
- .consent-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;flex-shrink:0}
+ .consent-actions{display:grid;gap:10px;flex-shrink:0}
  .consent-button{min-height:44px;display:flex;align-items:center;justify-content:center;padding:11px 15px;border:1px solid #5987a6;border-radius:6px;background:#1b3c54;color:#d9f3ff;font-size:12px;font-weight:550;white-space:nowrap}
  .consent-button:hover{background:#295572;color:#fff}
- .privacy-link{grid-column:1/-1;text-decoration:underline;text-underline-offset:4px;font-size:11px;color:#adc7dd;min-height:28px;justify-self:center}
+ .privacy-link{text-decoration:underline;text-underline-offset:4px;font-size:11px;color:#adc7dd;min-height:28px;justify-self:center}
  .cookie-settings{display:block;width:min(610px,calc(100vw - 32px));padding:34px;background:#101f30;border:1px solid #3f607b;border-radius:12px;color:#edf4fb;max-height:calc(100dvh - 32px)}
  .cookie-settings::backdrop{background:#000a;backdrop-filter:blur(5px)}
  .cookie-settings h2{font-family:Manrope,sans-serif;font-size:27px;letter-spacing:-.8px;margin:13px 35px 18px 0}
