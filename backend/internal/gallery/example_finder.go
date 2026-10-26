@@ -132,7 +132,10 @@ func registerExampleFinder(admin *gin.RouterGroup) {
 	})
 }
 
-func (f exampleFinder) search(ctx context.Context, q exampleQuery) (exampleSuggestions, error) {
+func (f exampleFinder) search(ctx context.Context, q exampleQuery) (suggestions exampleSuggestions, searchErr error) {
+	ctx = ensureRequestID(ctx)
+	started := time.Now()
+	defer func() { processFinished(ctx, "find_links_total", 0, 0, "", started, searchErr) }()
 	q = q.forLookup()
 	result := exampleSuggestions{Candidates: []exampleCandidate{}}
 	values, err := q.parameters()
@@ -154,9 +157,13 @@ func (f exampleFinder) search(ctx context.Context, q exampleQuery) (exampleSugge
 			ShopURL          string `json:"shopUrl"`
 		} `json:"results"`
 	}
-	if err = f.decode(request, &response); err != nil {
+	lookupStarted := time.Now()
+	err = f.decode(request, &response)
+	processFinished(ctx, "find_links", 0, 0, f.baseURL, lookupStarted, err)
+	if err != nil {
 		return result, err
 	}
+	filterStarted := time.Now()
 	seen := map[string]bool{}
 	for _, record := range response.Results {
 		for _, raw := range []string{record.PostURL, record.ShopURL} {
@@ -172,6 +179,7 @@ func (f exampleFinder) search(ctx context.Context, q exampleQuery) (exampleSugge
 			result.Candidates = append(result.Candidates, exampleCandidate{URL: link, Title: boundedExampleText(record.Title, 300), Excerpt: boundedExampleText(record.Excerpt, 280), Source: boundedExampleText(record.Source, 30), Status: boundedExampleText(record.Status, 30), MatchExplanation: boundedExampleText(record.MatchExplanation, 200)})
 		}
 	}
+	processFinished(ctx, "filter_links", 0, 0, "", filterStarted, nil)
 	if len(result.Candidates) == 0 {
 		return result, nil
 	}
@@ -182,7 +190,10 @@ func (f exampleFinder) search(ctx context.Context, q exampleQuery) (exampleSugge
 	// Give recommendation its own deadline; finder pagination may have used most of the search time.
 	aiCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
-	if err = f.recommend(aiCtx, q, &result); err != nil {
+	aiStarted := time.Now()
+	err = f.recommend(aiCtx, q, &result)
+	processFinished(ctx, "recommend_link", 0, 0, result.RecommendedURL, aiStarted, err)
+	if err != nil {
 		result.Warning = "TypeSafe recommendation is unavailable. You can still choose any result manually."
 	}
 	return result, nil

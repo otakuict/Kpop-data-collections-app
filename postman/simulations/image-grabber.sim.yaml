@@ -1,0 +1,6 @@
+simulation: image-grabber
+routing: path
+mocks:
+  - name: image-grabber
+    routeKey: grabber
+    path: postman/mocks/image-grabber/config.yaml

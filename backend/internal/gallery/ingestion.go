@@ -33,6 +33,16 @@ func remoteKey(host string) string {
 	}
 	return host
 }
+
+// Media is a file delivery host, independent of the page/API request lease.
+func remoteRequestKey(host string) string {
+	host = strings.TrimSuffix(strings.ToLower(host), ".")
+	if host == "media.ganknow.com" {
+		return host
+	}
+	return remoteKey(host)
+}
+
 func (s *Store) reserveRemote(ctx context.Context, host string, now time.Time, interval time.Duration) (time.Duration, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -146,7 +156,7 @@ func (t *remoteTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	if _, err := ParseRemoteURL(req.URL.String()); err != nil {
 		return nil, err
 	}
-	host := remoteKey(req.URL.Hostname())
+	host := remoteRequestKey(req.URL.Hostname())
 	if err := t.store.waitRemote(req.Context(), host); err != nil {
 		return nil, err
 	}

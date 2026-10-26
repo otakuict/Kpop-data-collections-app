@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"image"
 	"image/color"
 	"image/png"
 	"io"
+	"log"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -69,7 +71,7 @@ func TestRateLimitStopsFurtherNetworkRequestsAndHonorsRetryAfter(t *testing.T) {
 			if !errors.As(err, &paused) || paused.Until.Before(time.Now().Add(47*time.Hour)) {
 				t.Fatalf("Retry-After ignored: %v", err)
 			}
-			req, _ = http.NewRequest("GET", "https://media.ganknow.com/image.jpg", nil)
+			req, _ = http.NewRequest("GET", "https://api.ganknow.com/post/test", nil)
 			_, err = transport.RoundTrip(req)
 			if !errors.As(err, &paused) || calls != 1 {
 				t.Fatalf("request sent during cooldown: %d %v", calls, err)
@@ -156,6 +158,11 @@ func TestOldLocalBudgetPauseClearedWithoutClearingProviderPause(t *testing.T) {
 }
 
 func TestExtractionStoresMultipleImagesAndSkipsPreviouslyDownloadedURLs(t *testing.T) {
+	var logs bytes.Buffer
+	previousLog := log.Writer()
+	log.SetOutput(&logs)
+	defer log.SetOutput(previousLog)
+
 	s, err := Open(filepath.Join(t.TempDir(), "extract.sqlite"))
 	if err != nil {
 		t.Fatal(err)
@@ -190,6 +197,17 @@ func TestExtractionStoresMultipleImagesAndSkipsPreviouslyDownloadedURLs(t *testi
 	x, err = ExtractTo(ctx, s, x.ID, 2)
 	if err != nil || len(x.Images) != 2 || calls != 2 {
 		t.Fatalf("first album: %d images, %d requests, %v", len(x.Images), calls, err)
+	}
+
+	for _, stage := range []string{"select_link", "fetch_page", "parse_image_urls", "discover_image_urls", "image_download", "image_normalize", "image_save", "image_total", "extract_total"} {
+		if !strings.Contains(logs.String(), "stage="+stage+" ") {
+			t.Fatalf("missing timing stage %s: %s", stage, logs.String())
+		}
+	}
+	for _, index := range []string{"image=1", "image=2"} {
+		if !strings.Contains(logs.String(), "stage=image_save set="+fmt.Sprint(x.ID)+" "+index) {
+			t.Fatalf("missing per-image save timing: %s", logs.String())
+		}
 	}
 	x, err = ExtractTo(ctx, s, x.ID, 3)
 	if err != nil || len(x.Images) != 3 || calls != 3 {

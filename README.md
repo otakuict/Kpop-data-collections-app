@@ -98,6 +98,22 @@ Seed copy เกิดเฉพาะตอนยังไม่มี runtime d
 หลัง deploy backend ใหม่ รูปที่เก็บไว้ก่อนหน้านี้ยังเป็นไฟล์เดิม รีเฟรชรูปเดียวจาก public source โดยรักษา image ID และเปลี่ยน cache URL ตาม hash ใหม่: `cd backend && go run ./cmd/server -db ../data/gallery.sqlite -refresh-image 660` (ใช้ path ของ runtime database จริง; คำสั่งนี้ส่ง request ไปยัง source และเคารพ rate limit/cooldown)
 สำหรับรูป Google เดิมที่ยังเล็กกว่า 1024 pixels ใช้ `-refresh-small-google-images` กับ runtime database เดียวกันเพื่อรีเฟรชทั้งชุด คำสั่งหยุดเมื่อ source ตอบ cooldown/rate limit; รันซ้ำหลังหมด cooldown ได้ เพราะรูปที่รีเฟรชเป็น 1024 pixels แล้วจะถูกข้าม
 
+Backend จะเขียน log `process.finished` เมื่อแต่ละขั้นเสร็จ ตั้งแต่ค้นหา/แนะนำลิงก์ (`find_links`, `filter_links`, `recommend_link`), อ่านลิงก์ที่เลือก (`select_link`), ดึงหน้า/API และหา URL รูป จนดาวน์โหลด (`image_download`), แปลงรูป (`image_normalize`), บันทึก (`image_save`) พร้อมเวลารวมต่อรูป (`image_total`) และต่อชุด (`extract_total`) แต่ละบรรทัดมี `id` ของ request, `set`, ลำดับ `image` (เริ่มจาก 1 ในการดึงครั้งนั้น; 0 คือขั้นระดับชุด), `status`, `error` และ `duration_seconds` เป็นวินาทีทศนิยม 3 ตำแหน่ง เวลาดึงข้อมูลรวมเวลารอ rate limit และหากมี cache จะวัดเวลาอ่าน cache ขั้นรวมครอบคลุมขั้นย่อย จึงไม่ควรนำเวลาทุกบรรทัดมาบวกกัน
+
+## Image grabber ภายใน
+
+ตั้ง `GANK_IMAGE_GRABBER_URL` เป็น API root ของ image-grabber เพื่อให้การดึงรูปจาก Gank ทั้ง post และ service เรียก `GET /api/extract?url=...` ผ่าน service ภายใน Kubernetes:
+
+```env
+GANK_IMAGE_GRABBER_URL=http://gank-image-grabber.gank.svc.cluster.local:3006
+```
+
+Compose ที่เรียกแอปซึ่งเปิด port บนเครื่อง host ใช้ `http://host.docker.internal:3006`; backend ที่รันตรงบนเครื่องใช้ `http://127.0.0.1:3006` หากปล่อยว่างจะใช้ตัวดึงเดิม เมื่อกำหนด service แล้วแต่ service ล่ม/คืนผลผิด จะเก็บ error และรูปเดิมไว้ โดยไม่ส่งคำขอ Gank ซ้ำผ่านตัวดึงเดิม ไม่มีการ cache รายการ signed URL จาก grabber ไว้ 7 วัน
+
+เลือก `renderedUrl` ก่อน แล้วใช้ `originalUrl` หรือ `thumbUrl` หากลิงก์ก่อนหน้าไม่รองรับ สำหรับ Google ขอ `=s1200` ให้ตรงขนาดสูงสุดของ gallery เพื่อไม่ใช้ preview ปริยาย 512 px และไม่ต้องโหลดต้นฉบับเต็ม ผลลองรูปจริง 2 รูปได้ 111–121 KB ที่ 800×1200 เทียบกับต้นฉบับ 610–716 KB ที่ 1485×2228 ส่วนตัวอย่าง media.ganknow.com ทั้งสามฟิลด์เป็น URL เดียวกัน ดูผลวัดใน `docs/IMAGE_GRABBER_COMPARISON.json` Signed R2 URLs ใช้ URL เดิมครบทั้ง query โดยไม่แก้ลายเซ็น
+
+ขั้น `image_grabber` มี `duration_seconds` ใน log เช่นเดียวกับขั้นดาวน์โหลด/แปลง/บันทึกรูป ทดสอบ client ผ่าน HTTP จำลองได้ด้วย `postman/simulations/image-grabber.sim.yaml` และคำสั่งใน context ข้างไฟล์นั้น
+
 ## ดึงรูปเพิ่มและ Gank rate limit
 
 ```sh
@@ -109,7 +125,7 @@ node scripts/fill-images.mjs --set-id=1 --target=5
 ./scripts/export-seed.sh
 ```
 
-ตัวดึงทำคำขอ Gank ทีละคำขอและเว้นอย่างน้อย 20 วินาทีหลังคำขอก่อนหน้าจบ โดย `ganknow.com` และทุก subdomain ใช้ช่วงรอร่วมกัน แอปไม่มีเพดานคำขอต่อวันแล้ว แต่ยังใช้ SQLite เก็บเวลารอ, lease และ cooldown จึงไม่ reset เมื่อ Air/Docker restart ฐานข้อมูลเดิมจะล้างเฉพาะช่วงพักที่เกิดจากเพดานของแอปเองเมื่อเปิด backend ใหม่
+ตัวดึงทำคำขอ Gank ทีละคำขอและเว้นอย่างน้อย 20 วินาทีหลังคำขอก่อนหน้าจบ โดยหน้าเว็บและ API ของ `ganknow.com` ใช้ช่วงรอร่วมกัน ส่วน `media.ganknow.com` แยกคิวไฟล์รูปและเว้นการเริ่มคำขออย่างน้อย 1 วินาทีต่อ host แอปไม่มีเพดานคำขอต่อวันแล้ว แต่ยังใช้ SQLite เก็บเวลารอ, lease และ cooldown จึงไม่ reset เมื่อ Air/Docker restart ฐานข้อมูลเดิมจะล้างเฉพาะช่วงพักที่เกิดจากเพดานของแอปเองเมื่อเปิด backend ใหม่
 
 เมื่อเจอ HTTP 429 จะพักอย่างน้อย 1 ชั่วโมง; HTTP 403 หรือ Cloudflare challenge จะพักอย่างน้อย 24 ชั่วโมง ถ้า `Retry-After` นานกว่านั้นจะใช้เวลาของ source ทั้ง back-office และ CLI หยุด batch ทันที ไม่ retry อัตโนมัติขณะพัก พฤติกรรม `Retry-After` อ้างอิง [Cloudflare HTTP 429 documentation](https://developers.cloudflare.com/support/troubleshooting/http-status-codes/4xx-client-error/error-429/)
 
@@ -158,7 +174,7 @@ Sign in to the back office and choose **Usage dashboard** in the sidebar. The da
 
 The gallery sends its heartbeat every 20 seconds while visible **only after analytics consent**. Each consenting browser is identified by a random, HttpOnly, SameSite cookie, shared by tabs. People means unique browser cookies in the selected period, not verified individuals. The cookie remains a browser-session cookie: closing the browser or clearing cookies can count the same person again. A gap of 60 seconds starts a new visit. Approximate duration is the time from the first to the last heartbeat in a visit; it excludes the offline timeout and longer idle gaps. A single-heartbeat visit has zero observed seconds. Daily buckets use UTC; a visit spanning midnight contributes to each day it overlaps, so daily counts need not sum to the period's unique count. Time is clipped to the selected range.
 
-The initial banner offers equally prominent Accept analytics and Reject analytics buttons. Browsing works without acceptance. **Cookie settings** in the footer opens the privacy notice and lets visitors change their decision. The choice is saved in localStorage for 180 days, shared across tabs; unknown, expired or malformed preferences keep analytics off. With blocked storage, an explicit choice applies to the current page only. Withdrawal stops heartbeats and clears the visitor cookie; the online count can retain the last accepted heartbeat until its 60-second timeout. Counts cover consenting browsers only. The backend rejects heartbeats without the acceptance header, including requests from older gallery builds. Deploy the frontend and backend together.
+The initial banner offers Allow and Deny buttons, with Allow styled as the primary action and Deny kept clearly visible. Browsing works without acceptance. **Cookie settings** in the footer opens the privacy notice and lets visitors change their decision. The choice is saved in localStorage for 180 days, shared across tabs; unknown, expired or malformed preferences keep analytics off. With blocked storage, an explicit choice applies to the current page only. Withdrawal stops heartbeats and clears the visitor cookie; the online count can retain the last accepted heartbeat until its 60-second timeout. Counts cover consenting browsers only. The backend rejects heartbeats without the acceptance header, including requests from older gallery builds. Deploy the frontend and backend together.
 
 Visits are stored in the existing SQLite volume and survive backend restarts. Records older than 90 days since the last heartbeat are deleted when a consented heartbeat is recorded or the dashboard is read. Prior consented visits remain after withdrawal until that retention cleanup. Backups and hosting request logs have separate retention policies. History begins after this feature is installed; older online counts cannot be recovered. Back-office activity does not send gallery heartbeats. No visitor IP addresses are stored and no external geolocation requests are made. `scripts/export-seed.sh` removes usage history from the exported seed; the running database keeps its history.
 

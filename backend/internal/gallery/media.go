@@ -461,8 +461,20 @@ func LowResolutionGoogleImages(ctx context.Context, store *Store) ([]ImageID, er
 func Extract(ctx context.Context, store *Store, id SetID) (Set, error) {
 	return ExtractTo(ctx, store, id, MaxSetImages)
 }
-func ExtractTo(ctx context.Context, store *Store, id SetID, target int) (Set, error) {
+func ExtractTo(ctx context.Context, store *Store, id SetID, target int) (result Set, resultErr error) {
+	ctx = ensureRequestID(ctx)
+	started := time.Now()
+	var processErr error
+	defer func() {
+		err := resultErr
+		if err == nil {
+			err = processErr
+		}
+		processFinished(ctx, "extract_total", id, 0, result.Example, started, err)
+	}()
+	selected := time.Now()
 	x, err := store.Get(ctx, id)
+	processFinished(ctx, "select_link", id, 0, x.Example, selected, err)
 	if err != nil {
 		return x, err
 	}
@@ -474,6 +486,9 @@ func ExtractTo(ctx context.Context, store *Store, id SetID, target int) (Set, er
 	}
 	expectedExample := x.Example
 	outcome := func(state, message string) (Set, error) {
+		if state == "failed" || state == "missing" {
+			processErr = errors.New(message)
+		}
 		if err := store.Outcome(ctx, id, expectedExample, state, message); err != nil {
 			return x, err
 		}
@@ -495,17 +510,24 @@ func ExtractTo(ctx context.Context, store *Store, id SetID, target int) (Set, er
 	var b []byte
 	var mime string
 	var urls []string
-	if slug, service := gankServiceSlug(x.Example); service {
-		urls, err = fetchGankServiceImages(ctx, store, slug)
+	discoveryStarted := time.Now()
+	if _, gankPage := exampleGankURL(x.Example); gankPage && grabberConfigured() {
+		urls, err = fetchGankGrabberImages(ctx, id, x.Example)
+	} else if slug, service := gankServiceSlug(x.Example); service {
+		urls, err = fetchGankServiceImages(ctx, store, id, slug)
 	} else {
 		b, mime, err = fetchDocument(ctx, store, x.Example)
+		processFinished(ctx, "fetch_page", id, 0, x.Example, discoveryStarted, err)
 		if err == nil {
 			urls = []string{x.Example}
 			if !strings.HasPrefix(mime, "image/") {
+				parseStarted := time.Now()
 				urls = ExtractImages(string(b), x.Example)
+				processFinished(ctx, "parse_image_urls", id, 0, x.Example, parseStarted, nil)
 			}
 		}
 	}
+	processFinished(ctx, "discover_image_urls", id, 0, x.Example, discoveryStarted, err)
 	if err != nil {
 		return failure(err)
 	}
@@ -514,7 +536,7 @@ func ExtractTo(ctx context.Context, store *Store, id SetID, target int) (Set, er
 	}
 	existing := map[string]bool{}
 	for _, img := range x.Images {
-		existing[img.SourceURL] = true
+		existing[imageSourceKey(img.SourceURL)] = true
 	}
 	messages := []string{}
 	attempts := 0
@@ -522,35 +544,46 @@ func ExtractTo(ctx context.Context, store *Store, id SetID, target int) (Set, er
 		if len(x.Images) >= target || attempts >= MaxSetImages {
 			break
 		}
-		if existing[raw] {
+		if existing[imageSourceKey(raw)] {
 			continue
 		}
 		attempts++
+		imageStarted := time.Now()
+		downloadStarted := time.Now()
 		img := b
 		if raw != x.Example || !strings.HasPrefix(mime, "image/") {
 			img, _, err = fetchStored(ctx, store, raw, MaxImageBytes)
 		}
+		processFinished(ctx, "image_download", id, attempts, raw, downloadStarted, err)
 		if err != nil {
+			processFinished(ctx, "image_total", id, attempts, raw, imageStarted, err)
 			if isRemotePaused(err) {
 				return failure(err)
 			}
 			messages = append(messages, err.Error())
 			continue
 		}
+		normalizeStarted := time.Now()
 		raster, e := NormalizeImage(img, raw)
+		processFinished(ctx, "image_normalize", id, attempts, raw, normalizeStarted, e)
 		if e != nil {
+			processFinished(ctx, "image_total", id, attempts, raw, imageStarted, e)
 			messages = append(messages, e.Error())
 			continue
 		}
 		raster.expectedExample = &expectedExample
-		if err = store.AddImage(ctx, id, raster); err != nil {
+		saveStarted := time.Now()
+		err = store.AddImage(ctx, id, raster)
+		processFinished(ctx, "image_save", id, attempts, raw, saveStarted, err)
+		processFinished(ctx, "image_total", id, attempts, raw, imageStarted, err)
+		if err != nil {
 			return x, err
 		}
 		x, err = store.Get(ctx, id)
 		if err != nil {
 			return x, err
 		}
-		existing[raw] = true
+		existing[imageSourceKey(raw)] = true
 	}
 	if len(x.Images) < MinSetImages {
 		messages = append(messages, fmt.Sprintf("Only %d distinct public image(s) available; at least 2 required", len(x.Images)))
