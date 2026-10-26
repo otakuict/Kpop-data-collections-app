@@ -85,6 +85,7 @@ jobs:
           DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
           ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
           GANK_FINDER_URL: ${{ vars.GANK_FINDER_URL }}
+          GANK_IMAGE_GRABBER_URL: ${{ vars.GANK_IMAGE_GRABBER_URL }}
           TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
           TYPESAFE_MODEL: ${{ vars.TYPESAFE_MODEL }}
           DEPLOY_PROJECT_NAME: ${{ vars.DEPLOY_PROJECT_NAME }}

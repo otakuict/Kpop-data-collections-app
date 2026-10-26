@@ -154,11 +154,11 @@ test('pasting a TeraBox cURL fills session fields and clears the pasted command'
  const {dialog}=await setup(page);
  await dialog.getByRole('button',{name:'Paste cURL to fill Cookie & jsToken'}).click();
  const importer=page.getByRole('dialog',{name:'Import TeraBox cURL'});
- await importer.getByLabel('cURL command').fill(String.raw`curl --url 'https\://dm.terabox.com/api/list?jsToken=test%2Bjs&bdstoken=bds%2F1' \
+ await importer.getByLabel('cURL command').fill(String.raw`curl --url 'https\://dm.terabox.app/api/list?jsToken=test%2Bjs&bdstoken=bds%2F1' \
  -b 'ndus=test-cookie; BAIDUID=other'`);
  await importer.getByRole('button',{name:'Fill session fields'}).click();
  await expect(importer).toHaveCount(0);
- await expect(dialog.getByLabel('API host')).toHaveValue('dm.terabox.com');
+ await expect(dialog.getByLabel('API host')).toHaveValue('dm.terabox.app');
  await expect(dialog.getByLabel('Session Cookie')).toHaveValue('ndus=test-cookie; BAIDUID=other');
  await expect(dialog.getByLabel('jsToken',{exact:true})).toHaveValue('test+js');
  await expect(dialog.getByLabel('bdstoken')).toHaveValue('bds/1');
@@ -240,4 +240,68 @@ test('TeraBox Finder seller dropdown uses gallery sources independently per row'
  await expect(other.getByLabel('Seller / Source')).toHaveValue('studio');
  await dialog.getByRole('button',{name:'Confirm to Sheet & DB'}).click();
  expect(calls.find(c=>c.type==='commit').body.rows[0].source).toBe('loveshakedata');
+});
+
+test('names opens above import, switches accounts and only reads raw names',async({page},info)=>{
+ const {dialog,calls}=await setup(page,{sheet:false});
+ const requests=[];
+ await page.route('**/api/admin/terabox/names',async route=>{
+  const input=route.request().postDataJSON();requests.push(input);
+  return route.fulfill({json:{accountId:input.accountId,root:input.accountId===2?'/Second':'/Albums',days:input.days,complete:false,scanned:2,warnings:['Request limit reached; results are partial.'],entries:[{fileId:1,name:'240404 지연2',path:'/Albums/240404 지연2',isDir:true,modifiedAt:'2026-10-26T11:00:00Z'},{fileId:2,name:'photo.jpg',path:'/Albums/photo.jpg',isDir:false,modifiedAt:''}]}});
+ });
+ await dialog.getByRole('button',{name:'Get TeraBox names',exact:true}).click();
+ const names=page.getByRole('dialog',{name:'TeraBox names',exact:true});
+ await expect(names).toBeVisible();
+ await expect(names.getByLabel('Names account',{exact:true})).toHaveValue('1');
+ await names.getByLabel('Names account',{exact:true}).selectOption('2');
+ await names.getByRole('button',{name:'Get names',exact:true}).click();
+ await expect(names.getByText('240404 지연2',{exact:true})).toBeVisible();
+ await expect(names.getByText('photo.jpg',{exact:true})).toBeVisible();
+ await expect(names.locator('.names-list strong')).toHaveText(['240404 지연2','photo.jpg']);
+ await expect(names.locator('li').filter({hasText:'240404 지연2'}).getByText('Modified (Bangkok): 26/10/2026, 18:00:00',{exact:true})).toBeVisible();
+ await expect(names.locator('li').filter({hasText:'photo.jpg'}).getByText('Modified (Bangkok): Not available',{exact:true})).toBeVisible();
+ await expect(names.getByRole('alert')).toContainText('partial');
+ await page.evaluate(()=>{Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async text=>{window.copiedNamesJSON=text;}}});});
+ await names.getByRole('button',{name:'Copy JSON',exact:true}).click();
+ await expect(names.getByText('Copied JSON.',{exact:true})).toBeVisible();
+ expect(JSON.parse(await page.evaluate(()=>window.copiedNamesJSON))).toEqual([
+  {name:'240404 지연2',modify_at:'2026-10-26T11:00:00Z'},
+  {name:'photo.jpg',modify_at:''},
+ ]);
+ await names.screenshot({path:`test-results/terabox-names-${info.project.name}.png`});
+ await page.evaluate(()=>{navigator.clipboard.writeText=async()=>{throw new Error('clipboard denied');};});
+ await names.getByRole('button',{name:'Copy JSON',exact:true}).click();
+ await expect(names.getByText('Could not copy JSON. Allow clipboard access and try again.',{exact:true})).toBeVisible();
+ expect(requests).toEqual([{accountId:2,days:5}]);
+ expect(calls).toEqual([]);
+ await names.getByLabel('Names account',{exact:true}).selectOption('1');
+ await expect(names.getByText('photo.jpg',{exact:true})).toHaveCount(0);
+ await names.getByLabel('All dates',{exact:true}).check();
+ await expect(names.getByLabel('Look back (days)',{exact:true})).toBeDisabled();
+ await names.getByRole('button',{name:'Get names',exact:true}).click();
+ await expect(names.getByText('photo.jpg',{exact:true})).toBeVisible();
+ expect(requests.at(-1)).toEqual({accountId:1,days:0});
+ await page.route('**/api/admin/terabox/names',route=>route.fulfill({status:422,json:{error:'Reconnect the selected TeraBox account'}}));
+ await names.getByRole('button',{name:'Get names',exact:true}).click();
+ await expect(names.getByRole('alert')).toHaveText('Reconnect the selected TeraBox account');
+ await expect(names.getByText('photo.jpg',{exact:true})).toHaveCount(0);
+ await names.getByRole('button',{name:'Close names',exact:true}).click();
+ await expect(names).toHaveCount(0);
+ await expect(dialog).toBeVisible();
+ await expect(dialog.getByLabel('TeraBox account',{exact:true})).toHaveValue('1');
+});
+
+test('scan controls align and fit within the import dialog',async({page},info)=>{
+ const {dialog}=await setup(page);
+ const toolbar=dialog.locator('.tera-toolbar');
+ const account=await toolbar.getByLabel('TeraBox account',{exact:true}).boundingBox();
+ const days=await toolbar.getByLabel('Look back (days)',{exact:true}).boundingBox();
+ const scan=await toolbar.getByRole('button',{name:'Scan last 5 days',exact:true}).boundingBox();
+ const bounds=await toolbar.boundingBox();
+ expect(scan.x+scan.width).toBeLessThanOrEqual(bounds.x+bounds.width+1);
+ if(info.project.name==='desktop'){
+  expect(Math.abs(account.y+account.height-scan.y-scan.height)).toBeLessThanOrEqual(2);
+  expect(Math.abs(days.y+days.height-scan.y-scan.height)).toBeLessThanOrEqual(2);
+ }
+ await dialog.screenshot({path:`test-results/terabox-toolbar-${info.project.name}.png`});
 });

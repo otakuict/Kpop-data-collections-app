@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"time"
 )
 
 var gankServiceSlugPattern = regexp.MustCompile(`^[0-9]+-[A-Za-z0-9-]{1,200}$`)
@@ -29,20 +30,26 @@ func gankServiceSlug(raw string) (string, bool) {
 }
 
 // Gank's service page loads its gallery from the listing API after the initial HTML response.
-func fetchGankServiceImages(ctx context.Context, store *Store, slug string) ([]string, error) {
+func fetchGankServiceImages(ctx context.Context, store *Store, id SetID, slug string) ([]string, error) {
 	base := "https://api.ganknow.com/v1/catalogs/services/slug/" + url.PathEscape(slug)
+	started := time.Now()
 	b, _, err := fetchDocument(ctx, store, base)
+	processFinished(ctx, "fetch_service", id, 0, base, started, err)
 	if err != nil {
 		var status *sourceStatusError
 		if !errors.As(err, &status) || status.Code != 404 {
 			return nil, err
 		}
+		started = time.Now()
 		b, _, err = fetchDocument(ctx, store, base+"/old")
+		processFinished(ctx, "fetch_service_old", id, 0, base+"/old", started, err)
 		if err != nil {
 			return nil, err
 		}
 	}
+	started = time.Now()
 	urls, err := gankServiceImages(b)
+	processFinished(ctx, "parse_image_urls", id, 0, base, started, err)
 	if err != nil {
 		return nil, fmt.Errorf("invalid Gank service data: %w", err)
 	}

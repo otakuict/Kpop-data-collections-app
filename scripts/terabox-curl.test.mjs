@@ -27,10 +27,18 @@ test('accepts HTML space indentation copied with the example without changing Co
 test('rejects missing values and unrelated hosts without exposing pasted secrets',()=>{
  for(const command of [
   `curl --url 'https://evil.example/api/list?jsToken=secret' -b 'ndus=secret'`,
+  `curl --url 'https://dm.terabox.app.evil.example/api/list?jsToken=secret' -b 'ndus=secret'`,
   `curl --url 'https://dm.terabox.com/api/list?jsToken=secret'`,
   `curl --url 'https://dm.terabox.com/api/list' -b 'ndus=secret'`,
   `curl --url 'https://dm.terabox.com/api/list?jsToken=secret' -b 'unterminated`,
  ]){
   assert.throws(()=>parseTeraBoxCurl(command),error=>!error.message.includes('secret'));
  }
+});
+
+test('extracts the dm.terabox.app browser request without changing its host',()=>{
+ const command="curl --url 'https://dm.terabox.app/api/list?app_id=250528&jsToken=test%2Bapp&dir=%2F' -b 'ndus=test-cookie; other=value'";
+ assert.deepEqual(parseTeraBoxCurl(command),{
+  cookie:'ndus=test-cookie; other=value',jsToken:'test+app',host:'dm.terabox.app',bdstoken:'',
+ });
 });

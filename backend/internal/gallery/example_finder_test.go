@@ -1,9 +1,11 @@
 package gallery
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -11,6 +13,11 @@ import (
 )
 
 func TestExampleFinderSearchAndRecommendation(t *testing.T) {
+	var logs bytes.Buffer
+	previousLog := log.Writer()
+	log.SetOutput(&logs)
+	defer log.SetOutput(previousLog)
+
 	var finderCalls, aiCalls int
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
@@ -50,6 +57,12 @@ func TestExampleFinderSearchAndRecommendation(t *testing.T) {
 	result, err := finder.search(context.Background(), exampleQuery{Seller: "studio", SetDate: "2026-10-01", Name: "261024 Sana", Count: 200})
 	if err != nil {
 		t.Fatal(err)
+	}
+
+	for _, stage := range []string{"find_links", "filter_links", "recommend_link", "find_links_total"} {
+		if !strings.Contains(logs.String(), "stage="+stage+" ") {
+			t.Fatalf("missing timing stage %s: %s", stage, logs.String())
+		}
 	}
 	if finderCalls != 1 || aiCalls != 1 || len(result.Candidates) != 2 || result.RecommendedURL != "https://ganknow.com/services/1-a" || result.Confidence == nil || *result.Confidence != 0.8 {
 		t.Fatalf("unexpected result: %+v", result)

@@ -7,6 +7,7 @@ import (
 	"image/color"
 	"image/png"
 	"io"
+	"log"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -52,6 +53,11 @@ func TestGankServiceImagesSelectsOnlyActiveListingImages(t *testing.T) {
 }
 
 func TestGankServiceOldListingImportsGallery(t *testing.T) {
+	var logs bytes.Buffer
+	previous := log.Writer()
+	log.SetOutput(&logs)
+	defer log.SetOutput(previous)
+
 	s, err := Open(filepath.Join(t.TempDir(), "service.sqlite"))
 	if err != nil {
 		t.Fatal(err)
@@ -86,6 +92,11 @@ func TestGankServiceOldListingImportsGallery(t *testing.T) {
 	x, err = ExtractTo(ctx, s, x.ID, 2)
 	if err != nil || x.ImageState != "ready" || len(x.Images) != 2 || len(requested) != 3 {
 		t.Fatalf("service extraction: state=%s images=%d requests=%#v err=%v", x.ImageState, len(x.Images), requested, err)
+	}
+	for _, stage := range []string{"fetch_service", "fetch_service_old", "parse_image_urls"} {
+		if !strings.Contains(logs.String(), "stage="+stage+" ") {
+			t.Fatalf("missing timing stage %s: %s", stage, logs.String())
+		}
 	}
 	if requested[0] != strings.TrimSuffix(oldAPI, "/old") || requested[1] != "https://lh3.googleusercontent.com/one=s1024" {
 		t.Fatalf("unexpected requests: %#v", requested)

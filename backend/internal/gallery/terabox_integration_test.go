@@ -312,3 +312,50 @@ func TestTeraBoxRoutesRequireAdminAndNeverEchoCookies(t *testing.T) {
 		}
 	}
 }
+
+func TestTeraPreviewReusesRootNamesIncludingZIPWithoutReadingSubfolders(t *testing.T) {
+	store := teraTestStore(t)
+	ctx := context.Background()
+	now := time.Date(2026, 10, 26, 12, 0, 0, 0, time.UTC)
+	if _, err := store.Save(ctx, 0, SetDraft{Title: "Existing", Group: "TripleS"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.saveTeraAccount(ctx, "key", teraAccount{ID: 2, Label: "Second", Root: "/Albums"}, teraSession{Cookie: "ndus=second"}); err != nil {
+		t.Fatal(err)
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("dir") != "/Albums" || r.Header.Get("Cookie") != "ndus=second" {
+			t.Error("wrong root or account")
+			w.WriteHeader(400)
+			return
+		}
+		json.NewEncoder(w).Encode(teraPage{Errno: new(int), List: []teraFile{
+			{ID: 30, Name: "Limited 260814 Ahyeon", Path: "/Albums/Limited 260814 Ahyeon", IsDir: 1, Modified: now.Add(-2 * time.Hour).Unix()},
+			{ID: 10, Name: "240404 지연2.ZIP", Path: "/Albums/240404 지연2.ZIP", Modified: now.Add(-time.Hour).Unix()},
+			{ID: 20, Name: "older", Path: "/Albums/older", IsDir: 1, Created: now.Add(-20 * 24 * time.Hour).Unix()},
+			{ID: 5, Name: "261024 지연3", Path: "/Albums/261024 지연3", IsDir: 1, Modified: now.Unix()},
+		}})
+	}))
+	defer server.Close()
+	service := teraService{store: store, key: "key", now: func() time.Time { return now }, provider: teraClient{baseURL: server.URL, client: server.Client()}}
+	names, err := service.names(ctx, 2, 5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	preview, err := service.preview(ctx, 2, 5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(preview.Rows) != len(names.Entries) || preview.Scanned != names.Scanned || preview.Complete != names.Complete {
+		t.Fatalf("names=%+v preview=%+v", names, preview)
+	}
+	for i, row := range preview.Rows {
+		if row.FileID != names.Entries[i].FileID || row.Original != names.Entries[i].Name {
+			t.Fatalf("names and scan differ at %d", i)
+		}
+	}
+	zip := preview.Rows[1]
+	if zip.Title != "240404 JiYeon2" || zip.RawName != "지연2" || zip.Group != "TripleS" {
+		t.Fatalf("ZIP parsed incorrectly: %+v", zip)
+	}
+}

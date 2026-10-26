@@ -1,0 +1,93 @@
+{
+  "measuredDate": "2026-10-26",
+  "galleryMaxSide": 1200,
+  "selection": "Google =s1200; otherwise renderedUrl, originalUrl, thumbUrl in that order",
+  "samples": [
+    {
+      "sample": "google-1",
+      "variant": "rendered",
+      "bytes": 44043,
+      "width": 341,
+      "height": 512,
+      "sha256": "a231e69600eaef638f4c46980a0facb8520aa450a10f25b6526ea31b89091816",
+      "mean_absolute_pixel_error_at_gallery_size": 2.345
+    },
+    {
+      "sample": "google-1",
+      "variant": "1024",
+      "bytes": 88912,
+      "width": 682,
+      "height": 1024,
+      "sha256": "d06a579bf63ef025154922152280aacb7a85be36d177f1544b33f650d7db1fd7",
+      "mean_absolute_pixel_error_at_gallery_size": 1.674
+    },
+    {
+      "sample": "google-1",
+      "variant": "1200",
+      "bytes": 111489,
+      "width": 800,
+      "height": 1200,
+      "sha256": "0b251b3c624bb33dd9e54946f057868e3ceb52352eefd8b94cd70e21e8c7848a",
+      "mean_absolute_pixel_error_at_gallery_size": 1.576
+    },
+    {
+      "sample": "google-1",
+      "variant": "original",
+      "bytes": 609790,
+      "width": 1485,
+      "height": 2228,
+      "sha256": "cbd7225ad29262bdbe4a1ff3878382d3ea0fff1fa16fa778d0b2858667982c2e",
+      "mean_absolute_pixel_error_at_gallery_size": 0.0
+    },
+    {
+      "sample": "google-2",
+      "variant": "rendered",
+      "bytes": 42766,
+      "width": 341,
+      "height": 512,
+      "sha256": "352f44588e6615371efb5e076b821ce4e7a255cdefb0125dd0f69ba397bdc57b",
+      "mean_absolute_pixel_error_at_gallery_size": 2.654
+    },
+    {
+      "sample": "google-2",
+      "variant": "1024",
+      "bytes": 94302,
+      "width": 682,
+      "height": 1024,
+      "sha256": "dc1037b5fa005b5fa08bc6593fa393eeaee2aa3cd3769ea78c8bd9a632896c90",
+      "mean_absolute_pixel_error_at_gallery_size": 1.942
+    },
+    {
+      "sample": "google-2",
+      "variant": "1200",
+      "bytes": 121358,
+      "width": 800,
+      "height": 1200,
+      "sha256": "953c370d5198d13de672797a849af879481e6023f673e1a734547b5911a1910d",
+      "mean_absolute_pixel_error_at_gallery_size": 1.844
+    },
+    {
+      "sample": "google-2",
+      "variant": "original",
+      "bytes": 715583,
+      "width": 1485,
+      "height": 2228,
+      "sha256": "7b267f282fbd1c63fa3ebfac44a4769df351264387fe1863d1c43b2a452d05c9",
+      "mean_absolute_pixel_error_at_gallery_size": 0.0
+    },
+    {
+      "sample": "post",
+      "variant": "all three URLs identical",
+      "bytes": 2765155,
+      "width": 4000,
+      "height": 6000
+    },
+    {
+      "sample": "service",
+      "variant": "all three URLs identical",
+      "bytes": 962722,
+      "width": 2948,
+      "height": 2211
+    }
+  ]
+}

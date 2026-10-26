@@ -9,6 +9,7 @@ services:
       DATABASE_PATH: /data/gallery.sqlite
       SEED_DATABASE: /seed/seed.sqlite
       GALLERY_COUNTRY_HEADER: ${GALLERY_COUNTRY_HEADER:-}
+      GANK_IMAGE_GRABBER_URL: ${GANK_IMAGE_GRABBER_URL:-}
       GANK_FINDER_URL: ${GANK_FINDER_URL:-}
       TYPESAFE_API_KEY: ${TYPESAFE_API_KEY:-}
       TYPESAFE_MODEL: ${TYPESAFE_MODEL:-jev-latest}

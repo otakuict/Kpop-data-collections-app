@@ -1,0 +1,10 @@
+version: 1
+name: Gank Image Grabber
+slug: gank-image-grabber
+protocol: http
+port: 4911
+interceptRequests: true
+scenarios:
+  - name: default
+    path: ./default.js
+    default: true
