@@ -6,6 +6,7 @@
  import UsageDashboard from './UsageDashboard.svelte';
  import ExampleFinder from './ExampleFinder.svelte';
  import TeraBoxImport from './TeraBoxImport.svelte';
+ import TeraBoxAuth from './TeraBoxAuth.svelte';
  import { Asterisk, ArrowUpRight, Plus, Search, X, Upload, RefreshCw, FileSpreadsheet, Image as ImageIcon, Check, ArrowRight, LogOut, ChevronLeft, ChevronRight, CircleAlert, Pencil, LoaderCircle, Trash2, ChartNoAxesCombined } from '@lucide/svelte';
  const sessionKey='bias.admin.jwt.v1';
  let adminToken=$state(''), token=$state(''), authenticated=$state(false), authenticating=$state(false), restoring=$state(true), loginError=$state('');
@@ -15,7 +16,7 @@
  let message=$state(''), error=$state(''), busy=$state(false), sheetPreviewing=$state(false), editor=$state(false), editID=$state(0), editOrigin=$state('manual'), sheetSyncEnabled=$state(false), sheetSyncConfigured=$state(false), sheetSyncRestartRequired=$state(false), credentialFile=$state(null), form=$state(blank()), files=$state([]);
  let sheetUrl=$state('https://docs.google.com/spreadsheets/d/1z45mKRtLvTZth8b-uhqkMyjzxVtHI8b7YVcySQVeEkg/edit?gid=0'), csvFile=$state(null), report=$state(null);
  let importPreview=$state(null), pendingScanIds=$state([]);
- let teraOpen=$state(false);
+ let teraOpen=$state(false), teraAuthOpen=$state(false);
  let deleteTarget=$state(null), deleteError=$state(''), deleteDialog=$state(null);
  let deleteTrigger;
  let extracting=$state(false), progress=$state({done:0,total:0,ready:0,failed:0}), current=$state(''), stopRequested=$state(false), logs=$state([]);
@@ -171,6 +172,7 @@
 
 <svelte:window onhashchange={()=>tab=sectionFromHash()}/>
 {#if authenticated&&teraOpen}<TeraBoxImport {api} sources={facets.sources} onclose={()=>teraOpen=false} onsaved={load}/>{/if}
+{#if authenticated&&teraAuthOpen}<TeraBoxAuth {api} onclose={()=>teraAuthOpen=false}/>{/if}
 <svelte:head><title>{tab==='dashboard'&&authenticated?'Usage dashboard — BIAS':'BIAS — Back office'}</title></svelte:head>
 <header><a class="brand" href={galleryURL}><span class="brand-mark"><Asterisk size={27} strokeWidth={2.6}/></span>Kpop Data<span>®</span><small>BACK OFFICE</small></a><div class="header-actions"><a href={galleryURL} target="_blank" rel="noreferrer">View gallery <ArrowUpRight size={15}/></a>{#if authenticated}<button onclick={signOut} disabled={busy||extracting}><LogOut size={15}/> Sign out</button>{/if}</div></header>
 {#if restoring}
@@ -184,7 +186,7 @@
  {#if tab==='dashboard'}
   <UsageDashboard {api}/>
  {:else}
- <div class="page-heading"><div><div class="eyebrow">COLLECTION WORKSPACE</div><h1>The back office<span>.</span></h1><p>A little care for every moment in the archive.</p></div><div class="heading-actions"><button class="primary secondary" onclick={()=>teraOpen=true} disabled={busy||extracting}><RefreshCw size={17}/> Update from TeraBox</button><button class="primary" onclick={()=>reviewImport()} disabled={busy||extracting||pendingScanIds.length>0}><FileSpreadsheet size={17}/>{extracting?'Fetching images…':sheetPreviewing?'Reading sheet…':'Scan Google Sheet & import'}</button><button class="primary secondary" onclick={newSet} disabled={busy||extracting}><Plus size={17}/> Add image set</button></div></div>
+ <div class="page-heading"><div><div class="eyebrow">COLLECTION WORKSPACE</div><h1>The back office<span>.</span></h1><p>A little care for every moment in the archive.</p></div><div class="heading-actions"><button class="primary secondary" onclick={()=>teraAuthOpen=true} disabled={busy||extracting}>TeraBox auth</button><button class="primary secondary" onclick={()=>teraOpen=true} disabled={busy||extracting}><RefreshCw size={17}/> Update from TeraBox</button><button class="primary" onclick={()=>reviewImport()} disabled={busy||extracting||pendingScanIds.length>0}><FileSpreadsheet size={17}/>{extracting?'Fetching images…':sheetPreviewing?'Reading sheet…':'Scan Google Sheet & import'}</button><button class="primary secondary" onclick={newSet} disabled={busy||extracting}><Plus size={17}/> Add image set</button></div></div>
  <div class="stats-grid"><div><span>IMAGE SETS</span><strong>{facets.total}</strong><small>Records in your collection</small></div><div><span>ARTISTS & GROUPS</span><strong>{facets.groups.length}</strong><small>A growing roster of favorites</small></div><div><span>SETS WITH 2–5 IMAGES</span><strong>{facets.complete||0}<i><Check size={19}/></i></strong><small>Stored locally in the archive</small></div><div><span>NEEDS MORE IMAGES</span><strong>{missing}</strong><small>Sets with fewer than 2 images</small></div></div>
  {#if gankPaused}<div class="alert error" role="status"><CircleAlert size={17}/>Gank ingestion paused until {new Date(ingestion.pausedUntil).toLocaleString()}. Uploads and browsing remain available.</div>{/if}
  {#if error}<div class="alert error" role="alert"><CircleAlert size={17}/>{error}<button aria-label="Dismiss error" onclick={()=>error=''}><X size={14}/></button></div>{/if}{#if message}<div class="alert success" role="status"><Check size={17}/>{message}<button aria-label="Dismiss message" onclick={()=>message=''}><X size={14}/></button></div>{/if}

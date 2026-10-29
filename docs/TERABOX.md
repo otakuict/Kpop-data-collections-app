@@ -10,7 +10,7 @@ gallery sets or write to Google Sheets.
 
 1. Log in to the intended account on `https://www.terabox.com` in your browser.
 2. In Developer Tools → Network, open a folder and find its `/api/list` request.
-3. In BO → Update from TeraBox → Accounts, choose slot 1 or 2. Enter a label,
+3. In BO → **TeraBox auth**, choose slot 1 or 2. Enter a label,
    source/seller and absolute root folder path, such as `/` or `/Kpop`.
 4. Set **API host** to the successful request's hostname: `www.terabox.com`,
    `dm.terabox.com` or `dm.terabox.app`. Copy its complete `Cookie` header and
@@ -18,7 +18,9 @@ gallery sets or write to Google Sheets.
    Bash cURL command from the same `/api/list` request. The paste option also
    fills API host and `bdstoken` when present. Save the session. Cookie
    must include `ndus`. Reconnect after session expiry.
-5. Repeat for the other account. Choose the account to scan in the dropdown.
+5. Repeat for the other account. Open **Update from TeraBox** and choose the
+   account to scan in the dropdown. Authentication fields are kept in the
+   separate TeraBox auth dialog.
 6. Enter a lookback period from 1 to 10 days before scanning. The default is
    5 days; each preview shows the period used for that scan.
 

@@ -3,15 +3,11 @@
  import { X, RefreshCw, Check, LoaderCircle } from '@lucide/svelte';
  import ExampleFinder from './ExampleFinder.svelte';
  import TeraBoxNames from './TeraBoxNames.svelte';
- import { parseTeraBoxCurl } from './teraboxCurl.js';
  let { api, sources=[], onclose, onsaved } = $props();
  let accounts=$state([]), groups=$state([]), accountID=$state(1), lookbackDays=$state(5), sharePeriod=$state(7), working=$state(false);
  let error=$state(''), notice=$state(''), preview=$state(null), results=$state(null);
  let sheetEnabled=$state(false), jevConfigured=$state(false), pane=$state('accounts');
- let label=$state(''), root=$state('/'), source=$state(''), cookie=$state(''), bdstoken=$state(''), jsToken=$state('');
- let host=$state('www.terabox.com');
  let namesOpen=$state(false), sharedFolder=$state(null);
- let curlOpen=$state(false),curlInput=$state(''),curlError=$state('');
  let memberGroup=$state(''), memberName=$state(''), memberAliases=$state(''), memberSource=$state('');
  const selectedAccount=$derived(accounts.find(a=>a.id===accountID));
  const selectedRows=$derived(preview?.rows.filter(r=>r.selected)||[]);
@@ -39,15 +35,6 @@
   },300));
  }
  function modal(node){node.showModal();return {destroy(){node.close();}};}
- function closeCurlImport(){curlOpen=false;curlInput='';curlError='';}
- function applyCurl(event){
-  event.preventDefault();
-  try{
-   const parsed=parseTeraBoxCurl(curlInput);
-   cookie=parsed.cookie;jsToken=parsed.jsToken;bdstoken=parsed.bdstoken;host=parsed.host;
-   closeCurlImport();error='';notice='Session fields filled from cURL. Save the account session to connect.';
-  }catch(e){curlError=e.message;}
- }
  async function load(){
   const [a,g]=await Promise.all([api('/admin/terabox/accounts'),api('/admin/artists')]);
   accounts=a.accounts;groups=g.groups;sheetEnabled=a.sheetSyncEnabled;jevConfigured=a.jevConfigured;
@@ -56,17 +43,6 @@
  function changeAccount(){
   clearDuplicateChecks();
   preview=null;results=null;sharedFolder=null;notice='';error='';
-  const a=accounts.find(a=>a.id===accountID);
-  label=a?.label||`Account ${accountID}`;root=a?.root||'/';source=a?.source||'';
-  host=a?.host||'www.terabox.com';
-  cookie='';bdstoken='';jsToken='';
- }
- async function saveAccount(event){
-  event.preventDefault();working=true;error='';notice='';
-  try{
-   await api(`/admin/terabox/accounts/${accountID}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({label,root,source,host,cookie,bdstoken,jsToken})});
-   cookie='';bdstoken='';jsToken='';preview=null;results=null;await load();notice='Session saved securely. Scan to check this account.';
-  }catch(e){error=e.message;}finally{working=false;}
  }
  async function scan(){
   clearDuplicateChecks();
@@ -150,17 +126,8 @@
  {#if !sheetEnabled}<p class="alert error">Google Sheet sync is disabled. You can preview, but confirmation requires enabling Sheet sync.</p>{/if}
  {#if !jevConfigured}<p class="form-help">Jev is not configured. Known aliases still resolve from the catalog; other names need manual review.</p>{/if}
  {#if pane==='accounts'}
-  <p class="review-note">Connect each account using its logged-in browser session. Sessions stay encrypted on the backend. This reads your private drive through TeraBox’s browser interface; reconnect when the session expires.</p>
-  <details><summary>How to connect an account</summary><p>Log in to TeraBox in your browser. Open Developer Tools → Network, open a folder, and select a successful request to <code>/api/list</code>. Match its hostname in API host below. Copy the complete Cookie request header and jsToken from that same request. Leave bdstoken blank if absent. Repeat for the second account. Do not paste these values into chat.</p></details>
-  <form onsubmit={saveAccount} class="tera-account-form">
-   <div class="form-row"><label>Account label<input bind:value={label} placeholder={`Account ${accountID}`} maxlength="80" required disabled={working}/></label><label>Source / seller<input bind:value={source} maxlength="300" placeholder="Source saved with imported sets" disabled={working}/></label></div>
-   <label>Root folder path<input bind:value={root} placeholder="/" maxlength="1500" required disabled={working}/><small>Scan and Get names read only the entries directly inside this folder.</small></label>
-   <label>API host<select bind:value={host} disabled={working}><option value="www.terabox.com">www.terabox.com</option><option value="dm.terabox.com">dm.terabox.com</option><option value="dm.terabox.app">dm.terabox.app</option></select><small>Use the hostname of the successful /api/list request in your browser.</small></label>
-   <button type="button" class="text-btn tera-curl-trigger" disabled={working} onclick={()=>{curlInput='';curlError='';curlOpen=true;}}>Paste cURL to fill Cookie & jsToken</button>
-   <label>Session Cookie<input type="password" autocomplete="off" bind:value={cookie} maxlength="16000" placeholder="Contains ndus=…" required disabled={working}/></label>
-   <div class="form-row"><label>bdstoken<input type="password" autocomplete="off" bind:value={bdstoken} maxlength="2000" disabled={working}/></label><label>jsToken<input type="password" autocomplete="off" bind:value={jsToken} maxlength="4000" disabled={working}/></label></div>
-   <button class="primary secondary" disabled={working}><Check size={16}/> Save account session</button>
-  </form>
+  {#if selectedAccount}<p class="review-note">Connected account: <strong>{selectedAccount.label}</strong> · Root: <code>{selectedAccount.root}</code> · API host: {selectedAccount.host||'www.terabox.com'}.</p>{:else}<p class="review-note">This account is not connected yet.</p>{/if}
+  <p class="form-help">Use the separate <strong>TeraBox auth</strong> button on the back office page to connect or update an account session.</p>
  {:else if pane==='preview'&&preview}
   <p class="review-note">{preview.scanned} entries scanned · {preview.complete?'Scan complete':'Partial scan'} · created or updated within the past {preview.days} {preview.days===1?'day':'days'}. Review the original, suggested name and group. Nothing is imported until you confirm.</p>
   {#each preview.warnings as warning}<p class="alert error">{warning}</p>{/each}
@@ -208,31 +175,15 @@
  <TeraBoxNames {api} {accounts} initialAccountID={accountID} initialDays={validLookback?lookbackDays:5} onclose={()=>namesOpen=false}/>
 {/if}
 
-{#if curlOpen}
- <dialog class="tera-curl-dialog" use:modal oncancel={event=>{event.preventDefault();closeCurlImport();}} aria-labelledby="tera-curl-title">
-  <div class="editor-heading"><h2 id="tera-curl-title">Import TeraBox cURL</h2><button type="button" class="icon-btn" aria-label="Close cURL import" onclick={closeCurlImport}><X size={20}/></button></div>
-  <p class="review-note">Paste the Bash cURL command for a successful TeraBox <code>/api/list</code> request. Cookie, jsToken and API host will fill the account form. The command stays in this browser and is cleared when this window closes.</p>
-  <form onsubmit={applyCurl}>
-   <label>cURL command<textarea bind:value={curlInput} oninput={()=>curlError=''} rows="10" spellcheck="false" autocomplete="off" required placeholder="curl --url 'https://dm.terabox.com/api/list?jsToken=…' -b 'ndus=…'"></textarea></label>
-   {#if curlError}<p class="alert error" role="alert">{curlError}</p>{/if}
-   <div class="editor-footer"><button type="button" class="text-btn" onclick={closeCurlImport}>Cancel</button><button class="primary" type="submit">Fill session fields</button></div>
-  </form>
- </dialog>
-{/if}
-
 <style>
  .tera-dialog{width:min(1100px,96vw);max-height:92vh;padding:28px;border:1px solid var(--line,#ddd);border-radius:18px;background:var(--surface,#101b2b);color:#edf4fb;overflow:auto}
  .tera-dialog::backdrop{background:#15151b99;backdrop-filter:blur(4px)}
- .tera-curl-dialog{width:min(760px,94vw);max-height:90vh;padding:24px;border:1px solid var(--line,#ddd);border-radius:16px;background:var(--surface,#101b2b);color:#edf4fb;overflow:auto}
- .tera-curl-dialog::backdrop{background:#15151bcc;backdrop-filter:blur(4px)}
- .tera-curl-dialog form{display:grid;gap:14px}.tera-curl-dialog textarea{width:100%;min-height:220px;resize:vertical;padding:12px;border:1px solid #314d6b;border-radius:7px;background:#0a1423;color:#edf4fb;font:12px/1.5 ui-monospace,monospace}
- .tera-curl-trigger{justify-self:start}
  .tera-toolbar,.tera-tabs,.tera-row-heading,.tera-member{display:flex;align-items:center;justify-content:space-between;gap:14px}
  .tera-toolbar{display:flex;flex-wrap:wrap;align-items:end;justify-content:start;margin:20px 0;gap:14px}.tera-toolbar label{min-width:0;margin:0}.tera-toolbar label:first-child{width:min(320px,100%)}.tera-toolbar .lookback-days,.tera-toolbar .share-period{width:140px}.tera-toolbar input,.tera-toolbar select{height:42px}.tera-toolbar .primary{min-height:42px;white-space:nowrap}.tera-share-result{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:12px;border:1px solid #416789;border-radius:8px}.tera-share-result a{overflow-wrap:anywhere;color:#a8dcff}
  label{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:#edf4fb;margin:8px 0}input,select{min-width:0;width:100%;padding:10px;border:1px solid #314d6b;border-radius:7px;background:#0a1423;color:#edf4fb}input[type=checkbox]{width:auto}
  .tera-tabs{justify-content:flex-start;flex-wrap:wrap;border-bottom:1px solid #314d6b;margin-bottom:20px}.tera-tabs button{padding:10px;border:0;background:none;border-bottom:2px solid transparent}.tera-tabs button.active{border-color:#5fd2ef;font-weight:700}
  .tera-account-form{display:grid;gap:16px;margin:20px 0}.form-row{display:flex;gap:14px;flex-wrap:wrap}.form-row>label{flex:1;min-width:180px}
- .tera-rows{display:grid;gap:16px}.tera-row{display:grid;gap:12px;border:1px solid #314d6b;border-radius:12px;padding:18px}.tera-row.muted{background:#0b1522}.tera-row.duplicate{background:linear-gradient(135deg,#432a17,#2c2330 78%);border-color:#efbd71;box-shadow:inset 4px 0 #ffcb79,0 0 0 1px #efbd7133}.tera-row.duplicate .tera-row-heading span{color:#231509;background:#ffd18a;border:1px solid #ffe4b5;border-radius:5px;padding:5px 8px;font-weight:700}.tera-row.duplicate .tera-row-heading strong{color:#ffe2ac}.tera-row-heading{align-items:flex-start;flex-wrap:wrap}.tera-row-heading label{flex-direction:row;align-items:center}.tera-row-heading span,.tera-path{font-size:12px;color:#9aaec3;overflow-wrap:anywhere}.tera-path{display:block}.tera-seller{max-width:420px}.tera-seller small{color:#abc4da;font-weight:400}.tera-group{padding:12px 0;border-top:1px solid #314d6b}.tera-member{padding:8px 0;flex-wrap:wrap}.tera-member small{flex:1;color:#9aaec3;overflow-wrap:anywhere}.form-help{font-size:11px}.review-note{color:#cedbe9;font-size:12px}details>p{font-size:13px;line-height:1.7}summary{cursor:pointer}
+ .tera-rows{display:grid;gap:16px}.tera-row{display:grid;gap:12px;border:1px solid #314d6b;border-radius:12px;padding:18px}.tera-row.muted{background:#0b1522}.tera-row.duplicate{background:linear-gradient(135deg,#432a17,#2c2330 78%);border-color:#efbd71;box-shadow:inset 4px 0 #ffcb79,0 0 0 1px #efbd7133}.tera-row.duplicate .tera-row-heading span{color:#231509;background:#ffd18a;border:1px solid #ffe4b5;border-radius:5px;padding:5px 8px;font-weight:700}.tera-row.duplicate .tera-row-heading strong{color:#ffe2ac}.tera-row-heading{align-items:flex-start;flex-wrap:wrap}.tera-row-heading label{flex-direction:row;align-items:center}.tera-row-heading span,.tera-path{font-size:12px;color:#9aaec3;overflow-wrap:anywhere}.tera-path{display:block}.tera-seller{max-width:420px}.tera-seller small{color:#abc4da;font-weight:400}.tera-group{padding:12px 0;border-top:1px solid #314d6b}.tera-member{padding:8px 0;flex-wrap:wrap}.tera-member small{flex:1;color:#9aaec3;overflow-wrap:anywhere}.form-help{font-size:11px}.review-note{color:#cedbe9;font-size:12px}summary{cursor:pointer}
  @media(max-width:900px){.tera-toolbar{grid-template-columns:minmax(0,1fr) 140px}.tera-toolbar .primary{width:100%}}
  @media(max-width:600px){.tera-dialog{padding:16px}.tera-toolbar{grid-template-columns:minmax(0,1fr) 115px}.tera-toolbar .primary{grid-column:1/-1;width:100%}.form-row>label{min-width:100%}.tera-row{padding:12px}}
 </style>

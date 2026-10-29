@@ -144,6 +144,10 @@ test('HTML 502 from the gateway shows a useful error and does not create sets',a
 
 test('account API host saves with its session and follows account switching',async({page})=>{
  const {dialog}=await setup(page);
+ await expect(dialog.getByLabel('Session Cookie')).toHaveCount(0);
+ await dialog.getByRole('button',{name:'Close TeraBox'}).click();
+ await page.getByRole('button',{name:'TeraBox auth'}).click();
+ const auth=page.getByRole('dialog',{name:'TeraBox auth'});
  let saved;
  await page.route('**/api/admin/terabox/accounts/1',async route=>{
   saved=route.request().postDataJSON();
@@ -153,34 +157,43 @@ test('account API host saves with its session and follows account switching',asy
   {id:1,label:'First drive',root:'/Albums',source:'studio',host:'dm.terabox.com'},
   {id:2,label:'Second drive',root:'/',host:'www.terabox.com'},
  ],jevConfigured:true,sheetSyncEnabled:true}}));
- await expect(dialog.getByLabel('API host')).toHaveValue('www.terabox.com');
- await dialog.getByLabel('API host').selectOption('dm.terabox.com');
- await dialog.getByLabel('Session Cookie').fill('ndus=test-cookie');
- await dialog.getByLabel('jsToken',{exact:true}).fill('test-js');
- await dialog.getByRole('button',{name:'Save account session'}).click();
- await expect(dialog.getByRole('status')).toContainText('Session saved securely');
+ await expect(auth.getByLabel('API host')).toHaveValue('www.terabox.com');
+ await auth.getByLabel('API host').selectOption('dm.terabox.com');
+ await auth.getByLabel('Session Cookie').fill('ndus=test-cookie');
+ await auth.getByLabel('jsToken',{exact:true}).fill('test-js');
+ await auth.getByRole('button',{name:'Save account session'}).click();
+ await expect(auth.getByRole('status')).toContainText('Session saved securely');
  expect(saved).toMatchObject({host:'dm.terabox.com',cookie:'ndus=test-cookie',jsToken:'test-js',bdstoken:''});
- await expect(dialog.getByLabel('Session Cookie')).toHaveValue('');
- await dialog.getByLabel('TeraBox account',{exact:true}).selectOption('2');
- await expect(dialog.getByLabel('API host')).toHaveValue('www.terabox.com');
- await dialog.getByLabel('TeraBox account',{exact:true}).selectOption('1');
- await expect(dialog.getByLabel('API host')).toHaveValue('dm.terabox.com');
+ await expect(auth.getByLabel('Session Cookie')).toHaveValue('');
+ await auth.getByLabel('TeraBox account',{exact:true}).selectOption('2');
+ await expect(auth.getByLabel('API host')).toHaveValue('www.terabox.com');
+ await auth.getByLabel('TeraBox account',{exact:true}).selectOption('1');
+ await expect(auth.getByLabel('API host')).toHaveValue('dm.terabox.com');
 });
 
 test('pasting a TeraBox cURL fills session fields and clears the pasted command',async({page})=>{
  const {dialog}=await setup(page);
- await dialog.getByRole('button',{name:'Paste cURL to fill Cookie & jsToken'}).click();
+ await dialog.getByRole('button',{name:'Close TeraBox'}).click();
+ await page.getByRole('button',{name:'TeraBox auth'}).click();
+ const auth=page.getByRole('dialog',{name:'TeraBox auth'});
+ await auth.getByRole('button',{name:'Paste cURL to fill Cookie & jsToken'}).click();
  const importer=page.getByRole('dialog',{name:'Import TeraBox cURL'});
  await importer.getByLabel('cURL command').fill(String.raw`curl --url 'https\://dm.terabox.app/api/list?jsToken=test%2Bjs&bdstoken=bds%2F1' \
  -b 'ndus=test-cookie; BAIDUID=other'`);
  await importer.getByRole('button',{name:'Fill session fields'}).click();
  await expect(importer).toHaveCount(0);
- await expect(dialog.getByLabel('API host')).toHaveValue('dm.terabox.app');
- await expect(dialog.getByLabel('Session Cookie')).toHaveValue('ndus=test-cookie; BAIDUID=other');
- await expect(dialog.getByLabel('jsToken',{exact:true})).toHaveValue('test+js');
- await expect(dialog.getByLabel('bdstoken')).toHaveValue('bds/1');
- await dialog.getByRole('button',{name:'Paste cURL to fill Cookie & jsToken'}).click();
+ await expect(auth.getByLabel('API host')).toHaveValue('dm.terabox.app');
+ await expect(auth.getByLabel('Session Cookie')).toHaveValue('ndus=test-cookie; BAIDUID=other');
+ await expect(auth.getByLabel('jsToken',{exact:true})).toHaveValue('test+js');
+ await expect(auth.getByLabel('bdstoken')).toHaveValue('bds/1');
+ await auth.getByRole('button',{name:'Paste cURL to fill Cookie & jsToken'}).click();
  await expect(page.getByRole('dialog',{name:'Import TeraBox cURL'}).getByLabel('cURL command')).toHaveValue('');
+ await page.getByRole('dialog',{name:'Import TeraBox cURL'}).getByRole('button',{name:'Close cURL import'}).click();
+ await auth.getByRole('button',{name:'Close TeraBox auth'}).click();
+ await page.getByRole('button',{name:'TeraBox auth'}).click();
+ const reopened=page.getByRole('dialog',{name:'TeraBox auth'});
+ await expect(reopened.getByLabel('Session Cookie')).toHaveValue('');
+ await expect(reopened.getByLabel('jsToken',{exact:true})).toHaveValue('');
 });
 
 test('TeraBox preview reuses Finder and commits only the chosen row example',async({page},info)=>{
