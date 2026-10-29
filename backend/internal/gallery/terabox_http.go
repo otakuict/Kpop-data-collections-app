@@ -1,6 +1,7 @@
 package gallery
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"log"
@@ -171,6 +172,58 @@ func registerTeraBox(admin *gin.RouterGroup, store *Store, key string, sheet *Sh
 			return
 		}
 		c.JSON(200, shared)
+	})
+	shareError := func(c *gin.Context, err error) {
+		var rejected *teraSessionError
+		if errors.As(err, &rejected) {
+			c.JSON(422, gin.H{"error": err.Error(), "code": "TERABOX_SESSION_REJECTED", "upstreamErrno": -6})
+		} else if errors.Is(err, sql.ErrNoRows) {
+			c.JSON(404, gin.H{"error": "Image set not found"})
+		} else {
+			c.JSON(502, gin.H{"error": err.Error()})
+		}
+	}
+	admin.POST("/sets/:id/terabox/share", func(c *gin.Context) {
+		if !exclusive(c) {
+			return
+		}
+		defer func() { <-slot }()
+		id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+		if err != nil || id < 1 {
+			c.JSON(400, gin.H{"error": "Choose a valid image set"})
+			return
+		}
+		result, err := service.prepareSetShare(c.Request.Context(), SetID(id))
+		if err != nil {
+			shareError(c, err)
+			return
+		}
+		c.JSON(200, result)
+	})
+	admin.POST("/sets/:id/terabox/share-confirm", func(c *gin.Context) {
+		if !exclusive(c) {
+			return
+		}
+		defer func() { <-slot }()
+		id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+		if err != nil || id < 1 {
+			c.JSON(400, gin.H{"error": "Choose a valid image set"})
+			return
+		}
+		var choice teraFolderChoice
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 1024)
+		decoder := json.NewDecoder(c.Request.Body)
+		decoder.DisallowUnknownFields()
+		if decoder.Decode(&choice) != nil || choice.AccountID < 1 || choice.AccountID > 2 || choice.FileID < 1 {
+			c.JSON(400, gin.H{"error": "Choose a TeraBox folder"})
+			return
+		}
+		result, err := service.shareSetFolder(c.Request.Context(), SetID(id), choice)
+		if err != nil {
+			shareError(c, err)
+			return
+		}
+		c.JSON(200, result)
 	})
 	admin.POST("/terabox/preview", func(c *gin.Context) {
 		if !exclusive(c) {

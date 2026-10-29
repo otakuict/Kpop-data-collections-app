@@ -9,24 +9,21 @@ const rows=[
  {fileId:12,original:'261013 안나',path:'/Albums/261013 안나',createdAt:'2026-10-24T01:00:00Z',setDate:'2026-10-13',rawName:'안나',romanized:'Anna',title:'261013 Anna',group:'MEOVV',memberId:2,method:'dictionary',status:'duplicate',warning:''},
  {fileId:13,original:'261013 모르는이름',path:'/Albums/261013 모르는이름',createdAt:'2026-10-24T01:00:00Z',setDate:'2026-10-13',rawName:'모르는이름',romanized:'Moreuneunireum',title:'261013 Moreuneunireum',group:'',memberId:0,method:'koroman',status:'review',warning:'Choose an artist manually'},
 ];
+const catalogSet={id:11,title:'261028 Anna',group:'MEOVV',source:'studio',date:'2026-10-29',example:'',origin:'manual',images:[],style:{}};
 
-async function setup(page,{sheet=true}={}){
+async function setup(page,{sheet=true,items=[]}={}){
  const calls=[];
  await page.route('**/api/**',async route=>{
   const req=route.request(),path=new URL(req.url()).pathname;
   const replies={
    '/api/admin/session':{token:'test-session'},'/api/admin/status':{authenticated:true},
-   '/api/sets':{items:[],total:0},'/api/facets':{total:0,ready:0,complete:0,groups:[],sources:[{name:'studio',count:1},{name:'loveshakedata',count:2}]},'/api/admin/ingestion':{},
+   '/api/sets':{items,total:items.length},'/api/facets':{total:items.length,ready:0,complete:0,groups:[],sources:[{name:'studio',count:1},{name:'loveshakedata',count:2}]},'/api/admin/ingestion':{},
    '/api/admin/artists':{groups},
    '/api/admin/terabox/accounts':{accounts:[{id:1,label:'First drive',root:'/Albums',source:'studio'},{id:2,label:'Second drive',root:'/Albums',source:'studio2'}],jevConfigured:true,sheetSyncEnabled:sheet},
   };
   if(path==='/api/admin/terabox/preview'){
    calls.push({type:'preview',body:req.postDataJSON()});
    return route.fulfill({json:{id:'preview-token',accountId:req.postDataJSON().accountId,days:req.postDataJSON().days,rows,complete:true,scanned:20,warnings:[]}});
-  }
-  if(path==='/api/admin/terabox/share-latest'){
-   calls.push({type:'share-latest',body:req.postDataJSON()});
-   return route.fulfill({json:{accountId:req.postDataJSON().accountId,period:req.postDataJSON().period,name:'261028 Latest folder',path:'/Albums/261028 Latest folder',link:'https://terabox.com/s/1abc'}});
   }
   if(path==='/api/admin/terabox/title-check'){
    const query=new URL(req.url()).searchParams;
@@ -50,17 +47,32 @@ async function setup(page,{sheet=true}={}){
  return {dialog,calls};
 }
 
-test('shares the latest folder for the selected TeraBox account',async({page})=>{
- const {dialog,calls}=await setup(page);
- await dialog.getByLabel('TeraBox account',{exact:true}).selectOption('2');
- await expect(dialog.getByLabel('Share duration')).toHaveValue('7');
- await dialog.getByLabel('Share duration').selectOption('1');
- await dialog.getByRole('button',{name:'Share latest folder'}).click();
- await expect(dialog.getByText('Shared: 261028 Latest folder (24 hours)')).toBeVisible();
- await expect(dialog.getByRole('link',{name:'https://terabox.com/s/1abc'})).toHaveAttribute('href','https://terabox.com/s/1abc');
- expect(calls).toEqual([{type:'share-latest',body:{accountId:2,period:1}}]);
- await dialog.getByLabel('Share duration').selectOption('0');
- await expect(dialog.getByText('Shared: 261028 Latest folder (24 hours)')).toHaveCount(0);
+test('set row auto-shares the Jev match for seven days',async({page})=>{
+ const {dialog}=await setup(page,{items:[catalogSet]});
+ await expect(dialog.getByRole('button',{name:'Share latest folder'})).toHaveCount(0);
+ await dialog.getByRole('button',{name:'Close TeraBox'}).click();
+ await page.route('**/api/admin/sets/11/terabox/share',route=>route.fulfill({json:{status:'shared',setId:11,title:catalogSet.title,folder:{name:'261028 Anna',account:'Studio drive'},link:'https://1024terabox.com/s/1abc'}}));
+ await page.getByRole('button',{name:'Share TeraBox folder for 261028 Anna'}).click();
+ const share=page.getByRole('dialog',{name:'Share TeraBox folder for 261028 Anna'});
+ await expect(share.getByText('Shared folder:')).toContainText('261028 Anna');
+ await expect(share.getByRole('link',{name:'https://1024terabox.com/s/1abc'})).toHaveAttribute('href','https://1024terabox.com/s/1abc');
+});
+
+test('low Jev confidence requires a manual folder choice before sharing',async({page})=>{
+ const {dialog}=await setup(page,{items:[catalogSet]});
+ await dialog.getByRole('button',{name:'Close TeraBox'}).click();
+ const candidates=[{accountId:1,fileId:10,account:'Studio drive',name:'261028 Anna',path:'/Albums/261028 Anna'},{accountId:2,fileId:20,account:'Second drive',name:'261028 Other',path:'/Albums/261028 Other'}];
+ await page.route('**/api/admin/sets/11/terabox/share',route=>route.fulfill({json:{status:'review',setId:11,title:catalogSet.title,candidates,suggested:candidates[0],confidence:0.42}}));
+ let confirmed;
+ await page.route('**/api/admin/sets/11/terabox/share-confirm',route=>{confirmed=route.request().postDataJSON();return route.fulfill({json:{status:'shared',setId:11,title:catalogSet.title,folder:candidates[1],link:'https://1024terabox.com/s/1manual'}});});
+ await page.getByRole('button',{name:'Share TeraBox folder for 261028 Anna'}).click();
+ const share=page.getByRole('dialog',{name:'Share TeraBox folder for 261028 Anna'});
+ await expect(share.getByText(/42% confidence/)).toBeVisible();
+ await expect(share.getByRole('button',{name:'Create 7-day link'})).toBeDisabled();
+ await share.getByLabel('Choose TeraBox folder').selectOption('2:20');
+ await share.getByRole('button',{name:'Create 7-day link'}).click();
+ await expect(share.getByRole('link',{name:'https://1024terabox.com/s/1manual'})).toBeVisible();
+ expect(confirmed).toEqual({accountId:2,fileId:20});
 });
 
 test('private drive import switches accounts and waits for edited preview confirmation',async({page},info)=>{
