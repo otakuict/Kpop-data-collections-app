@@ -26,7 +26,12 @@ Session values are never returned by the API or placed in browser storage.
 They are encrypted with AES-GCM in `terabox_accounts`, using a separate key
 domain derived from `ADMIN_TOKEN` and the slot ID as authenticated data. Keep
 `ADMIN_TOKEN` stable across restarts; changing it requires reconnecting accounts.
-Connections are read-only; no TeraBox upload, delete or share mutation is used.
+Scans and imports are read-only. The **Share latest folder** proof-of-concept button
+creates a public, non-expiring TeraBox share for the most recently created or
+modified folder directly inside the selected account root. It scans all dates,
+ignores files, and shows the folder name and link for copying. If the listing is
+incomplete or no folder has a timestamp, it does not create a share. This is a
+TeraBox mutation and may need a refreshed browser session if TeraBox rejects it.
 Each account stores its selected host inside the encrypted session. Older
 sessions default to `www.terabox.com`. Other hosts are rejected before sending
 credentials, and redirects are not followed. If the browser uses

@@ -10,7 +10,7 @@
  let sheetEnabled=$state(false), jevConfigured=$state(false), pane=$state('accounts');
  let label=$state(''), root=$state('/'), source=$state(''), cookie=$state(''), bdstoken=$state(''), jsToken=$state('');
  let host=$state('www.terabox.com');
- let namesOpen=$state(false);
+ let namesOpen=$state(false), sharedFolder=$state(null);
  let curlOpen=$state(false),curlInput=$state(''),curlError=$state('');
  let memberGroup=$state(''), memberName=$state(''), memberAliases=$state(''), memberSource=$state('');
  const selectedAccount=$derived(accounts.find(a=>a.id===accountID));
@@ -55,7 +55,7 @@
  onMount(()=>{working=true;load().then(changeAccount).catch(e=>error=e.message).finally(()=>working=false);return clearDuplicateChecks;});
  function changeAccount(){
   clearDuplicateChecks();
-  preview=null;results=null;notice='';error='';
+  preview=null;results=null;sharedFolder=null;notice='';error='';
   const a=accounts.find(a=>a.id===accountID);
   label=a?.label||`Account ${accountID}`;root=a?.root||'/';source=a?.source||'';
   host=a?.host||'www.terabox.com';
@@ -75,6 +75,16 @@
    const p=await api('/admin/terabox/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accountId:accountID,days:lookbackDays})});
    preview={...p,rows:p.rows.map(row=>({...row,selected:row.status==='new',seller:selectedAccount?.source||'',example:'',notes:'',duplicate:false,checking:false,checkError:''}))};pane='preview';
   }catch(e){error=e.message;}finally{working=false;}
+ }
+ async function shareLatest(){
+  working=true;error='';notice='';sharedFolder=null;
+  try{
+   sharedFolder=await api('/admin/terabox/share-latest',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accountId:accountID})});
+  }catch(e){error=e.message;}finally{working=false;}
+ }
+ async function copyShareLink(){
+  try{await navigator.clipboard.writeText(sharedFolder.link);notice='Share link copied.';}
+  catch{error='Could not copy the link. Select and copy it below.';}
  }
  async function confirm(){
   working=true;error='';notice='';
@@ -126,6 +136,7 @@
   <label class="lookback-days">Look back (days)<input type="number" min="1" max="10" step="1" bind:value={lookbackDays} disabled={working} required/></label>
   <button class="primary" disabled={working||!selectedAccount||!validLookback} onclick={scan}>{#if working}<LoaderCircle size={16} class="spin"/>{:else}<RefreshCw size={16}/>{/if}{working?'Working…':validLookback?`Scan last ${lookbackDays} ${lookbackDays===1?'day':'days'}`:'Scan TeraBox'}</button>
   <button class="primary secondary" disabled={working} onclick={()=>namesOpen=true}>Get TeraBox names</button>
+  <button class="primary secondary" disabled={working||!selectedAccount} onclick={shareLatest}>Share latest folder</button>
  </div>
  <nav class="tera-tabs" aria-label="TeraBox steps">
   <button class:active={pane==='accounts'} disabled={working} onclick={()=>{pane='accounts';changeAccount();}}>Accounts</button>
@@ -134,6 +145,7 @@
  </nav>
  {#if error}<p class="alert error" role="alert">{error}</p>{/if}
  {#if notice}<p class="alert success" role="status">{notice}</p>{/if}
+ {#if sharedFolder}<div class="tera-share-result" role="status"><strong>Shared: {sharedFolder.name}</strong><a href={sharedFolder.link} target="_blank" rel="noopener noreferrer">{sharedFolder.link}</a><button type="button" class="primary secondary" onclick={copyShareLink}>Copy link</button></div>{/if}
  {#if !sheetEnabled}<p class="alert error">Google Sheet sync is disabled. You can preview, but confirmation requires enabling Sheet sync.</p>{/if}
  {#if !jevConfigured}<p class="form-help">Jev is not configured. Known aliases still resolve from the catalog; other names need manual review.</p>{/if}
  {#if pane==='accounts'}
@@ -215,7 +227,7 @@
  .tera-curl-dialog form{display:grid;gap:14px}.tera-curl-dialog textarea{width:100%;min-height:220px;resize:vertical;padding:12px;border:1px solid #314d6b;border-radius:7px;background:#0a1423;color:#edf4fb;font:12px/1.5 ui-monospace,monospace}
  .tera-curl-trigger{justify-self:start}
  .tera-toolbar,.tera-tabs,.tera-row-heading,.tera-member{display:flex;align-items:center;justify-content:space-between;gap:14px}
- .tera-toolbar{display:grid;grid-template-columns:minmax(180px,320px) 140px auto auto;align-items:end;justify-content:start;margin:20px 0;gap:14px}.tera-toolbar label{min-width:0;margin:0}.tera-toolbar input,.tera-toolbar select{height:42px}.tera-toolbar .primary{min-height:42px;white-space:nowrap}
+ .tera-toolbar{display:flex;flex-wrap:wrap;align-items:end;justify-content:start;margin:20px 0;gap:14px}.tera-toolbar label{min-width:0;margin:0}.tera-toolbar label:first-child{width:min(320px,100%)}.tera-toolbar .lookback-days{width:140px}.tera-toolbar input,.tera-toolbar select{height:42px}.tera-toolbar .primary{min-height:42px;white-space:nowrap}.tera-share-result{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:12px;border:1px solid #416789;border-radius:8px}.tera-share-result a{overflow-wrap:anywhere;color:#a8dcff}
  label{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:#edf4fb;margin:8px 0}input,select{min-width:0;width:100%;padding:10px;border:1px solid #314d6b;border-radius:7px;background:#0a1423;color:#edf4fb}input[type=checkbox]{width:auto}
  .tera-tabs{justify-content:flex-start;flex-wrap:wrap;border-bottom:1px solid #314d6b;margin-bottom:20px}.tera-tabs button{padding:10px;border:0;background:none;border-bottom:2px solid transparent}.tera-tabs button.active{border-color:#5fd2ef;font-weight:700}
  .tera-account-form{display:grid;gap:16px;margin:20px 0}.form-row{display:flex;gap:14px;flex-wrap:wrap}.form-row>label{flex:1;min-width:180px}

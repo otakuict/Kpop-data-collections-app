@@ -105,6 +105,64 @@ func (t teraClient) list(ctx context.Context, session teraSession, dir string, p
 	return result, nil
 }
 
+// shareFolder creates a public TeraBox share for one folder in the selected account.
+func (t teraClient) shareFolder(ctx context.Context, session teraSession, folderPath string) (string, error) {
+	origin := t.baseURL
+	if session.Host != "" {
+		var err error
+		origin, err = teraBrowserOrigin(session.Host)
+		if err != nil {
+			return "", err
+		}
+	}
+	paths, _ := json.Marshal([]string{folderPath})
+	form := url.Values{
+		"schannel": {"0"}, "channel_list": {"[]"}, "period": {"0"},
+		"path_list": {string(paths)}, "pwd": {""},
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, origin+"/share/pset", strings.NewReader(form.Encode()))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Cookie", session.Cookie)
+	req.Header.Set("Referer", origin+"/main")
+	req.Header.Set("User-Agent", "Mozilla/5.0")
+	req.Header.Set("Accept", "application/json")
+	response, err := loggedDo(t.client, req)
+	if err != nil {
+		return "", errors.New("TeraBox share request failed; check network and reconnect the session")
+	}
+	defer response.Body.Close()
+	if response.StatusCode != 200 {
+		return "", fmt.Errorf("TeraBox share returned HTTP %d; reconnect the account if the session expired", response.StatusCode)
+	}
+	b, err := io.ReadAll(io.LimitReader(response.Body, (1<<20)+1))
+	if err != nil || len(b) > 1<<20 {
+		return "", errors.New("TeraBox share response exceeded limit")
+	}
+	var result struct {
+		Errno *int `json:"errno"`
+		Data  struct {
+			Link string `json:"link"`
+		} `json:"data"`
+	}
+	if json.Unmarshal(b, &result) != nil || result.Errno == nil {
+		return "", errors.New("TeraBox did not return a share link")
+	}
+	if *result.Errno == -6 {
+		return "", &teraSessionError{}
+	}
+	if *result.Errno != 0 {
+		return "", fmt.Errorf("TeraBox share error %d; check the session and folder", *result.Errno)
+	}
+	link, err := url.Parse(result.Data.Link)
+	if err != nil || link.Scheme != "https" || link.User != nil || (link.Hostname() != "terabox.com" && link.Hostname() != "www.terabox.com" && link.Hostname() != "dm.terabox.com" && link.Hostname() != "dm.terabox.app") || !strings.HasPrefix(link.Path, "/s/") || link.Port() != "" {
+		return "", errors.New("TeraBox returned an invalid share link")
+	}
+	return link.String(), nil
+}
+
 func (t teraClient) listRoot(ctx context.Context, session teraSession, root string, budget int) ([]teraFile, bool, error) {
 	result := []teraFile{}
 	dir := path.Clean(root)

@@ -24,6 +24,13 @@ type teraNames struct {
 	Warnings  []string        `json:"warnings"`
 }
 
+type teraShareResult struct {
+	AccountID int    `json:"accountId"`
+	Name      string `json:"name"`
+	Path      string `json:"path"`
+	Link      string `json:"link"`
+}
+
 type teraRootListing struct {
 	root     string
 	revision string
@@ -82,5 +89,38 @@ func (t *teraService) names(ctx context.Context, accountID, days int) (teraNames
 		}
 		result.Entries = append(result.Entries, entry)
 	}
+	return result, nil
+}
+
+func (t *teraService) shareLatestFolder(ctx context.Context, accountID int) (teraShareResult, error) {
+	result := teraShareResult{AccountID: accountID}
+	listing, err := t.rootNames(ctx, accountID, 0)
+	if err != nil {
+		return result, err
+	}
+	if !listing.complete {
+		return result, errors.New("TeraBox folder listing is incomplete; narrow the account root before sharing")
+	}
+	var latest *teraFile
+	for i := range listing.files {
+		file := &listing.files[i]
+		if file.IsDir == 1 && file.activityTime() > 0 && (latest == nil || file.activityTime() > latest.activityTime()) {
+			latest = file
+		}
+	}
+	if latest == nil {
+		return result, errors.New("No dated folder found directly inside this account root")
+	}
+	session, err := t.store.teraSession(ctx, t.key, accountID)
+	if err != nil {
+		return result, err
+	}
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	link, err := t.provider.shareFolder(ctx, session, latest.Path)
+	if err != nil {
+		return result, err
+	}
+	result.Name, result.Path, result.Link = latest.Name, latest.Path, link
 	return result, nil
 }

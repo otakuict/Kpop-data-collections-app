@@ -24,6 +24,10 @@ async function setup(page,{sheet=true}={}){
    calls.push({type:'preview',body:req.postDataJSON()});
    return route.fulfill({json:{id:'preview-token',accountId:req.postDataJSON().accountId,days:req.postDataJSON().days,rows,complete:true,scanned:20,warnings:[]}});
   }
+  if(path==='/api/admin/terabox/share-latest'){
+   calls.push({type:'share-latest',body:req.postDataJSON()});
+   return route.fulfill({json:{accountId:req.postDataJSON().accountId,name:'261028 Latest folder',path:'/Albums/261028 Latest folder',link:'https://terabox.com/s/1abc'}});
+  }
   if(path==='/api/admin/terabox/title-check'){
    const query=new URL(req.url()).searchParams;
    calls.push({type:'title-check',title:query.get('title'),group:query.get('group'),setDate:query.get('setDate')});
@@ -45,6 +49,15 @@ async function setup(page,{sheet=true}={}){
  await expect(dialog.getByRole('button',{name:'Scan last 5 days'})).toBeEnabled();
  return {dialog,calls};
 }
+
+test('shares the latest folder for the selected TeraBox account',async({page})=>{
+ const {dialog,calls}=await setup(page);
+ await dialog.getByLabel('TeraBox account',{exact:true}).selectOption('2');
+ await dialog.getByRole('button',{name:'Share latest folder'}).click();
+ await expect(dialog.getByText('Shared: 261028 Latest folder')).toBeVisible();
+ await expect(dialog.getByRole('link',{name:'https://terabox.com/s/1abc'})).toHaveAttribute('href','https://terabox.com/s/1abc');
+ expect(calls).toEqual([{type:'share-latest',body:{accountId:2}}]);
+});
 
 test('private drive import switches accounts and waits for edited preview confirmation',async({page},info)=>{
  const {dialog,calls}=await setup(page);

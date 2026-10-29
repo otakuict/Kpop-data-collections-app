@@ -144,6 +144,33 @@ func registerTeraBox(admin *gin.RouterGroup, store *Store, key string, sheet *Sh
 		}
 		c.JSON(200, names)
 	})
+	admin.POST("/terabox/share-latest", func(c *gin.Context) {
+		if !exclusive(c) {
+			return
+		}
+		defer func() { <-slot }()
+		var input struct {
+			AccountID int `json:"accountId"`
+		}
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 1024)
+		decoder := json.NewDecoder(c.Request.Body)
+		decoder.DisallowUnknownFields()
+		if decoder.Decode(&input) != nil || input.AccountID < 1 || input.AccountID > 2 {
+			c.JSON(400, gin.H{"error": "Choose account 1 or 2"})
+			return
+		}
+		shared, err := service.shareLatestFolder(c.Request.Context(), input.AccountID)
+		if err != nil {
+			var rejected *teraSessionError
+			if errors.As(err, &rejected) {
+				c.JSON(422, gin.H{"error": err.Error(), "code": "TERABOX_SESSION_REJECTED", "upstreamErrno": -6})
+				return
+			}
+			c.JSON(502, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(200, shared)
+	})
 	admin.POST("/terabox/preview", func(c *gin.Context) {
 		if !exclusive(c) {
 			return
