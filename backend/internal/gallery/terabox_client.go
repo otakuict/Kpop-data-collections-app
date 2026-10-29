@@ -106,7 +106,7 @@ func (t teraClient) list(ctx context.Context, session teraSession, dir string, p
 }
 
 // shareFolder creates a public TeraBox share for one folder in the selected account.
-func (t teraClient) shareFolder(ctx context.Context, session teraSession, folderPath string) (string, error) {
+func (t teraClient) shareFolder(ctx context.Context, session teraSession, folderPath string, period int) (string, error) {
 	origin := t.baseURL
 	if session.Host != "" {
 		var err error
@@ -117,7 +117,7 @@ func (t teraClient) shareFolder(ctx context.Context, session teraSession, folder
 	}
 	paths, _ := json.Marshal([]string{folderPath})
 	form := url.Values{
-		"schannel": {"0"}, "channel_list": {"[]"}, "period": {"0"},
+		"schannel": {"0"}, "channel_list": {"[]"}, "period": {strconv.Itoa(period)},
 		"path_list": {string(paths)}, "pwd": {""},
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, origin+"/share/pset", strings.NewReader(form.Encode()))

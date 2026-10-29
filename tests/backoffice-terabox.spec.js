@@ -26,7 +26,7 @@ async function setup(page,{sheet=true}={}){
   }
   if(path==='/api/admin/terabox/share-latest'){
    calls.push({type:'share-latest',body:req.postDataJSON()});
-   return route.fulfill({json:{accountId:req.postDataJSON().accountId,name:'261028 Latest folder',path:'/Albums/261028 Latest folder',link:'https://terabox.com/s/1abc'}});
+   return route.fulfill({json:{accountId:req.postDataJSON().accountId,period:req.postDataJSON().period,name:'261028 Latest folder',path:'/Albums/261028 Latest folder',link:'https://terabox.com/s/1abc'}});
   }
   if(path==='/api/admin/terabox/title-check'){
    const query=new URL(req.url()).searchParams;
@@ -53,10 +53,14 @@ async function setup(page,{sheet=true}={}){
 test('shares the latest folder for the selected TeraBox account',async({page})=>{
  const {dialog,calls}=await setup(page);
  await dialog.getByLabel('TeraBox account',{exact:true}).selectOption('2');
+ await expect(dialog.getByLabel('Share duration')).toHaveValue('7');
+ await dialog.getByLabel('Share duration').selectOption('1');
  await dialog.getByRole('button',{name:'Share latest folder'}).click();
- await expect(dialog.getByText('Shared: 261028 Latest folder')).toBeVisible();
+ await expect(dialog.getByText('Shared: 261028 Latest folder (24 hours)')).toBeVisible();
  await expect(dialog.getByRole('link',{name:'https://terabox.com/s/1abc'})).toHaveAttribute('href','https://terabox.com/s/1abc');
- expect(calls).toEqual([{type:'share-latest',body:{accountId:2}}]);
+ expect(calls).toEqual([{type:'share-latest',body:{accountId:2,period:1}}]);
+ await dialog.getByLabel('Share duration').selectOption('0');
+ await expect(dialog.getByText('Shared: 261028 Latest folder (24 hours)')).toHaveCount(0);
 });
 
 test('private drive import switches accounts and waits for edited preview confirmation',async({page},info)=>{

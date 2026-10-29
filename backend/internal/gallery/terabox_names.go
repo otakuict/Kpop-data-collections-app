@@ -26,6 +26,7 @@ type teraNames struct {
 
 type teraShareResult struct {
 	AccountID int    `json:"accountId"`
+	Period    int    `json:"period"`
 	Name      string `json:"name"`
 	Path      string `json:"path"`
 	Link      string `json:"link"`
@@ -92,8 +93,11 @@ func (t *teraService) names(ctx context.Context, accountID, days int) (teraNames
 	return result, nil
 }
 
-func (t *teraService) shareLatestFolder(ctx context.Context, accountID int) (teraShareResult, error) {
-	result := teraShareResult{AccountID: accountID}
+func (t *teraService) shareLatestFolder(ctx context.Context, accountID, period int) (teraShareResult, error) {
+	result := teraShareResult{AccountID: accountID, Period: period}
+	if period != 0 && period != 1 && period != 7 {
+		return result, errors.New("Choose 24 hours, 7 days, or forever for the share duration")
+	}
 	listing, err := t.rootNames(ctx, accountID, 0)
 	if err != nil {
 		return result, err
@@ -117,7 +121,7 @@ func (t *teraService) shareLatestFolder(ctx context.Context, accountID int) (ter
 	}
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	link, err := t.provider.shareFolder(ctx, session, latest.Path)
+	link, err := t.provider.shareFolder(ctx, session, latest.Path, period)
 	if err != nil {
 		return result, err
 	}

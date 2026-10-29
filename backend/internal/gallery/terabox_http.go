@@ -151,15 +151,16 @@ func registerTeraBox(admin *gin.RouterGroup, store *Store, key string, sheet *Sh
 		defer func() { <-slot }()
 		var input struct {
 			AccountID int `json:"accountId"`
+			Period    int `json:"period"`
 		}
 		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 1024)
 		decoder := json.NewDecoder(c.Request.Body)
 		decoder.DisallowUnknownFields()
-		if decoder.Decode(&input) != nil || input.AccountID < 1 || input.AccountID > 2 {
-			c.JSON(400, gin.H{"error": "Choose account 1 or 2"})
+		if decoder.Decode(&input) != nil || input.AccountID < 1 || input.AccountID > 2 || (input.Period != 0 && input.Period != 1 && input.Period != 7) {
+			c.JSON(400, gin.H{"error": "Choose account 1 or 2 and a share duration of 24 hours, 7 days, or forever"})
 			return
 		}
-		shared, err := service.shareLatestFolder(c.Request.Context(), input.AccountID)
+		shared, err := service.shareLatestFolder(c.Request.Context(), input.AccountID, input.Period)
 		if err != nil {
 			var rejected *teraSessionError
 			if errors.As(err, &rejected) {

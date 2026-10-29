@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -42,7 +43,7 @@ func TestTeraBoxShareLatestFolderUsesSelectedSessionAndNewestFolder(t *testing.T
 				t.Error(err)
 			}
 			sharedPath = r.Form.Get("path_list")
-			if r.Form.Get("period") != "0" || r.Form.Get("schannel") != "0" {
+			if r.Form.Get("period") != "7" || r.Form.Get("schannel") != "0" {
 				t.Errorf("unexpected share options: %v", url.Values(r.Form))
 			}
 			w.Write([]byte(`{"errno":0,"data":{"link":"https://terabox.com/s/1abc"}}`))
@@ -52,24 +53,31 @@ func TestTeraBoxShareLatestFolderUsesSelectedSessionAndNewestFolder(t *testing.T
 	}))
 	defer server.Close()
 	service := teraService{store: store, key: key, now: time.Now, provider: teraClient{baseURL: server.URL, client: server.Client()}}
-	shared, err := service.shareLatestFolder(context.Background(), 2)
-	if err != nil || shared.Path != "/Second/latest folder" || shared.Link != "https://terabox.com/s/1abc" || sharedPath != `["/Second/latest folder"]` {
+	shared, err := service.shareLatestFolder(context.Background(), 2, 7)
+	if err != nil || shared.Path != "/Second/latest folder" || shared.Period != 7 || shared.Link != "https://terabox.com/s/1abc" || sharedPath != `["/Second/latest folder"]` {
 		t.Fatalf("result=%+v path=%q error=%v", shared, sharedPath, err)
 	}
 }
 
 func TestTeraBoxShareAcceptsTopLevelLink(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/share/pset" {
-			t.Errorf("unexpected path: %s", r.URL.Path)
-		}
-		w.Write([]byte(`{"errno":0,"link":"https://1024terabox.com/s/1abc"}`))
-	}))
-	defer server.Close()
-	client := teraClient{baseURL: server.URL, client: server.Client()}
-	link, err := client.shareFolder(context.Background(), teraSession{Cookie: "ndus=test"}, "/Albums/latest")
-	if err != nil || link != "https://1024terabox.com/s/1abc" {
-		t.Fatalf("link=%q error=%v", link, err)
+	for _, period := range []int{0, 1} {
+		t.Run(strconv.Itoa(period), func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path != "/share/pset" {
+					t.Errorf("unexpected path: %s", r.URL.Path)
+				}
+				if err := r.ParseForm(); err != nil || r.Form.Get("period") != strconv.Itoa(period) {
+					t.Errorf("wrong share period: %v, %v", r.Form, err)
+				}
+				w.Write([]byte(`{"errno":0,"link":"https://1024terabox.com/s/1abc"}`))
+			}))
+			defer server.Close()
+			client := teraClient{baseURL: server.URL, client: server.Client()}
+			link, err := client.shareFolder(context.Background(), teraSession{Cookie: "ndus=test"}, "/Albums/latest", period)
+			if err != nil || link != "https://1024terabox.com/s/1abc" {
+				t.Fatalf("link=%q error=%v", link, err)
+			}
+		})
 	}
 }
 
@@ -84,6 +92,7 @@ func TestTeraBoxShareLatestRouteRequiresAdminAndValidAccount(t *testing.T) {
 		{`{"accountId":0}`, true, 400},
 		{`{"accountId":3}`, true, 400},
 		{`{"accountId":1,"path":"/other"}`, true, 400},
+		{`{"accountId":1,"period":30}`, true, 400},
 		{`{"accountId":1}`, true, 502},
 	} {
 		req := httptest.NewRequest(http.MethodPost, "/api/admin/terabox/share-latest", strings.NewReader(tc.body))
