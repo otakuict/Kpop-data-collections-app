@@ -58,6 +58,21 @@ func TestTeraBoxShareLatestFolderUsesSelectedSessionAndNewestFolder(t *testing.T
 	}
 }
 
+func TestTeraBoxShareAcceptsTopLevelLink(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/share/pset" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		w.Write([]byte(`{"errno":0,"link":"https://1024terabox.com/s/1abc"}`))
+	}))
+	defer server.Close()
+	client := teraClient{baseURL: server.URL, client: server.Client()}
+	link, err := client.shareFolder(context.Background(), teraSession{Cookie: "ndus=test"}, "/Albums/latest")
+	if err != nil || link != "https://1024terabox.com/s/1abc" {
+		t.Fatalf("link=%q error=%v", link, err)
+	}
+}
+
 func TestTeraBoxShareLatestRouteRequiresAdminAndValidAccount(t *testing.T) {
 	router := Router(teraTestStore(t), "share-route-test-key-at-least-24-characters")
 	for _, tc := range []struct {

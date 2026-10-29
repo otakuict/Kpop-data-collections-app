@@ -142,7 +142,8 @@ func (t teraClient) shareFolder(ctx context.Context, session teraSession, folder
 		return "", errors.New("TeraBox share response exceeded limit")
 	}
 	var result struct {
-		Errno *int `json:"errno"`
+		Errno *int   `json:"errno"`
+		Link  string `json:"link"`
 		Data  struct {
 			Link string `json:"link"`
 		} `json:"data"`
@@ -156,8 +157,12 @@ func (t teraClient) shareFolder(ctx context.Context, session teraSession, folder
 	if *result.Errno != 0 {
 		return "", fmt.Errorf("TeraBox share error %d; check the session and folder", *result.Errno)
 	}
-	link, err := url.Parse(result.Data.Link)
-	if err != nil || link.Scheme != "https" || link.User != nil || (link.Hostname() != "terabox.com" && link.Hostname() != "www.terabox.com" && link.Hostname() != "dm.terabox.com" && link.Hostname() != "dm.terabox.app") || !strings.HasPrefix(link.Path, "/s/") || link.Port() != "" {
+	rawLink := result.Link
+	if rawLink == "" {
+		rawLink = result.Data.Link
+	}
+	link, err := url.Parse(rawLink)
+	if err != nil || link.Scheme != "https" || link.User != nil || (link.Hostname() != "terabox.com" && link.Hostname() != "www.terabox.com" && link.Hostname() != "dm.terabox.com" && link.Hostname() != "dm.terabox.app" && link.Hostname() != "1024terabox.com" && link.Hostname() != "www.1024terabox.com") || !strings.HasPrefix(link.Path, "/s/") || link.Port() != "" {
 		return "", errors.New("TeraBox returned an invalid share link")
 	}
 	return link.String(), nil
