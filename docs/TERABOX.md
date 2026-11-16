@@ -31,6 +31,10 @@ domain derived from `ADMIN_TOKEN` and the slot ID as authenticated data. Keep
 Scans and imports are read-only. Each image set has a **Share TeraBox folder**
 action in the back-office table. It reads folder names directly inside the
 connected account roots and asks Jev to match the set title, artist and source.
+The backend reads Korean folder names with bundled KOROMAN and ranks them with
+artist catalog aliases before sending choices to Jev. A given name alone, such
+as `원영` for `Jang Wonyoung`, can match the catalog. Manual folder search also
+accepts the KOROMAN reading.
 At 60% confidence or higher, it creates a public link valid for 7 days. If Jev
 cannot decide, is unavailable, or returns lower confidence, a dialog lets the
 administrator search and choose a folder before creating the link. The backend

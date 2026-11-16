@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"sort"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -96,6 +98,49 @@ func TestTeraBoxSetShareJevOnlySelectsProvidedFolders(t *testing.T) {
 	selected, _, warning = service.jevShareChoice(context.Background(), set, choices)
 	if selected != nil || warning == "" {
 		t.Fatal("Jev's none choice did not require manual review")
+	}
+}
+
+func TestTeraBoxSetShareRanksKoreanAndGivenNameFoldersForJev(t *testing.T) {
+	romanized, err := romanizeKorean(context.Background(), []string{"250222 공유빈", "241202 원영"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	members := []artistMember{
+		{Group: "TripleS", Name: "Gong Yubin", Aliases: []string{"공유빈"}},
+		{Group: "IVE", Name: "Jang Won-young", Aliases: []string{"장원영"}},
+	}
+	choices := []teraFolderChoice{
+		{FileID: 1, Name: "250222 공유빈", Romanized: romanized[0], Path: "/Albums/250222 공유빈", Activity: 1},
+		{FileID: 2, Name: "241202 원영", Romanized: romanized[1], Path: "/Albums/241202 원영", Activity: 1},
+	}
+	for i := 0; i < 40; i++ {
+		choices = append(choices, teraFolderChoice{FileID: int64(i + 10), Name: "250222 unrelated " + strconv.Itoa(i), Path: "/Albums/unrelated", Activity: 100})
+	}
+	for _, tc := range []struct {
+		set    Set
+		wantID int64
+	}{
+		{Set{SetDraft: SetDraft{Title: "250222 Gong Yubin", Group: "TripleS"}}, 1},
+		{Set{SetDraft: SetDraft{Title: "241202 Jang Wonyoung", Group: "IVE"}}, 2},
+	} {
+		ranked := append([]teraFolderChoice(nil), choices...)
+		for i := range ranked {
+			ranked[i].Score = shareMatchScore(tc.set, teraAccount{}, ranked[i], members)
+		}
+		sort.SliceStable(ranked, func(i, j int) bool {
+			if ranked[i].Score != ranked[j].Score {
+				return ranked[i].Score > ranked[j].Score
+			}
+			return ranked[i].Activity > ranked[j].Activity
+		})
+		if ranked[0].FileID != tc.wantID || ranked[0].Score <= ranked[1].Score {
+			t.Fatalf("set=%s first=%+v second=%+v", tc.set.Title, ranked[0], ranked[1])
+		}
+	}
+	bare := teraFolderChoice{Name: "Wonyoung", Path: "/Albums/Wonyoung"}
+	if score := shareMatchScore(Set{SetDraft: SetDraft{Title: "241202 Jang Wonyoung", Group: "IVE"}}, teraAccount{}, bare, members); score < 80 {
+		t.Fatalf("given name without a date scored %d", score)
 	}
 }
 

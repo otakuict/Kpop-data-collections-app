@@ -4,7 +4,7 @@
  let { api, set, onclose } = $props();
  let result=$state(null), loading=$state(true), error=$state(''), notice=$state('');
  let query=$state(''), selectedKey=$state('');
- const filtered=$derived((result?.candidates||[]).filter(candidate=>`${candidate.account} ${candidate.name} ${candidate.path}`.toLowerCase().includes(query.trim().toLowerCase())));
+ const filtered=$derived((result?.candidates||[]).filter(candidate=>`${candidate.account} ${candidate.name} ${candidate.romanized||''} ${candidate.path}`.toLowerCase().includes(query.trim().toLowerCase())));
  function key(candidate){return `${candidate.accountId}:${candidate.fileId}`;}
  function modal(node){node.showModal();return {destroy(){node.close();}};}
  function close(){if(!loading)onclose();}
@@ -34,8 +34,8 @@
  {#if result?.status==='review' && !loading}
   {#if result.warning}<p class="alert error" role="status">{result.warning}</p>{/if}
   {#if result.suggested}<p class="review-note">Jev suggested <strong>{result.suggested.name}</strong> ({Math.round((result.confidence||0)*100)}% confidence). Select a folder to confirm.</p>{/if}
-  <label>Find folder<input aria-label="Find TeraBox folder" bind:value={query} oninput={()=>selectedKey=''} placeholder="Search folder name or account"/></label>
-  <label>Choose TeraBox folder<select aria-label="Choose TeraBox folder" bind:value={selectedKey} disabled={!filtered.length}><option value="">Select a folder</option>{#each filtered.slice(0,100) as candidate}<option value={key(candidate)}>{candidate.account} · {candidate.path}</option>{/each}</select></label>
+  <label>Find folder<input aria-label="Find TeraBox folder" bind:value={query} oninput={()=>selectedKey=''} placeholder="Search Korean name, English reading, or account"/></label>
+  <label>Choose TeraBox folder<select aria-label="Choose TeraBox folder" bind:value={selectedKey} disabled={!filtered.length}><option value="">Select a folder</option>{#each filtered.slice(0,100) as candidate}<option value={key(candidate)}>{candidate.account} · {candidate.path}{candidate.romanized?` (${candidate.romanized})`:''}</option>{/each}</select></label>
   {#if filtered.length>100}<p class="review-note">Showing the first 100 matches. Search to narrow the list.</p>{/if}
   <div class="editor-footer"><button class="primary" onclick={confirm} disabled={!selectedKey}>Create 7-day link</button></div>
  {:else if result?.status==='shared'}
